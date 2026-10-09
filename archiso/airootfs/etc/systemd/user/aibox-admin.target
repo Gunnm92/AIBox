@@ -1,6 +1,6 @@
 [Unit]
 Description=Bureau d'administration aibox (labwc headless, wayvnc, noVNC)
-Wants=aibox-admin-labwc.service aibox-admin-xfsettingsd.service aibox-admin-xfdesktop.service aibox-admin-panel.service aibox-admin-nm-applet.service aibox-admin-wayvnc.service aibox-admin-websocket.service aibox-admin-novnc.service
+Wants=aibox-admin-labwc.service aibox-admin-xfsettingsd.service aibox-admin-xfdesktop.service aibox-admin-panel.service aibox-admin-nm-applet.service aibox-admin-wayvnc.service aibox-admin-websocket.service aibox-admin-novnc.service aibox-admin-wayvnc-rdp.service
 
 [Install]
 WantedBy=default.target

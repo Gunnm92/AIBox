@@ -87,6 +87,17 @@ pipewire-alsa
 wireplumber
 python-pygame
 
+# RDP (compilé depuis l'AUR au build) : passerelle vers le bureau d'administration
+xrdp
+
+# Jeux Windows au format Batocera (.wsquashfs) : wsquashfs-launcher (script
+# ajouté au build) et ses outils ; les runners (proton-cachyos, UMU-Proton…)
+# vont sur le disque, pas de wine système (590 Mo)
+squashfuse
+fuse-overlayfs
+squashfs-tools
+umu-launcher
+
 # LLM : Lemonade (serveur seulement, 14 Mo) ; backends et modèles téléchargés
 # par Lemonade dans /srv/models (disque de données)
 lemonade-server

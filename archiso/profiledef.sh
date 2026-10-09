@@ -39,5 +39,6 @@ file_permissions=(
   ["/usr/local/sbin/aibox-setup-disk"]="0:0:755"
   ["/usr/local/lib/aibox/"]="0:0:755"
   ["/etc/aibox/novnc.htpasswd"]="1000:1000:600"
+  ["/etc/aibox/wayvnc-rdp.conf"]="1000:1000:600"
   ["/etc/aibox/novnc-tls.key"]="1000:1000:600"
 )

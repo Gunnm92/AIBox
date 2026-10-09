@@ -39,6 +39,8 @@ if [[ ! -s "$root/keys/vnc-password" ]]; then
     echo "Mot de passe noVNC généré dans keys/vnc-password : $(cat "$root/keys/vnc-password")" >&2
 fi
 printf 'default:%s\n' "$(openssl passwd -6 -stdin < <(head -n 1 "$root/keys/vnc-password"))" > "$root/work/novnc.htpasswd"
+# wayvnc local pour xrdp : authentification VNC classique (8 caractères max).
+printf 'enable_auth=true\nallow_broken_crypto=true\nrelax_encryption=true\npassword=%s\n' "$(head -n 1 "$root/keys/vnc-password" | cut -c1-8)" > "$root/work/wayvnc-rdp.conf"
 
 # --- HTTPS (noVNC, code-server) : autorité de certification locale ---
 # Une CA aibox, créée une fois et gardée dans keys/ : à ajouter une fois au
@@ -76,18 +78,51 @@ novnc_tar="$root/work/dl/noVNC-$novnc_version.tar.gz"
 [[ -f "$novnc_tar" ]] || curl -fsSL -o "$novnc_tar" "https://github.com/novnc/noVNC/archive/refs/tags/v$novnc_version.tar.gz"
 echo "$novnc_sha256  $novnc_tar" | sha256sum -c --quiet
 
+# --- wsquashfs-launcher (jeux Windows au format Batocera), version figée ---
+wsq_ref="${WSQUASHFS_REF:-f2892b89afe6c3293fa545b1c369e788bebc9214}"
+wsq="$root/work/dl/wsquashfs-launcher-$wsq_ref"
+[[ -s "$wsq" ]] || curl -fsSL -o "$wsq" "https://raw.githubusercontent.com/Gunnm92/wsquashfs-launcher/$wsq_ref/wsquashfs-launcher"
+bash -n "$wsq"
+
+# --- Paquets AUR (xrdp), compilés une fois, servis à mkarchiso par un dépôt local ---
+# --nocheck : 4 tests de la suite de xrdp (configuration du codec graphique)
+# échouent dans le conteneur de build.
+aur_pkgs=(xrdp)
+mkdir -p "$root/work/aur/repo"
+for pkg in "${aur_pkgs[@]}"; do
+    ls "$root/work/aur/repo/$pkg"-[0-9]*.pkg.tar.zst >/dev/null 2>&1 && continue
+    echo "Compilation AUR : $pkg" >&2
+    docker run --rm -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
+        -e ROOT="$root" -e PKG="$pkg" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+        "$image" bash -euo pipefail -c '
+            pacman -Syu --noconfirm --needed base-devel git >/dev/null
+            useradd -m builder
+            echo "builder ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/builder
+            su builder -c "git clone -q https://aur.archlinux.org/$PKG.git /home/builder/$PKG \
+                && cd /home/builder/$PKG && makepkg -s --noconfirm --needed --nocheck >/dev/null"
+            install -m 0644 /home/builder/$PKG/$PKG-[0-9]*.pkg.tar.zst "$ROOT/work/aur/repo/"
+            chown -R "$HOST_UID:$HOST_GID" "$ROOT/work/aur"
+        '
+done
+docker run --rm -v "$root:$root" "$image" sh -c \
+    "cd '$root/work/aur/repo' && rm -f aibox-aur.db* aibox-aur.files* && repo-add -q aibox-aur.db.tar.zst *.pkg.tar.zst && chown -R $(id -u):$(id -g) ."
+
 # Le dossier de travail de mkarchiso reste dans le conteneur (supprimé à la fin) ;
 # seuls le cache des paquets et l'ISO sont gardés sur le disque.
 docker run --rm --privileged \
     -v "$root:$root" \
     -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
-    -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+    -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e WSQ="$wsq" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
     "$image" bash -euo pipefail -c '
         pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools >/dev/null
         cp -a "$ROOT/archiso" /tmp/profile
+        # Dépôt local des paquets AUR, pour ce build seulement
+        printf "\n[aibox-aur]\nSigLevel = Optional TrustAll\nServer = file://%s/work/aur/repo\n" "$ROOT" >> /tmp/profile/pacman.conf
         air=/tmp/profile/airootfs
         install -m 0644 "$ROOT/work/authorized_keys" "$air/etc/ssh/authorized_keys/default"
         install -m 0600 "$ROOT/work/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
+        install -m 0600 "$ROOT/work/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
+        install -D -m 0755 "$WSQ" "$air/usr/local/bin/wsquashfs-launcher"
         install -m 0644 "$ROOT/work/novnc-tls.crt" "$air/etc/aibox/novnc-tls.crt"
         install -m 0600 "$ROOT/work/novnc-tls.key" "$air/etc/aibox/novnc-tls.key"
 

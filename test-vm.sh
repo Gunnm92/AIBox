@@ -49,7 +49,7 @@ start)
             -device virtio-vga-gl,hostmem=4G,blob=true,venus=true \
             -display egl-headless,rendernode=/dev/dri/renderD128 -vnc 0.0.0.0:2,password=on"
     fi
-    docker run -d --privileged --name "$name" --device /dev/kvm -p 6080:6080 "${gpu_docker[@]}" \
+    docker run -d --privileged --name "$name" --device /dev/kvm -p 6080:6080 -p 3390:3389 "${gpu_docker[@]}" \
         -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
         cachyos/cachyos:latest bash -euo pipefail -c "
             pacman -Sy --noconfirm --needed qemu-system-x86 qemu-img edk2-ovmf openssh socat $gpu_pkgs >/dev/null
@@ -63,7 +63,7 @@ start)
                 -device usb-storage,bus=xhci.0,drive=stick,id=stickdev,removable=on,bootindex=0 \
                 -drive if=none,id=nvm,format=qcow2,file='$vm/nvme.qcow2' \
                 -device nvme,serial=AIBOXNVME,drive=nvm \
-                -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22,hostfwd=tcp::6080-:6080 -device virtio-net-pci,netdev=n0 \
+                -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22,hostfwd=tcp::6080-:6080,hostfwd=tcp::3389-:3389 -device virtio-net-pci,netdev=n0 \
                 $gpu_qemu \
                 -serial file:'$vm/serial.log' \
                 -monitor unix:'$vm/monitor.sock',server,nowait
