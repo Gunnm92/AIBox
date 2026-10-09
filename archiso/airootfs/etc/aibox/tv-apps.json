@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Steam",
+    "command": ["steam", "-gamepadui"],
+    "icon": ["/usr/share/icons/hicolor/256x256/apps/steam.png", "/usr/share/pixmaps/steam.png"]
+  },
+  {
+    "name": "Moonlight",
+    "command": ["flatpak", "run", "com.moonlight_stream.Moonlight"],
+    "icon": [
+      "/var/lib/flatpak/exports/share/icons/hicolor/256x256/apps/com.moonlight_stream.Moonlight.png",
+      "/var/lib/flatpak/exports/share/icons/hicolor/128x128/apps/com.moonlight_stream.Moonlight.png",
+      "/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps/com.moonlight_stream.Moonlight.svg"
+    ]
+  }
+]

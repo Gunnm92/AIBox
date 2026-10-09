@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# aibox-mem : état de la mémoire du système live et de la clé USB.
+# La mémoire « bloquée » par le système correspond à Shmem : les tmpfs (image
+# copiée en RAM, overlay, /tmp, /dev/shm, /run) ne peuvent pas être rendus au noyau.
+
+budget_mib=$((6 * 1024))
+
+meminfo() { awk -v k="$1:" '$1 == k { print int($2 / 1024) }' /proc/meminfo; }
+size_mib() { du -sm --apparent-size "$@" 2>/dev/null | awk '{ s += $1 } END { print s + 0 }'; }
+
+total=$(meminfo MemTotal)
+avail=$(meminfo MemAvailable)
+shmem=$(meminfo Shmem)
+cached=$(meminfo Cached)
+image=$(size_mib /run/archiso/copytoram)
+
+echo "== Mémoire (Mio)"
+printf '  %-34s %8s\n' "Total" "$total" \
+    "Disponible" "$avail" \
+    "Cache récupérable (Cached)" "$((cached - shmem))" \
+    "Bloquée par le système (Shmem)" "$shmem" \
+    "  dont image en RAM" "$image"
+if (( shmem <= budget_mib )); then
+    echo "  Budget système (≤ $budget_mib Mio) : OK"
+else
+    echo "  Budget système (≤ $budget_mib Mio) : DÉPASSÉ"
+fi
+
+echo
+echo "== GPU (mémoire unifiée)"
+pages_limit=$(cat /sys/module/ttm/parameters/pages_limit 2>/dev/null)
+pool=$(cat /sys/module/ttm/parameters/page_pool_size 2>/dev/null)
+[[ -n "$pages_limit" ]] && printf '  %-34s %8s\n' "Plafond GTT (ttm.pages_limit)" "$((pages_limit / 256))" \
+    "Cache de pages (page_pool_size)" "$((pool / 256))"
+for dev in /sys/class/drm/card*/device; do
+    [[ -r "$dev/mem_info_gtt_total" ]] || continue
+    mib() { echo $(( $(cat "$dev/$1") / 1048576 )); }
+    printf '  %-34s %8s\n' "VRAM réservée par le BIOS (UMA)" "$(mib mem_info_vram_total)" \
+        "GTT utilisée / total" "$(mib mem_info_gtt_used) / $(mib mem_info_gtt_total)"
+    (( $(mib mem_info_vram_total) > 1024 )) && echo "  Attention : UMA > 1 Gio, la mettre au minimum (512 Mo) dans le BIOS."
+done
+
+echo
+echo "== Disque de données"
+if mountpoint -q /home; then
+    echo "  AIBOXDATA monté ($(findmnt -n -o SOURCE /home | sed 's/\[.*//'))"
+    df -h --output=size,used,avail /home | sed 's/^/  /'
+else
+    echo "  Aucun : MODE ÉPHÉMÈRE (rien n'est conservé). sudo aibox-setup-disk /dev/nvmeXnY"
+fi
+
+echo
+echo "== Image système"
+if [[ -d /run/archiso/copytoram ]]; then
+    ls -l --block-size=M /run/archiso/copytoram/ 2>/dev/null | tail -n +2 | awk '{ print "  " $9 "  " $5 }'
+else
+    echo "  Pas de copie en RAM (copytoram=n) : la clé doit rester branchée."
+fi
+
+echo
+echo "== Clé USB"
+if findmnt -n /run/archiso/bootmnt >/dev/null 2>&1; then
+    echo "  Encore montée sur /run/archiso/bootmnt : ne pas la retirer."
+else
+    echo "  Libérée : la clé peut être retirée."
+fi
+
+echo
+echo "== tmpfs (taille max / utilisé)"
+df -h --output=target,size,used -t tmpfs | tail -n +2 | sed 's/^/  /'
+
+echo
+echo "== Overlay (écritures dans le système)"
+df -h --output=size,used,avail /run/archiso/cowspace 2>/dev/null | sed 's/^/  /'
+
+echo
+echo "== zram"
+if command -v zramctl >/dev/null && [[ -n "$(zramctl --noheadings 2>/dev/null)" ]]; then
+    zramctl | sed 's/^/  /'
+else
+    echo "  aucun"
+fi
+
+echo
+echo "== Démarrage"
+systemd-analyze 2>/dev/null | head -n 1 | sed 's/^/  /'

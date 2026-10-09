@@ -1,0 +1,13 @@
+[Unit]
+Description=Bureau d'administration : pont WebSocket 127.0.0.1:5901 → wayvnc (derrière nginx)
+PartOf=aibox-admin.target
+After=aibox-admin-wayvnc.service
+
+[Service]
+Slice=admin.slice
+# Le WebSocket intégré à wayvnc (neatvnc 1.0.2) plante à la connexion
+# (neatvnc #177, corrigé en amont) : websocat le remplace
+# (websockify n'a pas de paquet Arch/CachyOS).
+ExecStart=/usr/bin/websocat --binary --exit-on-eof ws-l:127.0.0.1:5901 tcp:127.0.0.1:5900
+Restart=always
+RestartSec=2

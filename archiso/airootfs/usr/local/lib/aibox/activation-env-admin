@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Remet l'environnement d'activation D-Bus et systemd de l'utilisateur sur le
+# bureau d'administration (wayland-0, :0). labwc y pousse son propre affichage à
+# son démarrage et l'efface à son arrêt : sans ceci, la session TV (wayland-1)
+# l'emporterait, et tout ce qui est lancé par D-Bus ou systemd (Thunar,
+# portails, notifications…) s'ouvrirait sur la TV.
+# Les applis de la TV reçoivent leur affichage directement de leur compositeur.
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}"
+exec dbus-update-activation-environment --systemd \
+    WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 XDG_CURRENT_DESKTOP=XFCE XDG_SESSION_TYPE=wayland

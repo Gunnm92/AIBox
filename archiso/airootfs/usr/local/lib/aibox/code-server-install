@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Installe code-server dans le home (disque de données, rien dans l'image),
+# avec l'extension Claude Code (Open VSX).
+# Pas de pack de langue français : Open VSX n'a que la version 1.131, et VS Code
+# n'utilise un pack que de la même version que lui (1.141 avec code-server 4.141).
+#   code-server-install           installe s'il manque
+#   code-server-install --update  installe la dernière version
+set -euo pipefail
+base="${HOME}/.local/lib"
+bin="${base}/code-server/bin/code-server"
+
+if [[ ! -x "$bin" || "${1:-}" == "--update" ]]; then
+    tag="$(curl -fsS --retry 10 --retry-all-errors --retry-delay 5 \
+        https://api.github.com/repos/coder/code-server/releases/latest | jq -r .tag_name)"
+    ver="${tag#v}"
+    dest="${base}/code-server-${ver}"
+    if [[ ! -x "${dest}/bin/code-server" ]]; then
+        echo "Téléchargement de code-server ${ver}..."
+        tmp="$(mktemp -d)"
+        trap 'rm -rf "$tmp"' EXIT
+        curl -fsSL --retry 5 -o "${tmp}/cs.tar.gz" \
+            "https://github.com/coder/code-server/releases/download/${tag}/code-server-${ver}-linux-amd64.tar.gz"
+        mkdir -p "$dest"
+        tar -xzf "${tmp}/cs.tar.gz" -C "$dest" --strip-components=1
+    fi
+    ln -sfn "code-server-${ver}" "${base}/code-server"
+    # Anciennes versions
+    find "$base" -maxdepth 1 -name 'code-server-*' ! -name "code-server-${ver}" -exec rm -rf {} +
+fi
+
+installed="$("$bin" --list-extensions 2>/dev/null || true)"
+for ext in anthropic.claude-code; do
+    grep -qix "$ext" <<< "$installed" || "$bin" --install-extension "$ext" >/dev/null
+done
+
+# Réglages par défaut (seulement s'il n'y en a pas) : machine personnelle à un
+# seul utilisateur, pas de « mode restreint », qui désactive les extensions
+# (dont Claude Code) dans les dossiers non approuvés.
+settings="${HOME}/.local/share/code-server/User/settings.json"
+if [[ ! -e "$settings" ]]; then
+    mkdir -p "${settings%/*}"
+    cat > "$settings" <<'JSON'
+{
+    "security.workspace.trust.enabled": false
+}
+JSON
+fi

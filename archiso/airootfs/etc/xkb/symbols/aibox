@@ -1,0 +1,19 @@
+// Dispositions de clavier d'aibox, pour le bureau d'administration (noVNC).
+// libxkbcommon lit /etc/xkb en plus des fichiers système.
+
+// Clavier Mac français (ISO) utilisé depuis un navigateur sous macOS.
+// noVNC transmet le code physique des touches ; or macOS et les navigateurs
+// inversent les codes des touches « @ # » (sous Échap) et « < > » (à côté de
+// Maj gauche) sur les claviers ISO. fr(mac) seul donne donc « < » pour « @ ».
+default partial alphanumeric_keys
+xkb_symbols "fr_mac" {
+    include "fr(mac)"
+    name[Group1] = "French (Macintosh, depuis un navigateur sous macOS)";
+
+    key <TLDE> { [ less, greater, lessthanequal, greaterthanequal ] };
+    key <LSGT> { [ at, numbersign, periodcentered, ydiaeresis ] };
+
+    // Les deux touches Option donnent les caractères spéciaux, comme sur Mac
+    // (fr(mac) ne le fait qu'avec Alt droit).
+    include "level3(alt_switch)"
+};

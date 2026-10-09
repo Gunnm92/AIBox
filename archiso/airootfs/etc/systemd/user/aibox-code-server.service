@@ -1,0 +1,19 @@
+[Unit]
+Description=code-server : VS Code dans le navigateur (https://<ip>:6080/code/)
+# Installé dans le home : seulement avec le disque de données, jamais en RAM.
+ConditionPathIsMountPoint=/home
+
+[Service]
+Slice=dev.slice
+WorkingDirectory=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+# Premier démarrage : téléchargement et extensions (réseau requis, réessayé).
+ExecStartPre=/usr/local/lib/aibox/code-server-install
+# Local seulement, sans mot de passe propre : nginx (HTTPS + mot de passe) le sert sur /code/.
+ExecStart=%h/.local/lib/code-server/bin/code-server --bind-addr 127.0.0.1:8081 --auth none --disable-telemetry --disable-update-check %h
+TimeoutStartSec=15min
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Au démarrage : disque de données monté (dossiers de l'utilisateur prêts) ou
+# mode éphémère (tout est en RAM et perdu au redémarrage), avec un message clair.
+mkdir -p /run/motd.d
+
+# user_dir <chemin relatif> : crée le dossier dans /home/default, chaque niveau
+# appartenant à default.
+user_dir() {
+    local path=/home/default part
+    IFS=/ read -ra parts <<< "$1"
+    for part in "${parts[@]}"; do
+        path="$path/$part"
+        [[ -d "$path" ]] || install -d -o default -g default "$path"
+    done
+}
+if mountpoint -q /home; then
+    install -d -m 0700 -o default -g default /home/default
+    install -d -o default -g default /home/default/Applications
+    # Dossiers des raccourcis d'applis (Flatpak, AppImage) créés d'avance : le menu
+    # XFCE ne surveille que les dossiers qui existent à son démarrage.
+    install -d /var/lib/flatpak/exports/share/applications
+    for d in .local/share/applications .local/share/flatpak/exports/share/applications; do
+        user_dir "$d"
+    done
+    # Lemonade : modèles (cache Hugging Face) et backends, sur @models.
+    install -d -o default -g default /srv/models/huggingface /srv/models/lemonade
+    # Images des machines virtuelles (GNOME Boxes, virt-manager en Flatpak) :
+    # sans copie à l'écriture, sinon btrfs fragmente ces gros fichiers réécrits
+    # en place. L'attribut ne vaut que pour les fichiers créés ensuite : les
+    # dossiers sont préparés avant la première VM.
+    for d in .var/app/org.gnome.Boxes/data/gnome-boxes/images \
+             .var/app/org.virt_manager.virt-manager/data/libvirt/images; do
+        user_dir "$d"
+        chattr +C "/home/default/$d" 2>/dev/null || true
+    done
+    echo "aibox : disque de données AIBOXDATA monté ($(findmnt -n -o SOURCE /home))."
+    rm -f /run/motd.d/aibox-data
+else
+    msg="aibox : MODE ÉPHÉMÈRE, aucun disque AIBOXDATA. Rien n'est conservé au redémarrage. Préparer un disque : sudo aibox-setup-disk /dev/nvmeXnY"
+    echo "$msg"
+    echo "$msg" > /run/motd.d/aibox-data
+fi

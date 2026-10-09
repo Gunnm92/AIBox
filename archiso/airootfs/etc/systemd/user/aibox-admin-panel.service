@@ -1,0 +1,14 @@
+[Unit]
+Description=Bureau d'administration : panneau XFCE
+PartOf=aibox-admin.target
+Requires=aibox-admin-labwc.service
+After=aibox-admin-labwc.service aibox-admin-xfsettingsd.service
+
+[Service]
+Slice=admin.slice
+WorkingDirectory=%h
+EnvironmentFile=/etc/aibox/admin-desktop.env
+ExecStartPre=/usr/local/lib/aibox/admin-wait
+ExecStart=/usr/bin/xfce4-panel
+Restart=always
+RestartSec=2

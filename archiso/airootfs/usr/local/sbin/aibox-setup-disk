@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# aibox-setup-disk : prépare le disque de données AIBOXDATA (une seule fois).
+#
+#   sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G]
+#
+# EFFACE tout le disque, le formate en btrfs (étiquette AIBOXDATA) et crée les
+# sous-volumes montés au démarrage (voir /etc/fstab) :
+#   @home @flatpak @bluetooth @nm @ssh @state @models @swap
+#   (liste : /usr/local/lib/aibox/subvolumes)
+# Redémarrer ensuite : le système monte le disque et quitte le mode éphémère.
+set -euo pipefail
+
+usage() { sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+
+dev="${1:-}"
+[[ -n "$dev" && "$dev" != -* ]] || usage
+shift
+swap_size="16G"
+while (( $# )); do
+    case "$1" in
+        --swap) swap_size="${2:?}"; shift 2 ;;
+        *) usage ;;
+    esac
+done
+
+(( EUID == 0 )) || { echo "À lancer en root : sudo $0 $dev" >&2; exit 1; }
+[[ -b "$dev" ]] || { echo "$dev n'est pas un périphérique bloc." >&2; exit 1; }
+
+# Garde-fous : jamais la clé de démarrage, jamais un disque monté.
+boot_dev="$(findmnt -n -o SOURCE /run/archiso/bootmnt 2>/dev/null || true)"
+if [[ -n "$boot_dev" ]] && lsblk -n -o PKNAME,NAME "$boot_dev" 2>/dev/null | grep -qw "$(basename "$dev")"; then
+    echo "$dev porte la clé de démarrage : refusé." >&2; exit 1
+fi
+if lsblk -n -o MOUNTPOINTS "$dev" | grep -q .; then
+    echo "$dev (ou une de ses partitions) est monté : refusé." >&2
+    lsblk -o NAME,SIZE,MOUNTPOINTS "$dev" >&2; exit 1
+fi
+
+echo "Disque : $dev"
+lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL "$dev"
+echo
+echo "TOUTES LES DONNÉES DE $dev SERONT EFFACÉES."
+read -r -p "Pour confirmer, retape le chemin du disque ($dev) : " answer
+[[ "$answer" == "$dev" ]] || { echo "Abandon."; exit 1; }
+
+wipefs -a -q "$dev"
+mkfs.btrfs -q -f -L AIBOXDATA "$dev"
+
+mnt="$(mktemp -d)"
+trap 'umount "$mnt" 2>/dev/null; rmdir "$mnt"' EXIT
+mount "$dev" "$mnt"
+
+# Sous-volumes (liste partagée avec aibox-data-layout.service) ; « nocow » :
+# sans copie à l'écriture ni compression (modèles LLM, swap).
+grep -vE '^\s*(#|$)' /usr/local/lib/aibox/subvolumes | while read -r sv flag; do
+    btrfs -q subvolume create "$mnt/$sv"
+    [[ "$flag" == nocow ]] && chattr +C "$mnt/$sv"
+done
+
+# Dossiers de l'utilisateur et du système
+install -d -m 0700 -o 1000 -g 1000 "$mnt/@home/default"
+install -d -o 1000 -g 1000 "$mnt/@home/default/Applications"
+install -d -o 1000 -g 1000 "$mnt/@models/lemonade"
+chmod 0700 "$mnt/@bluetooth" "$mnt/@ssh" "$mnt/@nm"
+install -d -m 1777 "$mnt/@state/var-tmp"
+install -d -m 0755 "$mnt/@state/pacman-pkg" "$mnt/@state/coredump"
+
+# Swap de secours (zram reste prioritaire)
+btrfs filesystem mkswapfile --size "$swap_size" "$mnt/@swap/swapfile" >/dev/null
+
+echo
+btrfs subvolume list "$mnt"
+echo
+echo "Disque AIBOXDATA prêt (swap de secours : $swap_size). Redémarre pour l'utiliser : sudo systemctl reboot"

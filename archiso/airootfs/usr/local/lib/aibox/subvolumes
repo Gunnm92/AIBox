@@ -1,0 +1,10 @@
+# Sous-volumes du disque de données AIBOXDATA : nom, puis « nocow » pour les
+# gros fichiers réécrits en place (pas de copie à l'écriture ni de compression).
+@home
+@flatpak
+@bluetooth
+@nm
+@ssh
+@state
+@models nocow
+@swap nocow

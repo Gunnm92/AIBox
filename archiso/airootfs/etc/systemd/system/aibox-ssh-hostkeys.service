@@ -1,0 +1,11 @@
+[Unit]
+Description=Clés d'hôte SSH (sur le disque de données, sinon en RAM)
+Before=sshd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/aibox/ssh-hostkeys
+
+[Install]
+WantedBy=sshd.service

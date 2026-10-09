@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Crée sur le disque AIBOXDATA les sous-volumes ajoutés depuis sa préparation
+# (liste : /usr/local/lib/aibox/subvolumes), sans toucher aux données.
+set -euo pipefail
+top=/run/aibox/data-top
+mkdir -p "$top"
+mount -o subvolid=5 LABEL=AIBOXDATA "$top"
+trap 'umount "$top"' EXIT
+grep -vE '^\s*(#|$)' /usr/local/lib/aibox/subvolumes | while read -r sv flag; do
+    [[ -d "$top/$sv" ]] && continue
+    btrfs -q subvolume create "$top/$sv"
+    [[ "$flag" == nocow ]] && chattr +C "$top/$sv"
+    echo "Sous-volume ajouté : $sv"
+done

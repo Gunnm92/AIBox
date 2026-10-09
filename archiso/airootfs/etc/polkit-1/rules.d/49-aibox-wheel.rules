@@ -1,0 +1,7 @@
+// L'utilisateur default (groupe wheel) n'a pas de mot de passe et a déjà sudo
+// sans mot de passe : même règle pour polkit (installer des Flatpak, etc.).
+polkit.addRule(function (action, subject) {
+    if (subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});

@@ -1,0 +1,2 @@
+aibox : système chargé en RAM. Tout changement du système disparaît au redémarrage.
+  aibox-mem    état de la mémoire (image, overlay, tmpfs, zram) et de la clé USB

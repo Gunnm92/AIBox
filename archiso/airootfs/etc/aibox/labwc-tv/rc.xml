@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!-- labwc de la session TV : pas de décorations, chaque fenêtre en plein écran. -->
+<labwc_config>
+  <core>
+    <xwaylandPersistence>yes</xwaylandPersistence>
+  </core>
+  <windowRules>
+    <windowRule identifier="*" serverDecoration="no">
+      <action name="Maximize"/>
+    </windowRule>
+  </windowRules>
+</labwc_config>

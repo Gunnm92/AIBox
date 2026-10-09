@@ -1,0 +1,16 @@
+[Unit]
+Description=Bureau d'administration : serveur VNC (RFB, 127.0.0.1:5900)
+PartOf=aibox-admin.target
+Requires=aibox-admin-labwc.service
+After=aibox-admin-labwc.service
+
+[Service]
+Slice=admin.slice
+Environment=WAYLAND_DISPLAY=wayland-0
+ExecStartPre=/usr/local/lib/aibox/admin-wait
+# En local seulement, sans mot de passe : noVNC passe par nginx (HTTPS + mot de
+# passe) puis le pont WebSocket ; un client VNC classique, par un tunnel SSH.
+# (L'authentification RSA-AES de wayvnc, types 5/129, n'est pas celle de noVNC, type 6.)
+ExecStart=/usr/local/lib/aibox/admin-wayvnc
+Restart=always
+RestartSec=2

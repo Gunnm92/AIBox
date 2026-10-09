@@ -1,0 +1,13 @@
+[Unit]
+Description=Disque de données AIBOXDATA (ou mode éphémère)
+After=home.mount var-lib-flatpak.mount var-lib-aibox-state.mount
+Before=user@1000.service getty@tty1.service sshd.service aibox-flathub.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+StandardOutput=journal+console
+ExecStart=/usr/local/lib/aibox/data-check
+
+[Install]
+WantedBy=multi-user.target

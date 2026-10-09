@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# wayvnc du bureau d'administration, avec la disposition de clavier choisie
+# (aibox-keyboard). C'est wayvnc qui traduit les touches reçues de noVNC :
+# setxkbmap n'agit que sur Xwayland, pas ici.
+set -a
+. /etc/aibox/keyboard.env
+[[ -r "${HOME}/.config/aibox/keyboard.env" ]] && . "${HOME}/.config/aibox/keyboard.env"
+set +a
+exec /usr/bin/wayvnc --render-cursor --max-fps=30 \
+    --keyboard="${KEYBOARD_LAYOUT}${KEYBOARD_VARIANT:+-${KEYBOARD_VARIANT}}" 127.0.0.1 5900

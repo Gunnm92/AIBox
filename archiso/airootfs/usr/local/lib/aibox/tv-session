@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Session TV : labwc sur l'écran réel (GPU), configuration /etc/aibox/labwc-tv,
+# avec le lanceur d'applis. Le bureau d'administration (labwc headless) doit déjà
+# avoir pris wayland-0 et :0 : sinon ce compositeur les lui volerait (cf. SteamBox).
+set -euo pipefail
+for _ in $(seq 1 60); do
+    [[ -S "${XDG_RUNTIME_DIR}/wayland-0" ]] && break
+    sleep 0.5
+done
+[[ -S "${XDG_RUNTIME_DIR}/wayland-0" ]] || { echo "wayland-0 (administration) absent : refus de démarrer" >&2; exit 1; }
+cd "${HOME}"
+unset WAYLAND_DISPLAY DISPLAY
+# La session (PAM/systemd) arrive avec CAP_WAKE_ALARM en capacité ambiante,
+# héritée par toutes les applis : le bac à sable de Steam (bwrap) refuse alors
+# de démarrer (« Unexpected capabilities but not setuid »), et Steam conclut à
+# tort que les espaces de noms utilisateur sont désactivés. On les retire.
+exec setpriv --inh-caps=-all --ambient-caps=-all labwc -C /etc/aibox/labwc-tv

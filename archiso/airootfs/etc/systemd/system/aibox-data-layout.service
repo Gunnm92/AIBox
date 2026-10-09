@@ -1,0 +1,9 @@
+[Unit]
+Description=Disque de données : sous-volumes ajoutés depuis sa préparation
+After=home.mount
+ConditionPathIsMountPoint=/home
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/aibox/data-layout

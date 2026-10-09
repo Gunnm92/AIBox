@@ -1,0 +1,13 @@
+[Unit]
+Description=Bureau d'administration : compositeur labwc headless (wayland-0)
+PartOf=aibox-admin.target
+
+[Service]
+Slice=admin.slice
+# Pas d'écran réel ni d'accès au GPU : rendu logiciel (pixman), pour ne pas
+# concurrencer la session TV et le LLM. LIBSEAT_BACKEND=noop : pas de siège/VT.
+Environment=WLR_BACKENDS=headless WLR_RENDERER=pixman LIBSEAT_BACKEND=noop WLR_LIBINPUT_NO_DEVICES=1
+Environment=XDG_CURRENT_DESKTOP=XFCE XDG_SESSION_TYPE=wayland
+ExecStart=/usr/local/lib/aibox/admin-session
+Restart=always
+RestartSec=2

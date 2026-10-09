@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Réglages XFCE par défaut (thème, icônes, police, fond d'écran), appliqués
+# SEULEMENT s'ils ne sont pas déjà réglés : un choix fait par l'utilisateur
+# n'est jamais écrasé. Repris de xfce-defaults.sh (SteamBox).
+#
+# Usage : xfce-defaults <sortie> [-- <commande...>]
+#   <sortie>    nom du moniteur pour le fond (HEADLESS-1 : bureau d'administration)
+#   <commande>  exécutée ensuite à la place de ce script (ex. xfsettingsd)
+#
+# Réglages dans xfconf : une fois xfsettingsd démarré, c'est lui l'autorité
+# (XSETTINGS). xfconfd est activé par D-Bus : xfconf-query suffit.
+set -uo pipefail
+
+output="${1:?usage: xfce-defaults <sortie> [-- commande...]}"
+shift
+[[ "${1:-}" == "--" ]] && shift
+
+for _ in $(seq 1 20); do
+    xfconf-query -c xsettings -l >/dev/null 2>&1 && break
+    sleep 0.5
+done
+
+# set_default <canal> <propriété> <type> <valeur> : n'écrit que si absente.
+set_default() {
+    xfconf-query -c "$1" -p "$2" >/dev/null 2>&1 && return 0
+    xfconf-query -c "$1" -p "$2" -n -t "$3" -s "$4" 2>/dev/null || true
+}
+
+# Thème WhiteSur à venir ; en attendant, Adwaita sombre (fourni par GTK).
+set_default xsettings /Net/ThemeName string "Adwaita-dark"
+set_default xsettings /Net/IconThemeName string "Adwaita"
+set_default xsettings /Gtk/CursorThemeName string "Adwaita"
+set_default xsettings /Gtk/CursorSize int 24
+set_default xsettings /Gtk/FontName string "DejaVu Sans 10"
+set_default xsettings /Gtk/MonospaceFontName string "DejaVu Sans Mono 10"
+
+# Fond : clé du moniteur réel, celle que lit xfdesktop.
+backdrop="/backdrop/screen0/monitor${output}/workspace0"
+if ! xfconf-query -c xfce4-desktop -p "${backdrop}/last-image" >/dev/null 2>&1; then
+    set_default xfce4-desktop "${backdrop}/last-image" string "/usr/share/backgrounds/xfce/xfce-cp-dark.svg"
+    set_default xfce4-desktop "${backdrop}/image-style" int 5
+fi
+
+if [[ $# -gt 0 ]]; then
+    exec "$@"
+fi

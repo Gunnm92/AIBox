@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Crée les clés d'hôte SSH dans /var/lib/aibox/ssh si elles manquent.
+d=/var/lib/aibox/ssh
+mkdir -p "$d"
+[[ -s "$d/ssh_host_ed25519_key" ]] || ssh-keygen -q -t ed25519 -N '' -f "$d/ssh_host_ed25519_key"
+[[ -s "$d/ssh_host_rsa_key" ]] || ssh-keygen -q -t rsa -b 3072 -N '' -f "$d/ssh_host_rsa_key"

@@ -1,0 +1,6 @@
+[Unit]
+Description=Session TV (Steam, Moonlight, jeux)
+
+[Slice]
+# Mémoire CPU de la session TV ; la mémoire GPU (GTT) des jeux n'est pas comptée.
+MemoryHigh=16G

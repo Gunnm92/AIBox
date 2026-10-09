@@ -1,0 +1,99 @@
+# Base et démarrage live
+base
+linux-cachyos
+amd-ucode
+mkinitcpio
+mkinitcpio-archiso
+cachyos-keyring
+cachyos-mirrorlist
+cachyos-v3-mirrorlist
+cachyos-v4-mirrorlist
+
+# Firmwares allégés (pas de linux-firmware complet), d'après le matériel de la machine :
+#   amdgpu    GPU Radeon 8060S
+#   amd       NPU XDNA 2 (amdxdna), coprocesseur de sécurité (ccp)
+#   mediatek  Wi-Fi MT7925 (mt7925e) et son Bluetooth (btusb)
+# Ethernet par adaptateur USB (cdc_ncm) et audio HDMI/USB : pas de firmware.
+linux-firmware-amdgpu
+linux-firmware-amd
+linux-firmware-mediatek
+
+# GPU
+mesa
+vulkan-radeon
+vulkan-tools
+amdgpu_top
+
+# Réseau, accès, Bluetooth
+networkmanager
+openssh
+sudo
+bluez
+bluez-utils
+
+# Bureau d'administration (noVNC) : labwc headless + panneau XFCE, wayvnc,
+# websocat (pont WebSocket, websockify n'a pas de paquet), nginx (noVNC en HTTPS)
+labwc
+wlr-randr
+wayvnc
+websocat
+nginx
+xfce4-panel
+xfce4-settings
+xfdesktop
+xfce4-appfinder
+xfce4-terminal
+xfce4-taskmanager
+thunar
+mousepad
+network-manager-applet
+xorg-xwayland
+xdg-desktop-portal-gtk
+ttf-dejavu
+
+# Applis sur disque (Flatpak, AppImage) et mémoire
+flatpak
+fuse2
+fuse3
+zram-generator
+
+# Conteneurs (développement) : Podman sans root ni démon ; conteneurs et images
+# dans ~/.local/share/containers (disque de données). podman-docker : commande docker.
+podman
+podman-compose
+podman-docker
+
+# Outils de base (petits). Le reste (base-devel, compilateurs, SDK, vim…) va dans
+# des environnements Distrobox, sur le disque : base-devel seul pèserait 478 Mo.
+git
+distrobox
+jq
+rsync
+tmux
+unzip
+zip
+wget
+
+# Session TV : Steam natif (bibliothèques 32 bits), son (PipeWire), lanceur
+# (pygame). vulkan-virtio : GPU partagé dans une VM (Venus), pour les tests.
+steam
+lib32-mesa
+lib32-vulkan-radeon
+vulkan-virtio
+lib32-vulkan-virtio
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+python-pygame
+
+# LLM : Lemonade (serveur seulement, 14 Mo) ; backends et modèles téléchargés
+# par Lemonade dans /srv/models (disque de données)
+lemonade-server
+
+# Disque de données et outils
+btrfs-progs
+nvme-cli
+btop
+less
+nano

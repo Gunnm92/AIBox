@@ -1,0 +1,14 @@
+[Unit]
+Description=Bureau d'administration : réseau (nm-applet)
+PartOf=aibox-admin.target
+Requires=aibox-admin-labwc.service
+After=aibox-admin-labwc.service aibox-admin-panel.service
+
+[Service]
+Slice=admin.slice
+WorkingDirectory=%h
+EnvironmentFile=/etc/aibox/admin-desktop.env
+ExecStartPre=/usr/local/lib/aibox/admin-wait
+ExecStart=/usr/bin/nm-applet
+Restart=always
+RestartSec=2

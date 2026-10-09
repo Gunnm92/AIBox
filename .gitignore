@@ -1,0 +1,4 @@
+work/
+out/
+keys/*
+!keys/README.md

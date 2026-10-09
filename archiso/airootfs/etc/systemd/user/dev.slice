@@ -1,0 +1,5 @@
+[Unit]
+Description=Outils de développement (code-server)
+
+[Slice]
+MemoryMax=8G

@@ -1,0 +1,254 @@
+#!/usr/bin/env python3
+"""Lanceur plein écran de la session TV d'aibox.
+
+Grandes tuiles, à la manette (croix directionnelle ou stick, Croix/A pour
+lancer) ou au clavier (flèches, Entrée). L'appli lancée passe au premier plan ;
+quand elle se termine, on revient au lanceur.
+
+Applications : /etc/aibox/tv-apps.json, remplacé par ~/.config/aibox/tv-apps.json
+s'il existe. Chaque entrée : {"name": ..., "command": [...], "icon": [chemins...]}.
+
+Fond d'écran : l'image du jour de Bing, téléchargée en arrière-plan une fois par
+jour dans ~/.cache/aibox (fond uni sans réseau).
+"""
+import datetime
+import json
+import os
+import subprocess
+import sys
+import threading
+import time
+import urllib.request
+
+os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
+os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+import pygame  # noqa: E402
+from pygame._sdl2 import controller  # noqa: E402
+
+CONFIGS = [os.path.expanduser("~/.config/aibox/tv-apps.json"), "/etc/aibox/tv-apps.json"]
+
+BG = (16, 18, 24)
+TILE = (34, 38, 50)
+TILE_SEL = (52, 120, 246)
+TEXT = (235, 238, 245)
+DIM = (140, 146, 160)
+FONT = "/usr/share/fonts/TTF/DejaVuSans.ttf"
+CACHE = os.path.expanduser("~/.cache/aibox")
+BING = "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=fr-FR"
+
+
+def bing_image():
+    """Chemin de l'image du jour de Bing (téléchargée si besoin), ou None."""
+    os.makedirs(CACHE, exist_ok=True)
+    today = datetime.date.today().isoformat()
+    path = os.path.join(CACHE, f"bing-{today}.jpg")
+    if not os.path.exists(path):
+        with urllib.request.urlopen(BING, timeout=15) as r:
+            info = json.load(r)["images"][0]
+        url = "https://www.bing.com" + info["urlbase"] + "_UHD.jpg"
+        tmp = path + ".part"
+        with urllib.request.urlopen(url, timeout=60) as r, open(tmp, "wb") as f:
+            f.write(r.read())
+        os.replace(tmp, path)
+        with open(os.path.join(CACHE, "bing-legende.txt"), "w") as f:
+            f.write(info.get("copyright", ""))
+        for old in os.listdir(CACHE):
+            if old.startswith("bing-") and old.endswith(".jpg") and old != os.path.basename(path):
+                os.remove(os.path.join(CACHE, old))
+    return path
+
+
+def load_apps():
+    for path in CONFIGS:
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+    return []
+
+
+def load_icon(paths, size):
+    for p in paths:
+        p = os.path.expanduser(p)
+        if os.path.exists(p):
+            try:
+                img = pygame.image.load(p).convert_alpha()
+                return pygame.transform.smoothscale(img, (size, size))
+            except pygame.error:
+                continue
+    return None
+
+
+class Launcher:
+    def __init__(self):
+        pygame.init()
+        controller.init()
+        pygame.mouse.set_visible(False)
+        # Fenêtre sans bordure, agrandie par labwc (règle de /etc/aibox/labwc-tv) ;
+        # pas de plein écran : labwc garderait le lanceur au-dessus des applis lancées.
+        size = pygame.display.get_desktop_sizes()[0]
+        self.screen = pygame.display.set_mode(size, pygame.NOFRAME | pygame.RESIZABLE)
+        pygame.display.set_caption("aibox")
+        self.w, self.h = self.screen.get_size()
+        self.apps = load_apps()
+        self.sel = 0
+        self.pads = {}
+        self.running_app = None
+        self.last_axis = 0.0
+        self.wallpaper_path = None
+        self.wallpaper = None
+        self.caption = ""
+        threading.Thread(target=self.fetch_wallpaper, daemon=True).start()
+        self.layout()
+
+    def fetch_wallpaper(self):
+        # Réessaie tant que le réseau n'est pas prêt (démarrage de la machine).
+        for _ in range(30):
+            try:
+                self.wallpaper_path = bing_image()
+                return
+            except Exception:
+                time.sleep(20)
+
+    def scaled_wallpaper(self):
+        """Image du jour en plein écran (recadrée), assombrie pour la lisibilité."""
+        img = pygame.image.load(self.wallpaper_path).convert()
+        iw, ih = img.get_size()
+        scale = max(self.w / iw, self.h / ih)
+        img = pygame.transform.smoothscale(img, (int(iw * scale) + 1, int(ih * scale) + 1))
+        out = pygame.Surface((self.w, self.h))
+        out.blit(img, ((self.w - img.get_width()) // 2, (self.h - img.get_height()) // 2))
+        shade = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        shade.fill((0, 0, 0, 120))
+        out.blit(shade, (0, 0))
+        legend = os.path.join(CACHE, "bing-legende.txt")
+        self.caption = open(legend).read().strip() if os.path.exists(legend) else ""
+        return out
+
+    def layout(self):
+        n = max(len(self.apps), 1)
+        self.tile = int(min(self.h * 0.42, (self.w * 0.8) / n - self.w * 0.03))
+        self.icon_size = int(self.tile * 0.55)
+        self.font = pygame.font.Font(FONT, max(24, self.tile // 7))
+        self.title_font = pygame.font.Font(FONT, max(36, self.h // 12))
+        self.small = pygame.font.Font(FONT, max(20, self.h // 32))
+        self.tiny = pygame.font.Font(FONT, max(14, self.h // 60))
+        self.wallpaper = None  # recalculé à la bonne taille
+        self.icons = [load_icon(a.get("icon", []), self.icon_size) for a in self.apps]
+
+    def open_pads(self):
+        for i in range(controller.get_count()):
+            if i not in self.pads and controller.is_controller(i):
+                self.pads[i] = controller.Controller(i)
+
+    def draw(self, message=None):
+        # Dessin sur une surface opaque, copiée ensuite dans la fenêtre : le
+        # texte anticrénelé mélangé directement dans la fenêtre Wayland (qui a un
+        # canal alpha) donnait des rectangles pleins sur l'image de fond.
+        if getattr(self, "canvas", None) is None or self.canvas.get_size() != (self.w, self.h):
+            self.canvas = pygame.Surface((self.w, self.h)).convert()
+        s = self.canvas
+        if self.wallpaper_path and self.wallpaper is None:
+            try:
+                self.wallpaper = self.scaled_wallpaper()
+            except (pygame.error, OSError):
+                self.wallpaper_path = None
+        if self.wallpaper:
+            s.blit(self.wallpaper, (0, 0))
+        else:
+            s.fill(BG)
+        title = self.title_font.render("aibox", True, TEXT)
+        s.blit(title, ((self.w - title.get_width()) // 2, int(self.h * 0.12)))
+        n = len(self.apps)
+        gap = int(self.w * 0.03)
+        total = n * self.tile + (n - 1) * gap
+        x0 = (self.w - total) // 2
+        y = (self.h - self.tile) // 2
+        for i, app in enumerate(self.apps):
+            x = x0 + i * (self.tile + gap)
+            rect = pygame.Rect(x, y, self.tile, self.tile)
+            pygame.draw.rect(s, TILE_SEL if i == self.sel else TILE, rect, border_radius=self.tile // 10)
+            icon = self.icons[i]
+            if icon:
+                s.blit(icon, (x + (self.tile - self.icon_size) // 2, y + int(self.tile * 0.12)))
+            label = self.font.render(app["name"], True, TEXT)
+            s.blit(label, (x + (self.tile - label.get_width()) // 2, y + int(self.tile * 0.78)))
+        hint = message or "◀ ▶  choisir      Croix / A / Entrée  lancer"
+        h = self.small.render(hint, True, TEXT if self.wallpaper else DIM)
+        s.blit(h, ((self.w - h.get_width()) // 2, int(self.h * 0.85)))
+        if self.wallpaper and self.caption:
+            c = self.tiny.render(self.caption, True, DIM)
+            s.blit(c, (self.w - c.get_width() - 20, self.h - c.get_height() - 14))
+        self.screen.blit(s, (0, 0))
+        pygame.display.flip()
+
+    def move(self, d):
+        if self.apps:
+            self.sel = (self.sel + d) % len(self.apps)
+
+    def launch(self):
+        if not self.apps or self.running_app:
+            return
+        app = self.apps[self.sel]
+        self.draw(f"Lancement de {app['name']}…")
+        try:
+            self.running_app = subprocess.Popen(app["command"], start_new_session=True)
+        except OSError as e:
+            self.draw(f"Impossible de lancer {app['name']} : {e}")
+            time.sleep(3)
+
+    def handle(self, ev):
+        if ev.type == pygame.QUIT:
+            return False
+        if self.running_app and ev.type != pygame.VIDEORESIZE:
+            return True  # l'appli a le premier plan ; on ignore les entrées
+        if ev.type == pygame.KEYDOWN:
+            if ev.key in (pygame.K_LEFT, pygame.K_UP):
+                self.move(-1)
+            elif ev.key in (pygame.K_RIGHT, pygame.K_DOWN):
+                self.move(1)
+            elif ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
+                self.launch()
+        elif ev.type == pygame.CONTROLLERBUTTONDOWN:
+            if ev.button in (pygame.CONTROLLER_BUTTON_DPAD_LEFT, pygame.CONTROLLER_BUTTON_DPAD_UP):
+                self.move(-1)
+            elif ev.button in (pygame.CONTROLLER_BUTTON_DPAD_RIGHT, pygame.CONTROLLER_BUTTON_DPAD_DOWN):
+                self.move(1)
+            elif ev.button == pygame.CONTROLLER_BUTTON_A:
+                self.launch()
+        elif ev.type == pygame.CONTROLLERAXISMOTION and ev.axis == pygame.CONTROLLER_AXIS_LEFTX:
+            v = ev.value / 32767
+            if abs(v) > 0.6 and abs(self.last_axis) <= 0.6:
+                self.move(1 if v > 0 else -1)
+            self.last_axis = v
+        elif ev.type == pygame.VIDEORESIZE:
+            self.screen = pygame.display.set_mode(ev.size, pygame.NOFRAME | pygame.RESIZABLE)
+            self.w, self.h = ev.size
+            self.layout()
+        elif ev.type in (pygame.CONTROLLERDEVICEADDED, pygame.CONTROLLERDEVICEREMOVED):
+            self.pads.clear()
+            self.open_pads()
+        return True
+
+    def run(self):
+        self.open_pads()
+        clock = pygame.time.Clock()
+        while True:
+            for ev in pygame.event.get():
+                if not self.handle(ev):
+                    return
+            if self.running_app and self.running_app.poll() is not None:
+                self.running_app = None
+                self.apps = load_apps()
+                self.layout()
+            if self.running_app:
+                self.draw(f"{self.apps[self.sel]['name']} est lancé")
+            else:
+                self.draw()
+            clock.tick(30)
+
+
+if __name__ == "__main__":
+    try:
+        Launcher().run()
+    except KeyboardInterrupt:
+        sys.exit(0)

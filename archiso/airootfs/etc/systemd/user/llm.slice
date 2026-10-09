@@ -1,0 +1,9 @@
+[Unit]
+Description=LLM (Lemonade)
+
+[Slice]
+# Mémoire CPU de Lemonade et de ses backends ; les poids chargés en GTT (GPU)
+# échappent aux cgroups (voir spec, « Mémoire unifiée »). MemoryHigh freine et
+# récupère le cache avant d'atteindre MemoryMax (modèles lus par mmap).
+MemoryHigh=16G
+MemoryMax=32G

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Session labwc du bureau d'administration (repris de labwc-session.sh de
+# SteamBox) : écrit la configuration de labwc et les réglages par défaut,
+# puis se remplace par labwc. Les composants du bureau sont des services à part.
+set -euo pipefail
+cd "${HOME}"
+
+# Clavier : labwc lit XKB_* dans ~/.config/labwc/environment, pas dans son environnement.
+mkdir -p "${HOME}/.config/labwc"
+# Même disposition que wayvnc (aibox-keyboard).
+set -a
+. /etc/aibox/keyboard.env
+[[ -r "${HOME}/.config/aibox/keyboard.env" ]] && . "${HOME}/.config/aibox/keyboard.env"
+set +a
+cat > "${HOME}/.config/labwc/environment" <<EOT
+XKB_DEFAULT_LAYOUT=${KEYBOARD_LAYOUT}
+XKB_DEFAULT_VARIANT=${KEYBOARD_VARIANT}
+XCURSOR_SIZE=24
+EOT
+
+# xwaylandPersistence (cf. SteamBox) : sinon Xwayland s'arrête après le dernier
+# client X11, et les applis X11 lancées ensuite échouent (DISPLAY=:0 fixe).
+cat > "${HOME}/.config/labwc/rc.xml" <<EOT
+<?xml version="1.0"?>
+<labwc_config>
+  <core>
+    <xwaylandPersistence>yes</xwaylandPersistence>
+  </core>
+  <focus>
+    <followMouse>yes</followMouse>
+    <followMouseRequiresMovement>no</followMouseRequiresMovement>
+  </focus>
+</labwc_config>
+EOT
+
+# Résolution de la sortie virtuelle, appliquée au démarrage de labwc.
+cat > "${HOME}/.config/labwc/autostart" <<EOT
+wlr-randr --output HEADLESS-1 --custom-mode 1920x1080 &
+EOT
+
+# Panneau XFCE : configuration par défaut d'aibox si l'utilisateur n'en a pas
+# (évite la question « configuration par défaut ou panneau vide ? »).
+panel="${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+if [[ ! -e "$panel" ]]; then
+    mkdir -p "${panel%/*}"
+    cp /etc/aibox/xfce4-panel.xml "$panel"
+fi
+
+# Cache de polices à jour avant tout composant graphique (cf. SteamBox : glycin
+# tué par seccomp si le cache est incomplet).
+fc-cache 2>/dev/null || true
+
+unset WAYLAND_DISPLAY DISPLAY
+exec labwc

@@ -1,0 +1,6 @@
+# labwc vient de pousser l'affichage de la TV dans l'environnement d'activation :
+# on le remet sur le bureau d'administration (voir activation-env-admin).
+/usr/local/lib/aibox/activation-env-admin
+# Lanceur de la session TV, relancé s'il se ferme, tant que CE labwc tourne
+# (sinon la boucle survit à la session et se raccroche au compositeur suivant).
+sh -c 'while kill -0 "$LABWC_PID" 2>/dev/null; do aibox-tv-launcher; sleep 1; done' &

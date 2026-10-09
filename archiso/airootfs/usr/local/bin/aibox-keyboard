@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# aibox-keyboard : disposition du clavier du bureau d'administration (noVNC).
+#
+#   aibox-keyboard              affiche la disposition actuelle
+#   aibox-keyboard mac          Mac français, depuis un navigateur sous macOS (par défaut)
+#   aibox-keyboard pc           PC français (AZERTY)
+#   aibox-keyboard <disposition> [variante]   toute disposition xkb (ex. us, ch fr)
+#
+# C'est wayvnc qui traduit les touches reçues de noVNC (setxkbmap n'agit que sur
+# Xwayland). Le réglage est gardé dans ~/.config/aibox/keyboard.env (disque de
+# données) ; wayvnc est relancé, noVNC se reconnecte tout seul.
+set -euo pipefail
+conf="${HOME}/.config/aibox/keyboard.env"
+rules=/usr/share/X11/xkb/rules/base.lst
+
+if (( $# == 0 )); then
+    set -a; . /etc/aibox/keyboard.env; [[ -r "$conf" ]] && . "$conf"; set +a
+    echo "Clavier : ${KEYBOARD_LAYOUT}${KEYBOARD_VARIANT:+ (${KEYBOARD_VARIANT})}"
+    exit 0
+fi
+case "$1" in
+    mac) layout=aibox variant=fr_mac ;;
+    pc)  layout=fr variant= ;;
+    *)   layout="$1" variant="${2:-}" ;;
+esac
+if [[ -f "/etc/xkb/symbols/$layout" ]]; then
+    if [[ -n "$variant" ]] && ! grep -q "xkb_symbols \"$variant\"" "/etc/xkb/symbols/$layout"; then
+        echo "Variante inconnue pour $layout : $variant" >&2; exit 1
+    fi
+elif ! grep -qE "^ +${layout} +" <(sed -n '/^! layout/,/^$/p' "$rules"); then
+    echo "Disposition inconnue : $layout" >&2; exit 1
+elif [[ -n "$variant" ]] && ! grep -qE "^ +${variant} +${layout}:" "$rules"; then
+    echo "Variante inconnue pour $layout : $variant" >&2
+    echo "Variantes disponibles :" >&2
+    grep -E "^ +[^ ]+ +${layout}:" "$rules" | awk '{print "  " $1}' >&2
+    exit 1
+fi
+mkdir -p "${conf%/*}"
+printf 'KEYBOARD_LAYOUT=%s\nKEYBOARD_VARIANT=%s\n' "$layout" "$variant" > "$conf"
+systemctl --user restart aibox-admin-wayvnc.service
+echo "Clavier : ${layout}${variant:+ (${variant})}. noVNC se reconnecte."

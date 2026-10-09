@@ -1,0 +1,12 @@
+# Génère les locales de /etc/locale.gen (fr_FR, en_US) pendant le build de l'image.
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = glibc
+
+[Action]
+Description = Génération des locales (fr_FR.UTF-8, en_US.UTF-8)...
+When = PostTransaction
+Depends = glibc
+Exec = /usr/bin/locale-gen
