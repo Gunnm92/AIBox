@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# aibox-diag : rapport de diagnostic (session TV, écran, GPU, réseau, mémoire,
+# journal complet du démarrage). Enregistré sur la partition de données de la clé
+# Ventoy (aibox-diag/) si elle est présente, sinon dans /run/aibox-diag, et affiché.
+#   sudo aibox-diag            rapport complet
+# Lancé aussi automatiquement 2 minutes après le démarrage (aibox-diag.timer).
+set -uo pipefail
+(( EUID == 0 )) || exec sudo "$0" "$@"
+
+stamp="$(date +%Y%m%d-%H%M%S)"
+out="/run/aibox-diag"
+mkdir -p "$out"
+report="$out/aibox-diag-$stamp.txt"
+
+section() { printf '\n===== %s =====\n' "$1"; }
+{
+    section "Système"; date; uname -a; cat /proc/cmdline
+    section "Session TV (système)"; systemctl status aibox-tv --no-pager 2>&1 | head -25
+    section "Journal aibox-tv"; journalctl -b -u aibox-tv --no-pager 2>&1 | tail -80
+    section "Sessions logind"; loginctl list-sessions --no-pager 2>&1; loginctl show-seat seat0 2>&1 | head -10
+    section "Processus graphiques"; pgrep -a labwc; pgrep -af aibox-tv-launcher; pgrep -a Xwayland
+    section "Sockets Wayland"; ls -la /run/user/1000/ 2>&1 | grep -E "wayland|pipewire"
+    section "Écrans (DRM)"; for c in /sys/class/drm/card*-*; do echo "$(basename "$c"): $(cat "$c/status" 2>/dev/null) $(head -1 "$c/modes" 2>/dev/null)"; done
+    section "Noyau : amdgpu / drm"; journalctl -b -k --no-pager 2>&1 | grep -iE "amdgpu|drm|dcn|dmcub|hdmi" | tail -60
+    section "Services en échec"; systemctl --failed --no-pager 2>&1; sudo -u default XDG_RUNTIME_DIR=/run/user/1000 systemctl --user --failed --no-pager 2>&1
+    section "Réseau"; ip -br addr 2>&1
+    section "Disques"; lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL,MOUNTPOINTS 2>&1
+    section "Mémoire"; /usr/local/bin/aibox-mem 2>&1
+    section "Journal complet du démarrage"; journalctl -b --no-pager 2>&1
+} > "$report" 2>&1
+
+# Partition de données Ventoy (exFAT, étiquette « Ventoy »), si présente
+dest=""
+part="$(blkid -L Ventoy 2>/dev/null || true)"
+if [[ -n "$part" ]]; then
+    mnt="$(findmnt -n -o TARGET "$part" 2>/dev/null | head -1)"
+    if [[ -z "$mnt" ]]; then
+        mnt=/run/aibox-ventoy; mkdir -p "$mnt"
+        mount "$part" "$mnt" 2>/dev/null || mnt=""
+    fi
+    if [[ -n "$mnt" ]]; then
+        mkdir -p "$mnt/aibox-diag" && cp "$report" "$mnt/aibox-diag/" && sync && dest="$mnt/aibox-diag/$(basename "$report")"
+        [[ "$mnt" == /run/aibox-ventoy ]] && umount "$mnt"
+    fi
+fi
+echo "Rapport : $report"
+[[ -n "$dest" ]] && echo "Copié sur la clé Ventoy : aibox-diag/$(basename "$report")" || echo "(pas de partition Ventoy accessible : rapport en RAM seulement)"

@@ -1,0 +1,6 @@
+[Unit]
+Description=Rapport de diagnostic aibox (sur la clé Ventoy si présente)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/aibox-diag
