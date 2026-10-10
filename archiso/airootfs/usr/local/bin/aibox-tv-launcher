@@ -7,8 +7,8 @@ quand elle se termine, on revient au lanceur.
 
 Applications : /etc/aibox/tv-apps.json, remplacé par ~/.config/aibox/tv-apps.json
 s'il existe. Chaque entrée : {"name": ..., "command": [...], "icon": [chemins...]},
-et "command_gamescope": [...] facultatif, pris dans la session gamescope
-(AIBOX_TV_MODE=gamescope, voir tv-session) : Steam en mode SteamOS.
+et "command_<mode>": [...] facultatif, pris à la place de "command" quand la
+session TV est dans ce mode (AIBOX_TV_MODE, voir tv-session).
 
 Fond d'écran : les images de Bing des 8 derniers jours, téléchargées en
 arrière-plan une fois par jour dans ~/.cache/aibox, une nouvelle toutes les 30

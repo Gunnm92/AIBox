@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Session TV sur l'écran réel (GPU), selon ~/.config/aibox/tv-mode (aibox-tv-mode) :
-#   gamescope (défaut) : gamescope pilote la TV (HDR, FSR, VRR) et lance le
-#                        lanceur, qui démarre Steam en mode SteamOS (comme
-#                        gamescope-session) ou Moonlight ;
-#   labwc (secours)    : labwc, configuration /etc/aibox/labwc-tv, et le lanceur.
+#   gamescope (défaut) : gamescope pilote la TV (HDR, FSR, VRR) avec Steam en mode
+#                        SteamOS, comme gamescope-session ;
+#   labwc              : labwc, configuration /etc/aibox/labwc-tv, et le lanceur
+#                        (applis de tv-apps.json) ; « Passer au bureau » dans Steam y mène.
 # Le bureau d'administration (labwc headless) doit déjà avoir pris wayland-0 et
 # :0 : sinon ce compositeur les lui volerait (cf. SteamBox).
 set -euo pipefail
@@ -32,9 +32,10 @@ export STEAM_GAMESCOPE_HDR_SUPPORTED=1 STEAM_GAMESCOPE_VRR_SUPPORTED=1 \
     STEAM_GAMESCOPE_TEARING_SUPPORTED=1 STEAM_GAMESCOPE_DYNAMIC_FPSLIMITER=1 \
     STEAM_GAMESCOPE_FANCY_SCALING_SUPPORT=1 STEAM_MULTIPLE_XWAYLANDS=1 \
     SRT_URLOPEN_PREFER_STEAM=1 QT_IM_MODULE=steam GTK_IM_MODULE=Steam
-# command_gamescope de tv-apps.json : Steam en mode SteamOS.
 export AIBOX_TV_MODE=gamescope
-# Pas de -W/-H : la résolution préférée de la TV. gamescope s'arrête avec le
-# lanceur, et le service relance la session (Restart=always).
+# Steam directement, pas le lanceur : avec --steam, gamescope n'affiche que la
+# fenêtre choisie par Steam (« SteamControlled ») — le lanceur seul restait
+# invisible (écran noir, 10/10/2026). Pas de -W/-H : la résolution préférée de
+# la TV. gamescope s'arrête avec Steam, et le service relance la session.
 exec "${nocaps[@]}" gamescope --steam -e --xwayland-count 2 --hdr-enabled -- \
-    aibox-tv-launcher
+    steam -gamepadui -steamos3 -steampal -steamdeck

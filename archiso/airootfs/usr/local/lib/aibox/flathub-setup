@@ -3,10 +3,9 @@
 # (pas dans l'image) au premier démarrage avec le disque :
 #   Bazaar      magasin d'applications Flathub (interface graphique)
 #   Gear Lever  gestion des AppImage (ajout au menu, mises à jour)
-#   Moonlight   client de streaming (session TV)
 set -euo pipefail
 flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-for app in io.github.kolunmi.Bazaar it.mijorus.gearlever com.moonlight_stream.Moonlight; do
+for app in io.github.kolunmi.Bazaar it.mijorus.gearlever; do
     flatpak info --system "$app" >/dev/null 2>&1 && continue
     echo "Installation de $app..."
     flatpak install --system --noninteractive flathub "$app"

@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
-# Appelé par Steam en mode SteamOS (session TV gamescope) pour « Passer au
-# bureau » : Steam se ferme et on revient au lanceur de la session TV. Le mode
-# de la session (gamescope ou labwc) se change avec aibox-tv-mode.
+# Appelé par Steam en mode SteamOS (session TV gamescope) : « Passer au bureau »
+# (desktop, plasma…) bascule la session TV sur labwc et son lanceur (voir
+# aibox-tv-mode) ; dans tous les cas Steam se ferme et
+# aibox-tv relance la session dans le mode choisi.
+case "${1:-}" in
+    gamescope) mode=gamescope ;;
+    "") mode="" ;;
+    *) mode=labwc ;;
+esac
+if [[ -n "$mode" ]]; then
+    mkdir -p "${HOME}/.config/aibox"
+    echo "$mode" > "${HOME}/.config/aibox/tv-mode"
+fi
 exec steam -shutdown

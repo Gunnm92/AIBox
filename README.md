@@ -32,8 +32,7 @@ Disque (btrfs, étiquette AIBOXDATA) ──► /home (config, Steam, ~/Applicati
                                      /var/lib/flatpak, /srv/models (LLM), swap de secours,
                                      /var/tmp, cache pacman, journaux, coredumps,
                                      /var/lib/bluetooth, réseau, SSH, machine-id
-DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope (HDR, FSR) + lanceur : Steam Big Picture, Moonlight (secours : labwc)
-                                   │                               └─ Moonlight (Flatpak) comme appli Steam
+DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope (HDR, FSR) + Steam Big Picture (ou labwc + lanceur)
 DualSense éteinte > 2 min ─────────┘ session arrêtée, écran éteint, PC allumé
 LLM : llm.service (llm.slice) ─► serveur installé sur le disque, modèles dans /srv/models
 Admin : labwc headless + XFCE (admin.slice) ─► wayvnc (127.0.0.1:5900) ─► websocat (127.0.0.1:5901) ─► nginx HTTPS + mot de passe :6080 (noVNC)  + SSH
@@ -44,7 +43,7 @@ Admin : labwc headless + XFCE (admin.slice) ─► wayvnc (127.0.0.1:5900) ─�
 | En RAM (image, jetable) | Sur le disque `AIBOXDATA` (persistant) |
 |---|---|
 | Noyau, firmwares allégés, mesa/vulkan | `/home` : configuration, bibliothèque Steam, Proton, AppImage (`~/Applications`) |
-| Steam (bootstrap), gamescope, bureau d'admin | `/var/lib/flatpak` : Moonlight et toutes les applis Flatpak |
+| Steam (bootstrap), gamescope, bureau d'admin | `/var/lib/flatpak` : toutes les applis Flatpak |
 | flatpak, `fuse2`/`fuse3`, zram-generator | `/srv/models` : modèles LLM ; serveur Lemonade |
 | Paquets installés à la volée (overlay, 1 Go max, perdus au redémarrage) | `/var/tmp`, cache pacman, journaux, coredumps, swapfile |
 | | `/var/lib/bluetooth`, connexions NetworkManager, clés d'hôte SSH, `machine-id` |
@@ -123,7 +122,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 - **Lemonade** : serveur LLM sur le port 13305, modèles et backends sur le disque.
 
-- **Session TV** : gamescope pilote la TV (HDR, FSR, VRR), avec un lanceur (Steam Big Picture en mode SteamOS, Moonlight) à la manette ou au clavier, sur l'image du jour de Bing ; en secours (`aibox-tv-mode labwc`), le même lanceur dans labwc.
+- **Session TV** : gamescope pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS ; « Passer au bureau » dans Steam (ou `aibox-tv-mode labwc`) mène à labwc et à un lanceur (Steam, Moonlight) à la manette ou au clavier, sur les images de Bing.
 
 Pas encore : déclenchement de la session TV par la DualSense, assistant vocal, thème WhiteSur.
 
@@ -139,7 +138,7 @@ Pas encore : déclenchement de la session TV par la DualSense, assistant vocal, 
 | Démarrage (noyau + système) | ~14 s (~16 s sans disque) | |
 | Retrait de la clé à chaud | le système continue de fonctionner | |
 | Bureau d'administration | ~130 Mo en fonctionnement | `admin.slice` ≤ 4 Go |
-| Moonlight + Bazaar + Gear Lever (Flatpak) | 3,8 Go sur le disque, **0 Mo de RAM bloquée en plus** | |
+| Bazaar + Gear Lever (Flatpak) | 3,8 Go sur le disque, **0 Mo de RAM bloquée en plus** | |
 | Paquet installé à la volée (`pacman -S`) | disparu au redémarrage | |
 
 ### Construire l'ISO
@@ -204,7 +203,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 
 - **Installation sur le disque** (une fois) : démarrer sur la clé, puis `sudo aibox-setup-disk /dev/nvme0n1` (retaper le chemin pour confirmer). Il efface le disque et crée deux partitions : **AIBOXBOOT** (FAT32, 8 Go, de quoi garder deux versions : systemd-boot et l'image, pour démarrer sans la clé, en quelques secondes au lieu de ~2 minutes depuis une clé USB 2.0) et **AIBOXDATA** (btrfs : les données). Redémarrer sans la clé. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
 - **Mises à jour** : voir [Mises à jour](#mises-à-jour).
-- **Écran (TV)** : la session TV démarre au boot sur l'écran : lanceur Steam / Moonlight. Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
+- **Écran (TV)** : la session TV démarre au boot sur l'écran : Steam sous gamescope (ou, en mode labwc, le lanceur). Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
 - **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build) ; actuellement seulement la clé de code-server. Sinon : terminal du bureau noVNC, RDP ou code-server.
 - **noVNC** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`.
 - **Applications** : Bazaar pour Flathub (au premier lancement, il charge le catalogue pendant une à deux minutes), Gear Lever pour les AppImage. Steam est natif dans l'image : ne pas installer le Flatpak de Steam. Pas de mot de passe demandé (`default` est administrateur, comme pour `sudo`).
@@ -291,8 +290,8 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 `aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis `tv-session` lance le mode choisi par `aibox-tv-mode` (gardé dans `~/.config/aibox/tv-mode`) :
 
-- **gamescope** (par défaut) : gamescope pilote la TV (4K, HDR, VRR) et lance le lanceur `aibox-tv-launcher` (Steam, Moonlight). Steam y démarre en mode SteamOS (`command_gamescope` de `tv-apps.json` : `-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight profite aussi de gamescope. « Passer au bureau » dans Steam ferme Steam et revient au lanceur (`steamos-session-select`).
-- **labwc** (secours) : labwc sur la TV (`/etc/aibox/labwc-tv`) et le même lanceur (Steam `-gamepadui`), sans HDR.
+- **gamescope** (par défaut) : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode labwc (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
+- **labwc** : labwc sur la TV (`/etc/aibox/labwc-tv`) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui` ; autres applis dans `tv-apps.json`), sans HDR.
 
 `aibox-tv-mode gamescope` ou `aibox-tv-mode labwc` change de mode et relance la session TV.
 

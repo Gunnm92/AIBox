@@ -2,7 +2,7 @@
 # aibox-tv-mode [gamescope|labwc] : mode de la session TV, gardé dans
 # ~/.config/aibox/tv-mode, puis session TV relancée. Sans argument : mode actuel.
 #   gamescope : Steam Big Picture sous gamescope (HDR, FSR) — par défaut ;
-#   labwc     : labwc et le lanceur à tuiles (Steam, Moonlight) — secours.
+#   labwc     : labwc et le lanceur à tuiles (applis de tv-apps.json).
 set -euo pipefail
 conf="${HOME}/.config/aibox/tv-mode"
 case "${1:-}" in
