@@ -216,6 +216,10 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
   ```
   Il partage ton home et ton bureau ; `distrobox-export` ajoute une appli du conteneur au menu XFCE.
 - **Éditeur (code-server)** : `https://<ip>:6080/code/`, même mot de passe que noVNC. VS Code dans le navigateur, avec l'extension Claude Code ; installé dans le home au premier démarrage avec le disque. Mise à jour : `/usr/local/lib/aibox/code-server-install --update`, puis `systemctl --user restart aibox-code-server`. Interface en anglais (pas de pack de langue compatible sur Open VSX). Autre voie : VS Code Remote-SSH depuis ton poste (`ssh default@<ip>`).
+- **Services au démarrage** (ex. Hermes) : unités dans `~/.config/systemd/user/`, puis `systemctl --user enable --now <service>`. Elles démarrent à chaque démarrage de la machine, sans connexion (sur le disque : pas en mode éphémère). Depuis la sauvegarde du NAS, adapter les chemins : `/home/jarvis` → `/home/default`, `/opt/Applications/…` → dans le home (`/opt` fait partie de l'image).
+- **Applis graphiques au démarrage** (bureau d'administration) : Paramètres → Session et démarrage → Démarrage automatique d'applications (`~/.config/autostart`).
+- **Session TV** : une appli de `~/.config/aibox/tv-apps.json` peut porter `"autostart": true` pour se lancer à l'ouverture de la session (désactivé par défaut).
+- **Jeux** : Steam natif et Proton ; `ntsync` est chargé au démarrage ; `gamemoderun %command%` dans les options de lancement d'un jeu active gamemode.
 - **Partages réseau (SMB)** : dans Thunar, `smb://<nas>/<partage>` (gvfs-smb) ; en ligne de commande, `mount -t cifs` (cifs-utils). Sans trousseau de mots de passe, gvfs redemande l'identifiant à chaque session.
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).

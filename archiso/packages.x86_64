@@ -41,6 +41,9 @@ websocat
 nginx
 xfce4-panel
 xfce4-settings
+# Seulement pour Paramètres → Session et démarrage (applications au démarrage) ;
+# la session XFCE elle-même n'est pas utilisée (labwc + services).
+xfce4-session
 xfdesktop
 xfce4-appfinder
 xfce4-terminal
@@ -93,6 +96,10 @@ pipewire-alsa
 wireplumber
 rtkit
 python-pygame
+# Jeux : gamemode (gamemoderun %command% dans Steam), son des jeux 32 bits
+gamemode
+lib32-gamemode
+lib32-libpulse
 
 # RDP (compilé depuis l'AUR au build) : passerelle vers le bureau d'administration
 xrdp
