@@ -127,7 +127,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 Pas encore : déclenchement de la session TV par la DualSense, assistant vocal, thème WhiteSur.
 
-**Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak et son portail GTK, fuse2/fuse3, zram, labwc + XFCE, wayvnc, websocat, nginx, xrdp, podman, distrobox, git, lemonade-server, steam, wsquashfs-launcher.
+**Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak et son portail GTK, fuse2/fuse3, zram, cifs-utils, nss-mdns, labwc + XFCE, wayvnc, websocat, nginx, xrdp, podman, distrobox, git, lemonade-server, steam, wsquashfs-launcher.
 
 **Mesures en VM** :
 
@@ -144,12 +144,13 @@ Pas encore : déclenchement de la session TV par la DualSense, assistant vocal, 
 
 ### Construire l'ISO
 
-Il faut Docker (le build tourne dans un conteneur CachyOS privilégié). Dans `keys/` (non versionné) :
+Le build tourne dans un conteneur CachyOS privilégié : Docker s'il y en a un, sinon Podman en root (sur aibox lui-même, avec le disque de données : voir [Mises à jour](#mises-à-jour)). Dans `keys/` (non versionné) :
 
 - `authorized_keys` : ta clé SSH publique ;
 - `vnc-password` : mot de passe de noVNC (généré au premier build s'il manque) ;
 - `aibox-ca.crt` / `.key` : autorité de certification locale (générée au premier build, puis réutilisée) ; `aibox-ca.crt` est à approuver une fois sur ton poste ;
-- `tls-ips` : adresses IP couvertes par le certificat HTTPS, en plus de `aibox` et `aibox.local`.
+- `tls-ips` : adresses IP couvertes par le certificat HTTPS, en plus de `aibox` et `aibox.local` ;
+- `nas-mounts` et `nas.cred` (facultatifs) : partages du NAS montés par défaut et leurs identifiants (voir `aibox-nas`).
 
 Puis :
 
@@ -202,7 +203,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 ### Sur la machine
 
 - **Installation sur le disque** (une fois) : démarrer sur la clé, puis `sudo aibox-setup-disk /dev/nvme0n1` (retaper le chemin pour confirmer). Il efface le disque et crée deux partitions : **AIBOXBOOT** (FAT32, 8 Go, de quoi garder deux versions : systemd-boot et l'image, pour démarrer sans la clé, en quelques secondes au lieu de ~2 minutes depuis une clé USB 2.0) et **AIBOXDATA** (btrfs : les données). Redémarrer sans la clé. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
-- **Mise à jour du système** : nouvelle ISO sur la clé Ventoy, démarrer dessus et `sudo aibox-update-boot` ; ou depuis le disque, `sudo aibox-update-boot --iso aibox-….iso`. La nouvelle version devient celle par défaut ; la précédente reste dans le menu de démarrage pour revenir en arrière. Les données ne sont pas touchées.
+- **Mises à jour** : voir [Mises à jour](#mises-à-jour).
 - **Écran (TV)** : la session TV démarre au boot sur l'écran : lanceur Steam / Moonlight. Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
 - **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build) ; actuellement seulement la clé de code-server. Sinon : terminal du bureau noVNC, RDP ou code-server.
 - **noVNC** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`.
@@ -221,12 +222,42 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 - **Session TV** : une appli de `~/.config/aibox/tv-apps.json` peut porter `"autostart": true` pour se lancer à l'ouverture de la session (désactivé par défaut).
 - **Jeux** : Steam natif et Proton ; `ntsync` est chargé au démarrage ; `gamemoderun %command%` dans les options de lancement d'un jeu active gamemode.
 - **Programmes Windows (.exe, .msi)** : double-clic dans Thunar (ou `aibox-run-exe prog.exe`) : lancés avec un Proton déjà installé, partagé avec Steam et wsquashfs-launcher (`~/.local/share/Steam/compatibilitytools.d`), dans un préfixe Wine partagé (`~/.local/share/aibox/wine/default`) : rien n'est réinstallé d'un programme à l'autre. Proton : le `proton-cachyos` le plus récent s'il y en a un, sinon UMU-Proton (téléchargé une fois) ; pour en imposer un : `PROTON=GE-Proton10-…` dans `~/.config/aibox/proton.conf`. Journal : `~/.cache/aibox/run-exe/`.
-- **Partages réseau (SMB)** : dans Thunar, `smb://<nas>/<partage>` (gvfs-smb) ; en ligne de commande, `mount -t cifs` (cifs-utils). Sans trousseau de mots de passe, gvfs redemande l'identifiant à chaque session.
+- **Partages du NAS** : montés automatiquement, à la demande (au premier accès), par `aibox-nas` : `/mnt/Media`, `/mnt/Games`, `/mnt/Workspace` (`//nas.local/…`, définis au build par `keys/nas-mounts` et `keys/nas.cred` ; ils marchent dès le premier démarrage, même en mode éphémère). `aibox-nas list` (état), `sudo aibox-nas add //hôte/partage /mnt/X` (identifiants demandés une fois, gardés sur le disque), `sudo aibox-nas remove /mnt/X`. Les noms `.local` sont résolus par mDNS (`nss-mdns`). Pour parcourir d'autres partages : Thunar, `smb://<nas>/<partage>` (gvfs-smb).
+- **Dongle DualSense (DS5Dongle)** : haptique par l'audio prise en charge (configuration de [DS5Dongle-Studio](https://github.com/artzox/DS5Dongle-Studio), licence MIT : règle udev, WirePlumber, service utilisateur `ds5-haptics-loopback`). Le service démarre au branchement du dongle ; sans dongle, il ne fait rien.
+- **Decky Loader** (plugins de Steam en mode Big Picture) : installeur officiel, une fois, depuis le bureau d'administration : `curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh`. Decky s'installe dans `~/homebrew` (sur le disque) ; le service `plugin_loader` est dans l'image (l'unité que l'installeur écrit dans `/etc` disparaît au redémarrage, celle de l'image prend le relais) et reste inerte tant que Decky n'est pas installé. Decky se met à jour lui-même.
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
 - **Clavier** (noVNC) : `aibox-keyboard mac` (Mac français, par défaut), `aibox-keyboard pc` (PC français), ou toute disposition xkb (`aibox-keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
 - **`aibox-diag`** : rapport de diagnostic, écrit aussi tout seul 2 minutes après le démarrage, dans `aibox-diag/` sur la clé Ventoy si elle est branchée, sinon sur la partition AIBOXBOOT.
 - **`aibox-mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
+
+### Mises à jour
+
+L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tout le reste vit sur le disque et se met à jour sur place.
+
+| Quoi | Comment |
+|---|---|
+| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | nouvelle ISO (`./build.sh`), puis `sudo aibox-update-boot --iso out/aibox-….iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière ; les données ne sont pas touchées |
+| Applis Flatpak (Moonlight, Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
+| Steam, jeux, Proton | Steam se met à jour seul (dans le home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher |
+| AppImage | Gear Lever |
+| Lemonade : backends et modèles | backends : par Lemonade ; modèles : `lemonade pull <modèle>` |
+| code-server | `/usr/local/lib/aibox/code-server-install --update`, puis `systemctl --user restart aibox-code-server` |
+| Decky Loader | son propre outil de mise à jour (menu de Decky) |
+| Conteneurs, Distrobox | `podman pull`, `podman auto-update` ; dans un distrobox, son gestionnaire de paquets |
+
+Un `pacman -Syu` sur la machine ne sert à rien : il ne modifie que la RAM et disparaît au redémarrage.
+
+**Construire l'ISO sur aibox lui-même** (Ubuntu et son Docker n'existent plus) : il faut le disque de données (le stockage de Podman y est mis, dans `/var/lib/aibox/state/containers` ; environ 10 Go pendant le build). Le dépôt et ses secrets sont sauvegardés sur le NAS (`Workspace/AIBox`, avec `keys/`) :
+
+```sh
+rsync -a /mnt/Workspace/AIBox/ ~/Workspace/AIBox/    # une fois (keys/ compris)
+cd ~/Workspace/AIBox && git pull
+./build.sh                                            # Podman en root (sudo)
+sudo aibox-update-boot --iso out/aibox-*.iso && sudo systemctl reboot
+```
+
+Si la nouvelle version pose problème : choisir la précédente au menu de démarrage.
 
 ## Utilisation complète (prévue)
 
@@ -287,7 +318,6 @@ Tous disponibles dans les dépôts CachyOS (vérifié le 26/09/2026) :
 
 ## Points encore ouverts
 
-- **Lieu du build** : Unraid ou GitHub Actions. À trancher avant l'étape 1.
 - **Budget mémoire** : les cibles ci-dessus sont à mesurer sur la machine.
 - **Cohabitation jeu/LLM** : décharger le modèle au démarrage de la session TV, ou non ? Taille maximale de modèle ?
 - **Réseau et Bluetooth** : Ethernet ou Wi-Fi, quel adaptateur, stabilité de la reconnexion de la DualSense.

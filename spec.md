@@ -7,7 +7,7 @@ IA : LLM locaux servis par Lemonade, en même temps que les jeux. L'assistant é
 Administration à distance par noVNC, comme SteamBox.
 Démarrage sur clé USB, système entier en RAM, conçu pour la vitesse (pas forcément en squashfs). But : redémarrer sur un système propre, et le personnaliser ou le reconstruire sans jamais toucher aux données.
 Tout ce qui est à l'utilisateur est sur le disque : applis Flatpak et AppImage, configuration, bibliothèque Steam, modèles LLM, appairages Bluetooth, réseau.
-Construction de l'ISO : à décider plus tard, sur l'Unraid ou par GitHub Actions.
+Construction de l'ISO : sur aibox lui-même (décidé le 10/10/2026 ; Ubuntu et son Docker disparaissent à l'installation).
 Ce qu'offrent déjà les dépôts CachyOS (vérifié le 26/09) :
 
 archiso 90 ;
@@ -81,7 +81,7 @@ Organisation : dépôt dédié
 Nouveau dépôt aibox, comme l'a demandé l'utilisateur.
 
 archiso/ : profil écrit à partir des profils releng et baseline d'archiso, adapté à CachyOS (plus simple que CachyOS-Live-ISO, sans installateur Calamares). Il contient packages.x86_64, profiledef.sh (EROFS lz4hc, copytoram), pacman.conf, les fichiers de démarrage GRUB/EFI et airootfs/ (unités systemd, slices, règles udev, scripts).
-build.sh : prépare les éléments partagés, puis lance mkarchiso. L'endroit où il tourne sera choisi plus tard.
+build.sh : prépare les éléments partagés, puis lance mkarchiso dans un conteneur CachyOS privilégié. tools/engine.sh choisit le moteur : Docker s'il y en a un vrai (hôte de développement), sinon Podman en root sur aibox (mkarchiso et QEMU demandent un conteneur privilégié, impossible sans root), avec son stockage sur le disque de données (/var/lib/aibox/state/containers) ; refusé en mode éphémère. Testé en VM le 10/10/2026 : l'ISO construite dans aibox s'installe par aibox-update-boot et démarre.
 Code partagé avec SteamBox, repris plutôt que réécrit. Dépôt SteamBox en sous-module git figé sur un commit, ou fichiers vendorés s'ils divergent :
 root-cachyos/scripts/labwc-session.sh et xfce-defaults.sh : bureau d'administration, clavier, thème labwc assorti au thème GTK ;
 la logique desktop_exec de desktop-env.sh, transposée en unités systemd --user au lieu de s6 ;
@@ -123,6 +123,9 @@ Steam ne tourne qu'en un exemplaire par utilisateur : ouvert sur le bureau d'adm
 Test en VM : GPU de l'hôte partagé (virtio-gpu, Venus pour Vulkan, virgl pour OpenGL : « Virtio-GPU Venus (AMD Radeon 8060S) »), pas de vrai passthrough (l'hôte utilise le GPU). Limite de la VM : Moonlight plante avec Vulkan/VA-API via Venus (réglé dans la VM seulement par un flatpak override) ; sur la vraie machine il utilise radeonsi directement.
 Reste à faire : déclenchement par la DualSense (règle udev 054c:0ce6 / 0df2, arrêt après 2 minutes sans manette), quitter une appli à la manette, test sur la vraie machine.
 Appairage de la DualSense : une fois, via le bureau d'administration ou bluetoothctl. Il reste enregistré sur le disque.
+Dongle DualSense (DS5Dongle, repris de l'hôte le 10/10/2026) : configuration Linux de DS5Dongle-Studio (github.com/artzox/DS5Dongle-Studio, licence MIT) dans l'image, quelques Ko : règle udev (accès hidraw, service utilisateur démarré au branchement), règle WirePlumber (sortie renommée ds5_dongle_sink), service utilisateur ds5-haptics-loopback (pw-loopback du son du jeu vers les canaux AUX du dongle : haptique). Ajout aibox : ExecCondition sur la présence USB du dongle, sinon le service bouclait (Restart=always relance un ExecStartPre en échec).
+Decky Loader : seule l'unité plugin_loader.service est dans l'image (chemins /home/default/homebrew, ConditionPathExists sur le binaire : inerte tant que Decky n'est pas installé). Decky lui-même s'installe avec l'installeur officiel dans ~/homebrew, sur le disque, et se met à jour seul ; l'unité que l'installeur écrit dans /etc disparaît au redémarrage.
+Partages du NAS : aibox-nas (list, add, remove, mount) les monte à la demande (systemd-mount --automount, cifs, options de l'hôte : vers=3.0, uid/gid 1000, cache=loose, mfsymlinks, noserverino…) au démarrage par aibox-nas.service. Partages par défaut au build (keys/nas-mounts, keys/nas.cred → /etc/aibox, root 600 : Media, Games, Workspace de //nas.local sur /mnt/…, disponibles même en mode éphémère) ; ajouts de l'utilisateur sur le disque (/var/lib/aibox/state/nas), prioritaires. nss-mdns résout les noms .local. Testé en VM le 10/10/2026 (par IP : le NAT de la VM ne laisse pas passer mDNS) : montage au premier accès, persistance après redémarrage, retrait.
 3. Administration à distance (noVNC)
 Bureau d'administration headless : labwc (WLR_BACKENDS=headless, rendu logiciel pixman pour ne pas toucher au GPU) et XFCE (xfsettingsd, xfdesktop, panneau, nm-applet, Thunar, paramètres), en français (locale fr_FR.UTF-8 générée au build). WhiteSur à venir (Adwaita sombre en attendant). Réglages par défaut repris de xfce-defaults.sh de SteamBox, ainsi que xfdesktop-settings forcé sur Xwayland. L'écran virtuel prend la taille de la fenêtre du navigateur (noVNC resize=remote : wayvnc redimensionne la sortie headless). Ce sont des unités systemd --user (utilisateur default, session permanente par linger) dans admin.slice (MemoryMax=4G), relancées automatiquement, sur le modèle des services s6 de SteamBox. Fait et testé en VM le 09/10/2026.
 Chaîne d'accès : wayvnc (127.0.0.1:5900, sans mot de passe, local seulement) ← websocat (pont WebSocket, 127.0.0.1:5901) ← nginx (:6080, HTTPS + mot de passe, sert aussi les pages noVNC 1.7.0). Un seul port ouvert sur le réseau : 6080.
@@ -158,7 +161,14 @@ Outils de développement : dans l'image, seulement les petits outils de base (gi
 Éditeur partagé : code-server (VS Code dans le navigateur), sur https://<ip>:6080/code/, derrière le même nginx (HTTPS + mot de passe) que noVNC. Rien dans l'image : aibox-code-server.service (service utilisateur, dev.slice, MemoryMax=8G) le télécharge dans ~/.local/lib au premier démarrage avec le disque (jamais en mode éphémère), avec l'extension Claude Code (Open VSX), puis l'écoute sur 127.0.0.1:8081. Testé le 10/10/2026 (code-server 4.141.0). Pièges : nginx doit transmettre l'hôte avec le port (Host $http_host), sinon code-server refuse le WebSocket ; le « mode restreint » désactive les extensions (désactivé dans les réglages par défaut) ; pas d'interface en français (Open VSX n'a le pack de langue qu'en 1.131, VS Code exige la même version que lui). Autre voie, sans rien installer : VS Code Remote-SSH depuis un poste.
 Machines virtuelles : GNOME Boxes ou virt-manager (avec son extension QEMU) en Flatpak, depuis Bazaar : 0 Mo dans l'image, VM sur le disque ; /dev/kvm est accessible à l'utilisateur. Pas de QEMU ni de libvirt natifs. Leurs dossiers d'images (~/.var/app/org.gnome.Boxes/data/gnome-boxes/images, ~/.var/app/org.virt_manager.virt-manager/data/libvirt/images) sont créés au démarrage sans copie à l'écriture (chattr +C), avant la première VM : sinon btrfs fragmente les disques virtuels.
 La configuration et la bibliothèque Steam sont dans /home, sur le disque.
-Mise à jour du système : reconstruire l'ISO et la copier sur une clé Ventoy, à côté de la précédente. On garde ainsi un retour arrière d'un choix au démarrage.
+Mises à jour (principe : n'installer dans l'image que le nécessaire ; ce qui est dans l'image se met à jour en refaisant l'image, le reste sur place, sur le disque) :
+système (noyau, pilotes, mesa, amorce de Steam, Lemonade, bureau, xrdp, scripts aibox) : nouvelle ISO construite sur aibox (./build.sh), puis aibox-update-boot --iso ; la version précédente reste au menu de démarrage (retour arrière). Un pacman -Syu sur la machine ne survit pas au redémarrage ;
+Flatpak : Bazaar ou flatpak update ; AppImage : Gear Lever ;
+Steam, jeux, Proton : Steam lui-même (home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher ;
+Lemonade : backends par Lemonade, modèles par lemonade pull ;
+code-server : code-server-install --update ; Decky Loader : son propre outil ;
+conteneurs : podman pull / podman auto-update ; distrobox : son gestionnaire de paquets.
+Le dépôt AIBox et ses secrets (keys/) sont sauvegardés sur le NAS (Workspace/AIBox), d'où on le restaure sur aibox pour construire.
 Les paquets installés à la volée (pacman -S) restent du dépannage : ils vont dans l'overlay, limité à 1 Go.
 Optionnel : un bureau TV (labwc + XFCE WhiteSur) accessible depuis Steam par « Passer au bureau », sur le modèle de os-session-select.sh de SteamBox.
 5. LLM locaux (fait et testé en VM le 10/10/2026)
@@ -172,7 +182,6 @@ Backend llama.cpp : en ROCm, désactiver mmap (--no-mmap) pour les modèles de p
 Cohabitation avec les jeux : par défaut, le modèle reste chargé et les limites font foi. En option (réglable), aibox-tv.service demande à Lemonade de décharger le modèle à son démarrage (appel unload de son API).
 
 Points encore ouverts
-Où construire l'ISO (Unraid ou GitHub Actions) : à trancher avant l'étape 1.
 Budget mémoire : les chiffres ci-dessus sont des cibles, à mesurer sur la machine (empreinte réelle de l'image, GTT pris par les jeux et par les modèles).
 Assistant vocal : micro (lequel, où ?), mot d'activation, reconnaissance et synthèse vocales (Lemonade les fournit : whisper.cpp, moonshine, kokoro), et pilotage de la maison (Home Assistant ou autre ?) : à définir.
 Cohabitation jeu/LLM : décharger le modèle au démarrage de la session TV, ou non ? Taille maximale de modèle acceptée ?

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # build.sh : construit l'ISO aibox dans un conteneur CachyOS (Docker).
 #
-#   ./build.sh               ISO avec keys/authorized_keys et keys/vnc-password
+#   ./build.sh               ISO avec keys/authorized_keys, keys/vnc-password et,
+#                            s'ils existent, keys/nas-mounts + keys/nas.cred (partages NAS)
 #   ./build.sh --test-key    ajoute la clé SSH de test de la VM (work/vm/id_test)
 #
 # Sortie : out/aibox-AAAA.MM.JJ-x86_64.iso
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-image="cachyos/cachyos:latest"
+. "$root/tools/engine.sh"
 novnc_version="1.7.0"
 novnc_sha256="b1003a11b6e6e8d8f7f5e5586daae7f8ca651d8aee0aa155ff9ac841c48f52c6"
 test_key=0
@@ -92,7 +93,7 @@ mkdir -p "$root/work/aur/repo"
 for pkg in "${aur_pkgs[@]}"; do
     ls "$root/work/aur/repo/$pkg"-[0-9]*.pkg.tar.zst >/dev/null 2>&1 && continue
     echo "Compilation AUR : $pkg" >&2
-    docker run --rm -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
+    engine run --rm -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
         -e ROOT="$root" -e PKG="$pkg" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
         "$image" bash -euo pipefail -c '
             pacman -Syu --noconfirm --needed base-devel git >/dev/null
@@ -104,12 +105,12 @@ for pkg in "${aur_pkgs[@]}"; do
             chown -R "$HOST_UID:$HOST_GID" "$ROOT/work/aur"
         '
 done
-docker run --rm -v "$root:$root" "$image" sh -c \
+engine run --rm -v "$root:$root" "$image" sh -c \
     "cd '$root/work/aur/repo' && rm -f aibox-aur.db* aibox-aur.files* && repo-add -q aibox-aur.db.tar.zst *.pkg.tar.zst && chown -R $(id -u):$(id -g) ."
 
 # Le dossier de travail de mkarchiso reste dans le conteneur (supprimé à la fin) ;
 # seuls le cache des paquets et l'ISO sont gardés sur le disque.
-docker run --rm --privileged \
+engine run --rm --privileged \
     -v "$root:$root" \
     -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
     -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e WSQ="$wsq" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
@@ -123,6 +124,11 @@ docker run --rm --privileged \
         install -m 0600 "$ROOT/work/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
         install -m 0600 "$ROOT/work/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
         install -D -m 0755 "$WSQ" "$air/usr/local/bin/wsquashfs-launcher"
+        # Partages NAS par défaut (aibox-nas) : keys/nas-mounts et keys/nas.cred
+        if [[ -s "$ROOT/keys/nas-mounts" && -s "$ROOT/keys/nas.cred" ]]; then
+            install -m 0644 "$ROOT/keys/nas-mounts" "$air/etc/aibox/nas-mounts"
+            install -m 0600 "$ROOT/keys/nas.cred" "$air/etc/aibox/nas.cred"
+        fi
         install -m 0644 "$ROOT/work/novnc-tls.crt" "$air/etc/aibox/novnc-tls.crt"
         install -m 0600 "$ROOT/work/novnc-tls.key" "$air/etc/aibox/novnc-tls.key"
 

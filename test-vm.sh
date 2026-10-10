@@ -17,19 +17,20 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$root/tools/engine.sh"
 vm="$root/work/vm"
 name="aibox-vm"
 ram="${RAM:-8G}"
 gpu="${GPU:-0}"
 
 ssh_vm() {
-    docker exec -i "$name" ssh -q -p 2222 -i "$vm/id_test" \
+    engine exec -i "$name" ssh -q -p 2222 -i "$vm/id_test" \
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 \
         default@127.0.0.1 "$@"
 }
 
 monitor() {
-    docker exec "$name" sh -c "printf '%s\n' '$1' | socat - UNIX-CONNECT:$vm/monitor.sock" >/dev/null
+    engine exec "$name" sh -c "printf '%s\n' '$1' | socat - UNIX-CONNECT:$vm/monitor.sock" >/dev/null
 }
 
 case "${1:-}" in
@@ -38,7 +39,7 @@ start)
     mkdir -p "$vm" "$root/work/pkgcache"
     rm -f "$vm/serial.log" "$vm/monitor.sock"
     echo "ISO : $iso  (RAM ${ram})"
-    docker rm -f "$name" >/dev/null 2>&1 || true
+    engine rm -f "$name" >/dev/null 2>&1 || true
     gpu_docker=() gpu_pkgs="" gpu_qemu="-vga std -display none"
     if [[ "$gpu" == 1 ]]; then
         # GPU partagé : la VM utilise le GPU de l'hôte à travers QEMU (Venus pour
@@ -49,9 +50,9 @@ start)
             -device virtio-vga-gl,hostmem=4G,blob=true,venus=true \
             -display egl-headless,rendernode=/dev/dri/renderD128 -vnc 0.0.0.0:2,password=on"
     fi
-    docker run -d --privileged --name "$name" --device /dev/kvm -p 6080:6080 -p 3390:3389 "${gpu_docker[@]}" \
+    engine run -d --privileged --name "$name" --device /dev/kvm -p 6080:6080 -p 3390:3389 "${gpu_docker[@]}" \
         -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
-        cachyos/cachyos:latest bash -euo pipefail -c "
+        "$image" bash -euo pipefail -c "
             pacman -Sy --noconfirm --needed qemu-system-x86 qemu-img edk2-ovmf openssh socat $gpu_pkgs >/dev/null
             [[ -f '$vm/nvme.qcow2' ]] || qemu-img create -q -f qcow2 '$vm/nvme.qcow2' 64G
             cp /usr/share/edk2/x64/OVMF_VARS.4m.fd /tmp/vars.fd
@@ -98,8 +99,8 @@ novnc)
     pass="$(head -n 1 "$root/keys/vnc-password")"
     url="${URL:-https://default:${pass}@127.0.0.1:6080/vnc.html?autoconnect=true&resize=${RESIZE:-remote}}"
     rm -f "$vm/novnc.png"
-    docker run --rm --network "container:$name" -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
-        cachyos/cachyos:latest bash -c "
+    engine run --rm --network "container:$name" -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
+        "$image" bash -c "
             pacman -Sy --noconfirm --needed chromium ttf-dejavu python-websocket-client nss >/dev/null 2>&1
             # Comme un vrai poste : seule la CA aibox est approuvée, aucune exception de certificat.
             mkdir -p ~/.pki/nssdb && certutil -N -d sql:\$HOME/.pki/nssdb --empty-password

@@ -1,0 +1,14 @@
+[Unit]
+Description=Partages NAS montés à la demande (aibox-nas)
+Wants=network-online.target
+After=network-online.target aibox-data-mount.service avahi-daemon.service
+ConditionPathExists=|/etc/aibox/nas-mounts
+ConditionPathExists=|/var/lib/aibox/state/nas/mounts
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/aibox-nas mount
+
+[Install]
+WantedBy=multi-user.target

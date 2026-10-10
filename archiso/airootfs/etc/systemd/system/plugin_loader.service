@@ -1,0 +1,23 @@
+# Decky Loader (plugins Steam). Identique à l'unité officielle
+# (decky-loader/dist/plugin_loader-release.service), avec le home de default.
+# Decky s'installe sur le disque (~/homebrew) avec l'installeur officiel et se met
+# à jour lui-même ; l'unité que l'installeur écrit dans /etc serait perdue au
+# redémarrage (/etc est dans l'image) : c'est celle-ci qui sert. Inerte tant que
+# Decky n'est pas installé.
+[Unit]
+Description=SteamDeck Plugin Loader
+After=network.target aibox-data-mount.service
+ConditionPathExists=/home/default/homebrew/services/PluginLoader
+[Service]
+Type=simple
+User=root
+Restart=always
+KillMode=process
+TimeoutStopSec=15
+ExecStart=/home/default/homebrew/services/PluginLoader
+WorkingDirectory=/home/default/homebrew/services
+Environment=UNPRIVILEGED_PATH=/home/default/homebrew
+Environment=PRIVILEGED_PATH=/home/default/homebrew
+Environment=LOG_LEVEL=INFO
+[Install]
+WantedBy=multi-user.target

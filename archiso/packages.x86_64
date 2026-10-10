@@ -58,6 +58,8 @@ xdg-desktop-portal-gtk
 gvfs
 gvfs-smb
 cifs-utils
+# Noms en .local (nas.local…) par mDNS, avec avahi
+nss-mdns
 ttf-dejavu
 
 # Applis sur disque (Flatpak, AppImage) et mémoire

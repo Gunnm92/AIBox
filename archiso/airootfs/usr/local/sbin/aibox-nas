@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# aibox-nas : partages réseau (SMB/CIFS) montés automatiquement, à la demande.
+#
+#   aibox-nas list                          partages configurés et leur état
+#   sudo aibox-nas add //hôte/partage /mnt/X   ajoute un partage (identifiants demandés une fois)
+#   sudo aibox-nas remove /mnt/X            retire un partage ajouté
+#   sudo aibox-nas mount                    (re)monte tout (utilisé au démarrage)
+#
+# Partages de l'image : /etc/aibox/nas-mounts (identifiants /etc/aibox/nas.cred),
+# fournis au build. Partages ajoutés : /var/lib/aibox/state/nas/mounts (sur le
+# disque de données), identifiants dans /var/lib/aibox/state/nas/<hôte>.cred.
+# Format d'une ligne : SOURCE CIBLE [FICHIER_IDENTIFIANTS]
+set -euo pipefail
+
+image_conf=/etc/aibox/nas-mounts
+image_cred=/etc/aibox/nas.cred
+state=/var/lib/aibox/state/nas
+user_conf="$state/mounts"
+opts_base="vers=3.0,uid=1000,gid=1000,rsize=1048576,wsize=1048576,cache=loose,actimeo=30,file_mode=0664,dir_mode=0775,nounix,noserverino,mfsymlinks,_netdev"
+
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+need_root() { (( EUID == 0 )) || { echo "À lancer en root : sudo $0 $*" >&2; exit 1; }; }
+
+# Toutes les lignes « SOURCE CIBLE IDENTIFIANTS » (les ajouts priment sur l'image)
+entries() {
+    declare -A seen=()
+    local src tgt cred
+    if [[ -r "$user_conf" ]]; then
+        while read -r src tgt cred; do
+            [[ -z "$src" || "$src" == \#* ]] && continue
+            seen[$tgt]=1
+            echo "$src $tgt ${cred:-$state/$(cut -d/ -f3 <<<"$src").cred}"
+        done < "$user_conf"
+    fi
+    if [[ -r "$image_conf" ]]; then
+        while read -r src tgt cred; do
+            [[ -z "$src" || "$src" == \#* || -n "${seen[$tgt]:-}" ]] && continue
+            echo "$src $tgt ${cred:-$image_cred}"
+        done < "$image_conf"
+    fi
+}
+
+mount_one() {  # mount_one SOURCE CIBLE IDENTIFIANTS
+    local src="$1" tgt="$2" cred="$3"
+    if findmnt -n "$tgt" >/dev/null 2>&1; then return 0; fi
+    [[ -r "$cred" ]] || { echo "Identifiants absents pour $src ($cred)." >&2; return 1; }
+    mkdir -p "$tgt"
+    systemd-mount --no-block --automount=yes --collect -t cifs \
+        -o "credentials=$cred,$opts_base" "$src" "$tgt" >/dev/null \
+        && echo "Monté à la demande : $src → $tgt"
+}
+
+case "${1:-}" in
+list)
+    entries | while read -r src tgt cred; do
+        if findmnt -n -t cifs "$tgt" >/dev/null 2>&1; then etat="connecté"
+        elif findmnt -n -t autofs "$tgt" >/dev/null 2>&1; then etat="prêt (monté au premier accès)"
+        else etat="non monté"; fi
+        printf '%-28s %-18s %s\n' "$src" "$tgt" "$etat"
+    done
+    ;;
+mount)
+    need_root "$@"
+    entries | while read -r src tgt cred; do mount_one "$src" "$tgt" "$cred" || true; done
+    ;;
+add)
+    need_root "$@"
+    src="${2:?usage : aibox-nas add //hôte/partage /mnt/X}" tgt="${3:?usage : aibox-nas add //hôte/partage /mnt/X}"
+    [[ "$src" == //*/* ]] || { echo "Source attendue : //hôte/partage" >&2; exit 1; }
+    mountpoint -q /var/lib/aibox/state || { echo "Pas de disque de données (mode éphémère) : impossible de garder ce réglage." >&2; exit 1; }
+    host="$(cut -d/ -f3 <<<"$src")"
+    cred="$state/$host.cred"
+    mkdir -p "$state"; chmod 700 "$state"
+    if [[ ! -s "$cred" ]]; then
+        read -r -p "Utilisateur sur $host : " u
+        read -r -s -p "Mot de passe : " p; echo
+        ( umask 077; printf 'username=%s\npassword=%s\n' "$u" "$p" > "$cred" )
+    fi
+    touch "$user_conf"
+    grep -v "^[^#]*[[:space:]]$tgt\([[:space:]]\|$\)" "$user_conf" > "$user_conf.new" || true
+    echo "$src $tgt" >> "$user_conf.new"
+    mv "$user_conf.new" "$user_conf"
+    mount_one "$src" "$tgt" "$cred"
+    ;;
+remove)
+    need_root "$@"
+    tgt="${2:?usage : aibox-nas remove /mnt/X}"
+    if [[ -r "$user_conf" ]] && grep -q "[[:space:]]$tgt\([[:space:]]\|$\)" "$user_conf"; then
+        grep -v "[[:space:]]$tgt\([[:space:]]\|$\)" "$user_conf" > "$user_conf.new" || true
+        mv "$user_conf.new" "$user_conf"
+        systemd-mount --umount "$tgt" >/dev/null 2>&1 || true
+        echo "Partage retiré : $tgt"
+    else
+        echo "$tgt n'est pas un partage ajouté (ceux de l'image se changent dans keys/nas-mounts, au build)." >&2; exit 1
+    fi
+    ;;
+*) usage ;;
+esac
