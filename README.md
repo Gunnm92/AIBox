@@ -215,6 +215,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
   ```
   Il partage ton home et ton bureau ; `distrobox-export` ajoute une appli du conteneur au menu XFCE.
 - **Éditeur (code-server)** : `https://<ip>:6080/code/`, même mot de passe que noVNC. VS Code dans le navigateur, avec l'extension Claude Code ; installé dans le home au premier démarrage avec le disque. Mise à jour : `/usr/local/lib/aibox/code-server-install --update`, puis `systemctl --user restart aibox-code-server`. Interface en anglais (pas de pack de langue compatible sur Open VSX). Autre voie : VS Code Remote-SSH depuis ton poste (`ssh default@<ip>`).
+- **Partages réseau (SMB)** : dans Thunar, `smb://<nas>/<partage>` (gvfs-smb) ; en ligne de commande, `mount -t cifs` (cifs-utils). Sans trousseau de mots de passe, gvfs redemande l'identifiant à chaque session.
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
 - **Clavier** (noVNC) : `aibox-keyboard mac` (Mac français, par défaut), `aibox-keyboard pc` (PC français), ou toute disposition xkb (`aibox-keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).

@@ -49,6 +49,10 @@ mousepad
 network-manager-applet
 xorg-xwayland
 xdg-desktop-portal-gtk
+# Réseau dans Thunar (smb://), corbeille, clés USB ; partages SMB en ligne de commande
+gvfs
+gvfs-smb
+cifs-utils
 ttf-dejavu
 
 # Applis sur disque (Flatpak, AppImage) et mémoire
