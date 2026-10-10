@@ -1,5 +1,5 @@
 [Unit]
-Description=Session TV (labwc plein écran, lanceur Steam / Moonlight)
+Description=Session TV (gamescope et Steam ; labwc et lanceur en secours, aibox-tv-mode)
 After=systemd-user-sessions.service user@1000.service aibox-data.service
 Wants=user@1000.service
 # La session prend l'écran et tty1 (plus de console en connexion automatique).

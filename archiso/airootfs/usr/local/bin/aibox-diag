@@ -18,7 +18,7 @@ section() { printf '\n===== %s =====\n' "$1"; }
     section "Session TV (système)"; systemctl status aibox-tv --no-pager 2>&1 | head -25
     section "Journal aibox-tv"; journalctl -b -u aibox-tv --no-pager 2>&1 | tail -80
     section "Sessions logind"; loginctl list-sessions --no-pager 2>&1; loginctl show-seat seat0 2>&1 | head -10
-    section "Processus graphiques"; pgrep -a labwc; pgrep -af aibox-tv-launcher; pgrep -a Xwayland
+    section "Processus graphiques"; echo "mode TV : $(cat /home/default/.config/aibox/tv-mode 2>/dev/null || echo gamescope)"; pgrep -a gamescope; pgrep -a labwc; pgrep -af aibox-tv-launcher; pgrep -a Xwayland
     section "Sockets Wayland"; ls -la /run/user/1000/ 2>&1 | grep -E "wayland|pipewire"
     section "Écrans (DRM)"; for c in /sys/class/drm/card*-*; do echo "$(basename "$c"): $(cat "$c/status" 2>/dev/null) $(head -1 "$c/modes" 2>/dev/null)"; done
     section "Noyau : amdgpu / drm"; journalctl -b -k --no-pager 2>&1 | grep -iE "amdgpu|drm|dcn|dmcub|hdmi" | tail -60

@@ -32,7 +32,7 @@ Disque (btrfs, étiquette AIBOXDATA) ──► /home (config, Steam, ~/Applicati
                                      /var/lib/flatpak, /srv/models (LLM), swap de secours,
                                      /var/tmp, cache pacman, journaux, coredumps,
                                      /var/lib/bluetooth, réseau, SSH, machine-id
-DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► labwc (HDR) + lanceur : Steam Big Picture, Moonlight
+DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope (HDR, FSR) + Steam Big Picture (secours : labwc + lanceur)
                                    │                               └─ Moonlight (Flatpak) comme appli Steam
 DualSense éteinte > 2 min ─────────┘ session arrêtée, écran éteint, PC allumé
 LLM : llm.service (llm.slice) ─► serveur installé sur le disque, modèles dans /srv/models
@@ -123,7 +123,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 - **Lemonade** : serveur LLM sur le port 13305, modèles et backends sur le disque.
 
-- **Session TV** : compositeur plein écran sur l'écran de la TV, avec un lanceur (Steam Big Picture, Moonlight) à la manette ou au clavier, sur l'image du jour de Bing.
+- **Session TV** : gamescope pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS ; en secours (`aibox-tv-mode labwc`), labwc et un lanceur (Steam, Moonlight) à la manette ou au clavier, sur l'image du jour de Bing.
 
 Pas encore : déclenchement de la session TV par la DualSense, assistant vocal, thème WhiteSur.
 
@@ -219,7 +219,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 - **Éditeur (code-server)** : `https://<ip>:6080/code/`, même mot de passe que noVNC. VS Code dans le navigateur, avec l'extension Claude Code ; installé dans le home au premier démarrage avec le disque. Mise à jour : `/usr/local/lib/aibox/code-server-install --update`, puis `systemctl --user restart aibox-code-server`. Interface en anglais (pas de pack de langue compatible sur Open VSX). Autre voie : VS Code Remote-SSH depuis ton poste (`ssh default@<ip>`).
 - **Services au démarrage** (ex. Hermes) : unités dans `~/.config/systemd/user/`, puis `systemctl --user enable --now <service>`. Elles démarrent à chaque démarrage de la machine, sans connexion (sur le disque : pas en mode éphémère). Depuis la sauvegarde du NAS, adapter les chemins : `/home/jarvis` → `/home/default`, `/opt/Applications/…` → dans le home (`/opt` fait partie de l'image).
 - **Applis graphiques au démarrage** (bureau d'administration) : Paramètres → Session et démarrage → Démarrage automatique d'applications (`~/.config/autostart`).
-- **Session TV** : une appli de `~/.config/aibox/tv-apps.json` peut porter `"autostart": true` pour se lancer à l'ouverture de la session (désactivé par défaut).
+- **Session TV, mode labwc** : une appli de `~/.config/aibox/tv-apps.json` peut porter `"autostart": true` pour se lancer à l'ouverture de la session (désactivé par défaut).
 - **Jeux** : Steam natif et Proton ; `ntsync` est chargé au démarrage ; `gamemoderun %command%` dans les options de lancement d'un jeu active gamemode.
 - **Programmes Windows (.exe, .msi)** : double-clic dans Thunar (ou `aibox-run-exe prog.exe`) : lancés avec un Proton déjà installé, partagé avec Steam et wsquashfs-launcher (`~/.local/share/Steam/compatibilitytools.d`), dans un préfixe Wine partagé (`~/.local/share/aibox/wine/default`) : rien n'est réinstallé d'un programme à l'autre. Proton : le `proton-cachyos` le plus récent s'il y en a un, sinon UMU-Proton (téléchargé une fois) ; pour en imposer un : `PROTON=GE-Proton10-…` dans `~/.config/aibox/proton.conf`. Journal : `~/.cache/aibox/run-exe/`.
 - **Partages du NAS** : montés automatiquement, à la demande (au premier accès), par `aibox-nas` : `/mnt/Media`, `/mnt/Games`, `/mnt/Workspace` (`//nas.local/…`, définis au build par `keys/nas-mounts` et `keys/nas.cred` ; ils marchent dès le premier démarrage, même en mode éphémère). `aibox-nas list` (état), `sudo aibox-nas add //hôte/partage /mnt/X` (identifiants demandés une fois, gardés sur le disque), `sudo aibox-nas remove /mnt/X`. Les noms `.local` sont résolus par mDNS (`nss-mdns`). Pour parcourir d'autres partages : Thunar, `smb://<nas>/<partage>` (gvfs-smb).
@@ -289,9 +289,14 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 ## Session TV
 
-`aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis lance labwc sur la TV (`/etc/aibox/labwc-tv`, HDR activé avec le rendu Vulkan) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui`, Moonlight).
+`aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis `tv-session` lance le mode choisi par `aibox-tv-mode` (gardé dans `~/.config/aibox/tv-mode`) :
 
-- **FSR et HDR dans un jeu** : gamescope, dans les options de lancement du jeu dans Steam, par exemple `DXVK_HDR=1 gamescope -W 3840 -H 2160 -w 1920 -h 1080 -F fsr -f --hdr-enabled -- %command%` (rendu en 1080p, agrandi en 4K par FSR ; sans `-w`/`-h`, pas de FSR). Le HDR n'apparaît que si la TV est passée en HDR par labwc.
+- **gamescope** (par défaut) : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight s'ajoute comme jeu non-Steam (`flatpak run com.moonlight_stream.Moonlight`). « Passer au bureau » dans Steam bascule en mode labwc (`steamos-session-select`).
+- **labwc** (secours) : labwc sur la TV (`/etc/aibox/labwc-tv`) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui`, Moonlight), sans HDR.
+
+`aibox-tv-mode gamescope` ou `aibox-tv-mode labwc` change de mode et relance la session TV.
+
+- **Jeux non-Steam** (`.wsquashfs`…) : pas de `gamescope` dans les options de lancement, la session est déjà dans gamescope ; si un jeu ne propose pas le HDR, `DXVK_HDR=1 %command% …`. Un chemin contenant des espaces se met entre guillemets.
 
 - **Démarrage** : une règle udev démarre le service quand une manette apparaît (DualSense `054c:0ce6` et `054c:0df2`, liste extensible).
 - **Arrêt** : quand la manette disparaît, un minuteur de 2 minutes (réglable) arrête la session si elle ne revient pas. Une coupure passagère ou une mise en veille de la manette ne ferme donc pas la session.
