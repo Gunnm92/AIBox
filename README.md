@@ -2,7 +2,7 @@
 
 Un home server branché à la TV, avec une **IA toujours disponible qui écoute et pilote la maison**. C'est un système live CachyOS qui démarre sur clé USB, tourne entièrement en RAM, et garde toutes les données de l'utilisateur sur un disque séparé. La partie TV et administration reprend les briques de SteamBox (conteneur Unraid).
 
-> **État : prototype.** Le démarrage sur clé USB avec chargement en RAM est en cours de test (voir « Prototype » plus bas). Le reste est encore au stade de la spécification : [spec.md](spec.md).
+> **État : prototype**, en service sur la machine. Documentation détaillée (architecture, modifier et installer l'image, dépannage, problèmes connus) : [docs/](docs/README.md). Consignes pour les agents : [AGENTS.md](AGENTS.md). Spécification : [spec.md](spec.md).
 
 ## En bref
 
@@ -97,6 +97,8 @@ archiso/                 profil archiso (écrit à partir de releng/baseline, ad
   ├─ grub/               menu de démarrage UEFI (et loopback.cfg pour Ventoy)
   └─ airootfs/           fichiers ajoutés à l'image : utilisateur, SSH, limites mémoire,
                          services, aibox-mem
+docs/                    documentation détaillée (architecture, image, exploitation, problèmes connus)
+AGENTS.md                consignes pour les agents (LLM local…)
 keys/                    clé SSH, mot de passe et certificat noVNC (non versionné)
 build.sh                 construit l'ISO dans un conteneur CachyOS → out/
 test-vm.sh               teste l'ISO dans QEMU (clé USB et disque NVMe virtuels, GPU partagé)
@@ -154,7 +156,7 @@ Le build tourne dans un conteneur CachyOS privilégié : Docker s'il y en a un, 
 Puis :
 
 ```sh
-./build.sh                 # → out/aibox-AAAA.MM.JJ-x86_64.iso
+./build.sh                 # → out/aibox-AAAA.MM.JJ.HHMM-<commit>-x86_64.iso (lien : out/aibox-latest.iso)
 ```
 
 `./build.sh --test-key` ajoute une clé de test pour la VM : n'utilise pas cette ISO sur la vraie machine.
@@ -195,7 +197,7 @@ La CA est limitée aux noms `aibox`/`aibox.local` et aux adresses privées. Le c
 ### Installer sur la clé
 
 - **Ventoy** : copier l'ISO sur la clé. Garder l'ISO précédente à côté : on revient en arrière en la choisissant au démarrage.
-- **Ou directement** : `sudo dd if=out/aibox-*.iso of=/dev/sdX bs=4M status=progress oflag=sync` (efface la clé).
+- **Ou directement** : `sudo dd if=out/aibox-latest.iso of=/dev/sdX bs=4M status=progress oflag=sync` (efface la clé).
 
 Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM dédiée) au minimum, 512 Mo. Au menu, `aibox (RAM)` démarre par défaut ; `sans copie en RAM` sert au dépannage (la clé doit alors rester branchée).
 
@@ -236,7 +238,7 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 
 | Quoi | Comment |
 |---|---|
-| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | nouvelle ISO (`./build.sh`), puis `sudo aibox-update-boot --iso out/aibox-….iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière ; les données ne sont pas touchées |
+| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | nouvelle ISO (`./build.sh`), puis `sudo aibox-update-boot --iso out/aibox-….iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
 | Applis Flatpak (Moonlight, Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
 | Steam, jeux, Proton | Steam se met à jour seul (dans le home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher |
 | AppImage | Gear Lever |
@@ -253,10 +255,10 @@ Un `pacman -Syu` sur la machine ne sert à rien : il ne modifie que la RAM et di
 rsync -a /mnt/Workspace/AIBox/ ~/Workspace/AIBox/    # une fois (keys/ compris)
 cd ~/Workspace/AIBox && git pull
 ./build.sh                                            # Podman en root (sudo)
-sudo aibox-update-boot --iso out/aibox-*.iso && sudo systemctl reboot
+sudo aibox-update-boot --iso out/aibox-latest.iso   # puis arrêt complet et rallumage
 ```
 
-Si la nouvelle version pose problème : choisir la précédente au menu de démarrage.
+Si la nouvelle version pose problème : choisir la précédente au menu de démarrage, sinon la clé Ventoy ([docs/iso.md](docs/iso.md), « Revenir en arrière »).
 
 ## Utilisation complète (prévue)
 
@@ -297,8 +299,8 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 - **Jeux non-Steam** (`.wsquashfs`…) : pas de `gamescope` dans les options de lancement, la session est déjà dans gamescope ; si un jeu ne propose pas le HDR, `DXVK_HDR=1 %command% …`. Un chemin contenant des espaces se met entre guillemets.
 
-- **Démarrage** : une règle udev démarre le service quand une manette apparaît (DualSense `054c:0ce6` et `054c:0df2`, liste extensible).
-- **Arrêt** : quand la manette disparaît, un minuteur de 2 minutes (réglable) arrête la session si elle ne revient pas. Une coupure passagère ou une mise en veille de la manette ne ferme donc pas la session.
+- **Démarrage** : pour l'instant, la session TV démarre avec la machine. *Prévu* : une règle udev la démarre quand une manette apparaît (DualSense `054c:0ce6` et `054c:0df2`).
+- **Arrêt** (*prévu*) : quand la manette disparaît, un minuteur de 2 minutes arrête la session si elle ne revient pas.
 - **TV** : elle perd le signal et se met d'elle-même en veille.
 
 ## Paquets principaux

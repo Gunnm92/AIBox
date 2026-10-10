@@ -6,7 +6,9 @@ iso_name="aibox"
 iso_label="AIBOX_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="aibox"
 iso_application="aibox"
-iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
+# Version donnée par build.sh (AAAA.MM.JJ.HHMM-<commit>, unique à chaque build) ;
+# à défaut, la date seule.
+iso_version="${AIBOX_VERSION:-$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)}"
 install_dir="aibox"
 bootmodes=('uefi.grub')
 pacman_conf="pacman.conf"

@@ -5,7 +5,11 @@
 #                            s'ils existent, keys/nas-mounts + keys/nas.cred (partages NAS)
 #   ./build.sh --test-key    ajoute la clé SSH de test de la VM (work/vm/id_test)
 #
-# Sortie : out/aibox-AAAA.MM.JJ-x86_64.iso
+# Sortie : out/aibox-<version>-x86_64.iso, et le lien out/aibox-latest.iso.
+# Version : AAAA.MM.JJ.HHMM-<commit>[-dirty] (heure locale du build, commit du
+# dépôt ; -dirty : archiso/ ou build.sh modifiés sans commit). AIBOX_VERSION
+# l'impose. Unique à chaque build : aibox-update-boot ne remplace plus la
+# version précédente, qui reste au menu de démarrage pour revenir en arrière.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +20,19 @@ test_key=0
 [[ "${1:-}" == "--test-key" ]] && test_key=1
 
 mkdir -p "$root/out" "$root/work/pkgcache" "$root/work/vm" "$root/work/dl"
+
+# --- Version de l'image ---
+if [[ -z "${AIBOX_VERSION:-}" ]]; then
+    AIBOX_VERSION="$(date +%Y.%m.%d.%H%M)"
+    if commit="$(git -C "$root" rev-parse --short=7 HEAD 2>/dev/null)"; then
+        AIBOX_VERSION+="-$commit"
+        [[ -n "$(git -C "$root" status --porcelain -- archiso build.sh)" ]] && AIBOX_VERSION+="-dirty"
+    fi
+fi
+# Nom de dossier sur AIBOXBOOT (FAT32) et d'entrée de systemd-boot : pas d'espace
+# ni de caractère spécial.
+[[ "$AIBOX_VERSION" =~ ^[0-9][A-Za-z0-9._-]*$ ]] || { echo "Version invalide : $AIBOX_VERSION" >&2; exit 1; }
+echo "Version : $AIBOX_VERSION" >&2
 
 # --- Clés SSH ---
 keys="$root/work/authorized_keys"
@@ -114,6 +131,7 @@ engine run --rm --privileged \
     -v "$root:$root" \
     -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
     -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e WSQ="$wsq" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+    -e AIBOX_VERSION="$AIBOX_VERSION" \
     "$image" bash -euo pipefail -c '
         pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools >/dev/null
         cp -a "$ROOT/archiso" /tmp/profile
@@ -146,4 +164,11 @@ engine run --rm --privileged \
         chown -R "$HOST_UID:$HOST_GID" "$ROOT/out" "$ROOT/work/pkgcache"
     '
 
-ls -lh "$root/out"/*.iso
+# Lien vers la dernière ISO ; seules les 3 plus récentes sont gardées (1,7 Go chacune).
+iso="aibox-$AIBOX_VERSION-x86_64.iso"
+[[ -f "$root/out/$iso" ]] || { echo "ISO introuvable : out/$iso" >&2; exit 1; }
+ln -sfn "$iso" "$root/out/aibox-latest.iso"
+find "$root/out" -maxdepth 1 -type f -name 'aibox-*-x86_64.iso' -printf '%T@ %p\n' \
+    | sort -rn | tail -n +4 | cut -d' ' -f2- | xargs -r rm -f --
+ls -lh "$root/out"/
+echo "ISO : out/$iso (lien : out/aibox-latest.iso)" >&2
