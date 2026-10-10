@@ -42,7 +42,7 @@ Sans disque `AIBOXDATA`, le système démarre en **mode éphémère** : `/home` 
 | Unité | Rôle |
 |---|---|
 | `aibox-data-mount.service` | monte `AIBOXDATA` (ou passe en mode éphémère) |
-| `aibox-tv.service` (système, `tv.slice`) | session TV sur l'écran réel, `tty1` ; démarrée par la manette (`71-aibox-tv.rules`), arrêtée 2 min après son extinction (`aibox-tv-idle.timer`) ou quand on quitte Steam |
+| `aibox-tv.service` (système, `tv.slice`) | session TV sur l'écran réel, `tty1` ; démarrée par la manette (`aibox-tv-watch`), arrêtée 2 min après son extinction (`aibox-tv-idle.timer`) ou quand on quitte Steam |
 | `aibox-admin.target` (utilisateur, `admin.slice`) | bureau d'administration : labwc headless (`wayland-0`, `:0`), XFCE, wayvnc, noVNC |
 | `xrdp.service` | RDP vers le même bureau d'administration |
 | `nginx` (`/etc/aibox/nginx.conf`) | HTTPS sur le port 6080 : noVNC et code-server (`/code/`), avec mot de passe |
@@ -59,9 +59,8 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 `aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `~/.config/aibox/tv-mode`. Ce fichier est modifié par `aibox-tv-mode`.
 
 **Cycle de vie** :
-- **Démarrage** : la manette s'allume, le dongle DualSense apparaît ou se reconnecte sur l'USB, et `71-aibox-tv.rules` démarre le service.
-- **Démarrage de la machine** : `aibox-tv-boot.service` (`/usr/local/lib/aibox/tv-boot-check`) démarre la session si la manette est déjà allumée. L'événement udev n'est pas émis pour un périphérique déjà présent. Et le dongle s'annonce même manette éteinte, jusqu'à la première connexion de la manette : le script lit une seconde de rapports sur son hidraw, et seuls des rapports qui changent (compteur, gyroscope) signifient une manette connectée.
-- **Arrêt** : la manette s'éteint, le dongle disparaît, et `aibox-tv-idle.timer` arrête la session 2 minutes plus tard. Il est annulé si la manette revient.
+- **Démarrage et arrêt** : `aibox-tv-watch.service` (`/usr/local/lib/aibox/tv-watch`) mesure toutes les 2 secondes, sur une demi-seconde, les rapports envoyés par le dongle DualSense sur son hidraw. Au moins deux rapports différents signifient une manette connectée (compteur, gyroscope, environ 640 rapports par seconde). Le service réagit aux changements d'état : manette allumée, il démarre la session et annule l'arrêt programmé ; manette éteinte, il programme l'arrêt. La présence du dongle et ses événements udev ne suffisent pas : il s'annonce aussi manette éteinte, à la mise sous tension du PC, et ne se reconnecte pas toujours à l'allumage de la manette.
+- **Arrêt** : `aibox-tv-idle.timer` arrête la session 2 minutes après l'extinction de la manette. Il est annulé si elle revient.
 - **Codes de sortie de `tv-session`** :
   - 75 : Steam a été fermé par l'utilisateur, ou Steam tourne déjà ailleurs. Fin de la session, sans relance (`RestartPreventExitStatus=75`) ;
   - 0 : « Passer au bureau », relance dans le nouveau mode ;

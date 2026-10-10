@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Session TV à la manette : surveille la DualSense par son dongle (DS5Dongle,
+# 054c:0ce6 ou 0df2) et réagit aux changements d'état, toutes les 2 secondes.
+#   manette éteinte → allumée : session TV démarrée, arrêt programmé annulé
+#     (aussi au démarrage de la machine, manette déjà allumée) ;
+#   manette allumée → éteinte : arrêt de la session dans 2 minutes
+#     (aibox-tv-idle.timer).
+# Ni la présence du dongle ni ses événements udev ne suffisent : il s'annonce
+# aussi manette éteinte (à la mise sous tension du PC) et ne se reconnecte pas
+# toujours à l'allumage de la manette (vu le 11/10/2026). Une manette connectée
+# envoie en continu des rapports qui changent (compteur, gyroscope, ~640/s) :
+# c'est ce qu'on mesure, sur une demi-seconde. Lire le hidraw ne gêne ni Steam
+# ni les jeux (chaque lecteur reçoit sa copie des rapports).
+# Quitter Steam manette allumée ne relance rien : il faut l'éteindre et la
+# rallumer.
+set -uo pipefail
+
+# Interface manette du dongle (rapports d'état), vide s'il est absent.
+dongle_hidraw() {
+    local u
+    for u in /sys/class/hidraw/hidraw*/device/uevent; do
+        grep -qE 'HID_ID=0003:0000054C:0000(0CE6|0DF2)' "$u" 2>/dev/null || continue
+        grep -q 'HID_NAME=.*DualSense' "$u" || continue
+        u="${u%/device/uevent}"
+        echo "/dev/${u##*/}"
+    done
+}
+
+# Vrai si une manette est connectée : au moins deux rapports différents.
+connected() {
+    local h n
+    for h in $(dongle_hidraw); do
+        n=$(timeout 0.5 head -c 1280 "$h" 2>/dev/null | od -An -v -tx1 -w64 | sort -u | wc -l)
+        (( n >= 2 )) && return 0
+    done
+    return 1
+}
+
+was=0
+while true; do
+    if connected; then now=1; else now=0; fi
+    if (( now && !was )); then
+        echo "Manette allumée : session TV."
+        systemctl --no-block stop aibox-tv-idle.timer
+        systemctl --no-block start aibox-tv.service
+    elif (( !now && was )); then
+        echo "Manette éteinte : arrêt de la session TV dans 2 minutes."
+        systemctl --no-block start aibox-tv-idle.timer
+    fi
+    was=$now
+    sleep 2
+done

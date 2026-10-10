@@ -1,0 +1,11 @@
+[Unit]
+Description=Session TV à la manette (DualSense allumée ou éteinte)
+After=user@1000.service
+
+[Service]
+ExecStart=/usr/local/lib/aibox/tv-watch
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
