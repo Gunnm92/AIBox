@@ -1,2 +1,4 @@
 XKB_DEFAULT_LAYOUT=fr
 XCURSOR_SIZE=24
+# Rendu Vulkan : nécessaire au HDR (<hdr> de rc.xml).
+WLR_RENDERER=vulkan

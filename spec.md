@@ -12,7 +12,7 @@ Ce qu'offrent déjà les dépôts CachyOS (vérifié le 26/09) :
 
 archiso 90 ;
 le profil ISO officiel CachyOS/CachyOS-Live-ISO, maintenu (dossier archiso/) ;
-gamescope 3.16 et gamescope-session-git ;
+gamescope 3.16 ;
 steam (multilib), moonlight-qt 6.1, flatpak, bluez.
 Le méta-paquet cachyos-handheld est écarté : il tire Plasma et le matériel du Steam Deck.
 Steam reste natif dans l'image : le Flatpak de Steam (com.valvesoftware.Steam, X11) ne fonctionne pas pour cet usage, confirmé par l'utilisateur le 09/10/2026. Ne pas l'installer depuis Bazaar.
@@ -25,7 +25,7 @@ Disque (btrfs, étiquette AIBOXDATA) ──► /home (config, Steam, ~/Applicati
                                      /var/lib/flatpak, /srv/models (LLM), swap de secours,
                                      /var/tmp, cache pacman, journaux, coredumps,
                                      /var/lib/bluetooth, réseau, SSH, machine-id
-DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope-session + Steam Big Picture
+DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► labwc (HDR) + lanceur : Steam Big Picture, Moonlight
                                    │                               └─ Moonlight (Flatpak) comme appli Steam
 DualSense éteinte > 2 min ─────────┘ session arrêtée, écran éteint, PC allumé
 LLM : llm.service (llm.slice) ─► serveur installé sur le disque, modèles dans /srv/models
@@ -50,7 +50,7 @@ Contraintes mémoire
 Principe : l'image ne contient que ce qu'il faut pour démarrer, la session TV et l'administration. Tout le reste s'exécute depuis le disque.
 Ce qui est dans l'image coûte de la RAM en permanence, même sans être utilisé. Ce qui tourne depuis le disque ne coûte que pendant l'exécution, et le cache de pages est rendu dès que le système en a besoin.
 
-Dans l'image : noyau, firmwares allégés, mesa/vulkan (et lib32), Steam (le bootstrap ; son runtime vit dans /home), gamescope-session, labwc/XFCE/WhiteSur, wayvnc, websocat, nginx et noVNC, NetworkManager, bluez, openssh, flatpak, fuse2 et fuse3, zram-generator.
+Dans l'image : noyau, firmwares allégés, mesa/vulkan (et lib32), Steam (le bootstrap ; son runtime vit dans /home), gamescope, labwc/XFCE/WhiteSur, wayvnc, websocat, nginx et noVNC, NetworkManager, bluez, openssh, flatpak, fuse2 et fuse3, zram-generator.
 Sur le disque : Moonlight et toutes les autres applis (Flatpak), AppImage, runtime Steam, Proton, compatdata et cache de shaders, serveur LLM et modèles.
 
 Budget (128 Go), à mesurer sur la machine :
@@ -139,7 +139,7 @@ Clavier : c'est wayvnc qui traduit les touches reçues de noVNC (setxkbmap n'agi
 Il reste indépendant de la session TV, donc toujours disponible.
 RDP (xrdp, fait et testé en VM le 10/10/2026) : xrdp (AUR, compilé au build avec --nocheck et servi à mkarchiso par un dépôt local temporaire ; 3,7 Mo) sert de passerelle RDP vers le MÊME bureau d'administration : il parle VNC à une seconde instance de wayvnc (127.0.0.1:5910 et [::1]:5910, authentification VNC classique avec le mot de passe noVNC, relax_encryption ; socket de contrôle séparé), en TLS avec le certificat aibox, port 3389. Pas de session X séparée ni de serveur Xorg (default n'a pas de mot de passe Unix). Pièges : xrdp se connecte en [::1] même avec ip=127.0.0.1 ; l'authentification VNC (DES) demande allow_broken_crypto et relax_encryption ; une seconde instance de wayvnc demande son propre socket de contrôle.
 Jeux Windows (Batocera .wsquashfs) : wsquashfs-launcher (github.com/Gunnm92/wsquashfs-launcher, figé sur un commit au build) dans l'image, avec squashfuse, fuse-overlayfs, squashfs-tools et umu-launcher (2 à 3 Mo) ; pas de wine système (590 Mo) : les runners (proton-cachyos, UMU-Proton, GE-Proton) vont sur le disque (~/.local/share/Steam/compatibilitytools.d ou ~/.local/share/wsquashfs/wine).
-HDR (question ouverte) : labwc 0.20 sait activer le HDR (<core><hdr>yes</hdr>, rendu Vulkan WLR_RENDERER=vulkan) ; Moonlight peut en profiter (Vulkan HDR10) ; Steam passe par Xwayland (pas de HDR) et devrait être lancé dans gamescope --hdr-enabled. Non testable en VM.
+HDR : labwc de la TV avec <core><hdr>yes</hdr> et le rendu Vulkan (WLR_RENDERER=vulkan, labwc-tv/environment) ; Moonlight peut en profiter (Vulkan HDR10) ; Steam passe par Xwayland (pas de HDR) : les jeux sont lancés dans gamescope --hdr-enabled (DXVK_HDR=1), aussi pour le FSR (-F fsr), via les options de lancement de Steam. gamescope manquait à l'image jusqu'au 10/10/2026 (la session TV était décrite comme gamescope-session, jamais mise en place). À valider sur la TV.
 SSH avec clé uniquement. noVNC toujours protégé par mot de passe, réservé au réseau local (pas d'exposition sur Internet).
 4. Applications et mises à jour
 Interface graphique (fait et testé en VM le 09/10/2026) : Bazaar (magasin Flathub) et Gear Lever (AppImage), eux-mêmes en Flatpak, installés sur le disque au premier démarrage avec le disque (aibox-flathub.service, qui ajoute aussi Flathub). Règle polkit : le groupe wheel installe sans mot de passe, comme pour sudo. Portail xdg-desktop-portal-gtk pour les sélecteurs de fichiers des applis Flatpak.

@@ -88,7 +88,9 @@ wget
 
 # Session TV : Steam natif (bibliothèques 32 bits), son (PipeWire), lanceur
 # (pygame). vulkan-virtio : GPU partagé dans une VM (Venus), pour les tests.
+# gamescope : jeux en FSR et en HDR, dans labwc (options de lancement de Steam).
 steam
+gamescope
 lib32-mesa
 lib32-vulkan-radeon
 vulkan-virtio

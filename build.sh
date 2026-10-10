@@ -80,7 +80,7 @@ novnc_tar="$root/work/dl/noVNC-$novnc_version.tar.gz"
 echo "$novnc_sha256  $novnc_tar" | sha256sum -c --quiet
 
 # --- wsquashfs-launcher (jeux Windows au format Batocera), version figée ---
-wsq_ref="${WSQUASHFS_REF:-15dc9eb5f6ef33a6b68f28de4aebbd98f267c3fc}"
+wsq_ref="${WSQUASHFS_REF:-a1d64ca329325dc3ea1e4834d1283f49b4e10e13}"
 wsq="$root/work/dl/wsquashfs-launcher-$wsq_ref"
 [[ -s "$wsq" ]] || curl -fsSL -o "$wsq" "https://raw.githubusercontent.com/Gunnm92/wsquashfs-launcher/$wsq_ref/wsquashfs-launcher"
 bash -n "$wsq"

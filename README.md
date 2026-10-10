@@ -32,7 +32,7 @@ Disque (btrfs, étiquette AIBOXDATA) ──► /home (config, Steam, ~/Applicati
                                      /var/lib/flatpak, /srv/models (LLM), swap de secours,
                                      /var/tmp, cache pacman, journaux, coredumps,
                                      /var/lib/bluetooth, réseau, SSH, machine-id
-DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope-session + Steam Big Picture
+DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► labwc (HDR) + lanceur : Steam Big Picture, Moonlight
                                    │                               └─ Moonlight (Flatpak) comme appli Steam
 DualSense éteinte > 2 min ─────────┘ session arrêtée, écran éteint, PC allumé
 LLM : llm.service (llm.slice) ─► serveur installé sur le disque, modèles dans /srv/models
@@ -44,7 +44,7 @@ Admin : labwc headless + XFCE (admin.slice) ─► wayvnc (127.0.0.1:5900) ─�
 | En RAM (image, jetable) | Sur le disque `AIBOXDATA` (persistant) |
 |---|---|
 | Noyau, firmwares allégés, mesa/vulkan | `/home` : configuration, bibliothèque Steam, Proton, AppImage (`~/Applications`) |
-| Steam (bootstrap), gamescope-session, bureau d'admin | `/var/lib/flatpak` : Moonlight et toutes les applis Flatpak |
+| Steam (bootstrap), gamescope, bureau d'admin | `/var/lib/flatpak` : Moonlight et toutes les applis Flatpak |
 | flatpak, `fuse2`/`fuse3`, zram-generator | `/srv/models` : modèles LLM ; serveur Lemonade |
 | Paquets installés à la volée (overlay, 1 Go max, perdus au redémarrage) | `/var/tmp`, cache pacman, journaux, coredumps, swapfile |
 | | `/var/lib/bluetooth`, connexions NetworkManager, clés d'hôte SSH, `machine-id` |
@@ -289,7 +289,9 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 ## Session TV
 
-`aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, nécessaire à gamescope, puis lance `gamescope-session` avec `steam -gamepadui`.
+`aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis lance labwc sur la TV (`/etc/aibox/labwc-tv`, HDR activé avec le rendu Vulkan) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui`, Moonlight).
+
+- **FSR et HDR dans un jeu** : gamescope, dans les options de lancement du jeu dans Steam, par exemple `DXVK_HDR=1 gamescope -W 3840 -H 2160 -w 1920 -h 1080 -F fsr -f --hdr-enabled -- %command%` (rendu en 1080p, agrandi en 4K par FSR ; sans `-w`/`-h`, pas de FSR). Le HDR n'apparaît que si la TV est passée en HDR par labwc.
 
 - **Démarrage** : une règle udev démarre le service quand une manette apparaît (DualSense `054c:0ce6` et `054c:0df2`, liste extensible).
 - **Arrêt** : quand la manette disparaît, un minuteur de 2 minutes (réglable) arrête la session si elle ne revient pas. Une coupure passagère ou une mise en veille de la manette ne ferme donc pas la session.
@@ -301,7 +303,7 @@ Tous disponibles dans les dépôts CachyOS (vérifié le 26/09/2026) :
 
 - `linux-cachyos`, `amd-ucode`, firmwares allégés (amdgpu, Wi-Fi/BT présents, audio)
 - `mesa`, `vulkan-radeon` et `lib32-*`
-- `gamescope`, `gamescope-session-git`, `steam`
+- `gamescope`, `steam`
 - `networkmanager`, `bluez`, `openssh`, `flatpak`, `fuse2`, `fuse3`, `zram-generator`
 - `archiso` pour le build
 
