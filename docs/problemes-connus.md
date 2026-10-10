@@ -94,3 +94,10 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 ### Steam fermé, il revient aussitôt (11/10/2026)
 - **Cause** : `Restart=always` relançait la session après « Quitter » dans Steam.
 - **Solution** : Steam note sa propre sortie, et `tv-session` termine alors la session (code 75). Rallumer la manette la relance.
+
+## Applis Flatpak
+
+### Un chemin en `/run/user/1000/doc/…` au lieu du vrai fichier (11/10/2026)
+- **Exemple** : Steam ROM Manager (Flatpak), exécutable `/usr/local/bin/wsquashfs-launcher` choisi par la fenêtre de sélection.
+- **Cause** : une appli Flatpak ne voit jamais le `/usr` de la machine, même avec l'accès `host`. Le portail lui passe alors le fichier par le portail de documents, avec un chemin temporaire.
+- **Solution** : taper le chemin à la main (`/usr/local/bin/…`). Le raccourci est lancé par Steam, qui n'est pas en Flatpak. Sinon, prendre la version AppImage de l'appli.
