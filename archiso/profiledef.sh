@@ -17,16 +17,10 @@ airootfs_image_type="erofs"
 airootfs_image_tool_options=('-zlz4hc,12' '-Eztailpacking')
 bootstrap_tarball_compression=('zstd' '-c' '-T0' '-19')
 
-# copytoram=y : image copiée en RAM, clé retirable.
+# copytoram (y : image copiée en RAM, clé retirable ; n : dépannage) est donné
+# par chaque entrée du menu (grub/grub.cfg), pas ici.
 # cow_spacesize=1G : plafond des écritures dans le système.
-# Mémoire unifiée (BIOS : UMA/VRAM au minimum, 512 Mo) :
-#   ttm.pages_limit=28835840   plafond GPU (GTT) = 110 Gio, en pages de 4 Kio. Ce n'est
-#                              qu'une limite : rien n'est réservé tant que le GPU n'alloue pas.
-#   ttm.page_pool_size=4194304 cache de pages GPU libérées = 16 Gio (pas 110 : ce cache
-#                              retient de la mémoire hors d'atteinte du reste du système).
-#   amdgpu.gttsize : déprécié, non utilisé. IOMMU laissé actif : le NPU (amdxdna) en a besoin.
-# console=ttyS0 en premier, tty0 en dernier : l'écran reste la console principale.
-kernel_params_x86_64="copytoram=y cow_spacesize=1G ttm.pages_limit=28835840 ttm.page_pool_size=4194304 console=ttyS0,115200 console=tty0"
+kernel_params_x86_64="cow_spacesize=1G ttm.pages_limit=28835840 ttm.page_pool_size=4194304"
 
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
@@ -38,6 +32,7 @@ file_permissions=(
   ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
   ["/usr/local/bin/aibox-diag"]="0:0:755"
   ["/usr/local/sbin/aibox-setup-disk"]="0:0:755"
+  ["/usr/local/sbin/aibox-update-boot"]="0:0:755"
   ["/usr/local/lib/aibox/"]="0:0:755"
   ["/etc/aibox/novnc.htpasswd"]="1000:1000:600"
   ["/etc/aibox/wayvnc-rdp.conf"]="1000:1000:600"

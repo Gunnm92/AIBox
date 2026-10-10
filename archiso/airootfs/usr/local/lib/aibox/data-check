@@ -37,7 +37,7 @@ if [[ -e /run/aibox/data-present ]]; then
     rm -f /run/motd.d/aibox-data
 else
     install -d -m 0700 -o default -g default /home/default
-    msg="aibox : MODE ÉPHÉMÈRE, aucun disque AIBOXDATA. Rien n'est conservé au redémarrage. Préparer un disque : sudo aibox-setup-disk /dev/nvmeXnY"
+    msg="aibox : MODE ÉPHÉMÈRE, aucun disque AIBOXDATA. Rien n'est conservé au redémarrage. Préparer le disque (démarrage + données) : sudo aibox-setup-disk /dev/nvme0n1"
     echo "$msg"
     echo "$msg" > /run/motd.d/aibox-data
 fi

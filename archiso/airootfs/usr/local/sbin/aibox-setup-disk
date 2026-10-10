@@ -1,36 +1,90 @@
 #!/usr/bin/env bash
-# aibox-setup-disk : prépare le disque de données AIBOXDATA (une seule fois).
+# aibox-setup-disk : prépare le disque interne de l'aibox (une seule fois).
 #
-#   sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G]
+#   sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G] [--boot-size 4G] [--iso FICHIER.iso] [--no-efivars]
 #
-# EFFACE tout le disque, le formate en btrfs (étiquette AIBOXDATA) et crée les
-# sous-volumes montés au démarrage (voir /etc/fstab) :
-#   @home @flatpak @bluetooth @nm @ssh @state @models @swap
-#   (liste : /usr/local/lib/aibox/subvolumes)
-# Redémarrer ensuite : le système monte le disque et quitte le mode éphémère.
+# EFFACE tout le disque et crée une table GPT à deux partitions :
+#   1. AIBOXBOOT (FAT32, partition EFI) : systemd-boot et l'image aibox, pour
+#      démarrer sans la clé (copie en RAM en quelques secondes au lieu de minutes) ;
+#   2. AIBOXDATA (btrfs) : les sous-volumes montés au démarrage (voir /etc/fstab) :
+#      @home @flatpak @bluetooth @nm @ssh @state @models @swap
+#      (liste : /usr/local/lib/aibox/subvolumes)
+# L'image copiée est celle qui a démarré (clé Ventoy ou ISO gravée), ou --iso.
+# --no-efivars : ne pas ajouter d'entrée de démarrage dans le BIOS (tests).
+# Redémarrer ensuite : le système démarre depuis le disque et quitte le mode éphémère.
 set -euo pipefail
 
-usage() { sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 dev="${1:-}"
 [[ -n "$dev" && "$dev" != -* ]] || usage
 shift
 swap_size="16G"
+boot_size="4G"
+iso=""
+efivars=1
 while (( $# )); do
     case "$1" in
         --swap) swap_size="${2:?}"; shift 2 ;;
+        --boot-size) boot_size="${2:?}"; shift 2 ;;
+        --iso) iso="${2:?}"; shift 2 ;;
+        --no-efivars) efivars=0; shift ;;
         *) usage ;;
     esac
 done
 
 (( EUID == 0 )) || { echo "À lancer en root : sudo $0 $dev" >&2; exit 1; }
 [[ -b "$dev" ]] || { echo "$dev n'est pas un périphérique bloc." >&2; exit 1; }
+case "$(lsblk -dno TYPE "$dev")" in
+    disk|loop) ;;
+    *) echo "$dev n'est pas un disque entier (ex. /dev/nvme0n1, pas /dev/nvme0n1p2)." >&2; exit 1 ;;
+esac
+for cmd in sfdisk mkfs.fat mkfs.btrfs bootctl; do
+    command -v "$cmd" >/dev/null || { echo "Commande manquante : $cmd (paquet à ajouter à l'image)." >&2; exit 1; }
+done
 
-# Garde-fous : jamais la clé de démarrage, jamais un disque monté.
-boot_dev="$(findmnt -n -o SOURCE /run/archiso/bootmnt 2>/dev/null || true)"
-if [[ -n "$boot_dev" ]] && lsblk -n -o PKNAME,NAME "$boot_dev" 2>/dev/null | grep -qw "$(basename "$dev")"; then
-    echo "$dev porte la clé de démarrage : refusé." >&2; exit 1
+work="$(mktemp -d)"
+src="$work/src" esp="$work/esp" mnt="$work/data"
+mkdir "$src" "$esp" "$mnt"
+trap 'umount -q "$mnt" "$esp" "$src" 2>/dev/null; rmdir "$mnt" "$esp" "$src" "$work" 2>/dev/null' EXIT
+
+# Image à installer : --iso, sinon le support qui a démarré (archisosearchuuid).
+# Démarré depuis le disque lui-même, il n'y a pas d'autre source : --iso obligatoire.
+if [[ -n "$iso" ]]; then
+    [[ -f "$iso" ]] || { echo "$iso introuvable." >&2; exit 1; }
+    mount -o loop,ro "$iso" "$src"
+else
+    uuid="$(grep -oP '(^| )archisosearchuuid=\K\S+' /proc/cmdline || true)"
+    if [[ -z "$uuid" || ! -e "/dev/disk/by-uuid/$uuid" ]]; then
+        echo "Image de démarrage introuvable : brancher la clé aibox ou donner --iso FICHIER.iso." >&2; exit 1
+    fi
+    mount -o ro "/dev/disk/by-uuid/$uuid" "$src"
 fi
+
+# Ligne de commande du noyau : celle de l'entrée par défaut de l'ISO (grub.cfg)
+grub_cfg="$src/boot/grub/grub.cfg"
+[[ -f "$grub_cfg" ]] || { echo "Ce n'est pas une ISO aibox (pas de boot/grub/grub.cfg)." >&2; exit 1; }
+read -r kernel opts < <(grep -m1 -oP '^\s*linux\s+\K.*' "$grub_cfg")
+initrd="$(grep -m1 -oP '^\s*initrd\s+\K\S+' "$grub_cfg")"
+basedir="$(grep -oP '(^| )archisobasedir=\K\S+' <<<"$opts")"
+version="$(<"$src/$basedir/version")"
+for f in "$kernel" "$initrd" "/$basedir/x86_64/airootfs.erofs"; do
+    [[ -f "$src$f" ]] || { echo "Fichier manquant dans l'ISO : $f" >&2; exit 1; }
+done
+if find "$src/$basedir" -type f -size +4095M | grep -q .; then
+    echo "Un fichier de l'image dépasse 4 Go, limite du FAT32 : partition de démarrage impossible." >&2; exit 1
+fi
+
+# Garde-fous : jamais le support de démarrage ni celui de l'image, jamais un disque monté.
+target="$(realpath "$dev")"
+for d in "$(findmnt -no SOURCE "$src")" \
+         "$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null || true)" \
+         "${iso:+$(findmnt -no SOURCE -T "$iso")}"; do
+    [[ -n "$d" ]] || continue
+    if lsblk -lsnpo NAME "$d" 2>/dev/null | grep -qxF "$target"; then
+        echo "$dev porte le support de démarrage ou l'image : refusé." >&2; exit 1
+    fi
+done
 if lsblk -n -o MOUNTPOINTS "$dev" | grep -q .; then
     echo "$dev (ou une de ses partitions) est monté : refusé." >&2
     lsblk -o NAME,SIZE,MOUNTPOINTS "$dev" >&2; exit 1
@@ -39,16 +93,29 @@ fi
 echo "Disque : $dev"
 lsblk -o NAME,SIZE,MODEL,FSTYPE,LABEL "$dev"
 echo
+echo "Image à installer : aibox $version"
+echo "Partitions : AIBOXBOOT ($boot_size, démarrage) + AIBOXDATA (le reste, données)"
+echo
 echo "TOUTES LES DONNÉES DE $dev SERONT EFFACÉES."
 read -r -p "Pour confirmer, retape le chemin du disque ($dev) : " answer
 [[ "$answer" == "$dev" ]] || { echo "Abandon."; exit 1; }
 
+# Table GPT : partition EFI puis données
 wipefs -a -q "$dev"
-mkfs.btrfs -q -f -L AIBOXDATA "$dev"
+sfdisk -q --wipe always --wipe-partitions always "$dev" <<EOF
+label: gpt
+size=$boot_size, type=uefi, name=aibox-boot
+type=linux, name=aibox-data
+EOF
+udevadm settle
+mapfile -t parts < <(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" {print $1}')
+(( ${#parts[@]} == 2 )) || { echo "Partitions introuvables après le partitionnement de $dev." >&2; exit 1; }
+boot_part="${parts[0]}" data_part="${parts[1]}"
 
-mnt="$(mktemp -d)"
-trap 'umount "$mnt" 2>/dev/null; rmdir "$mnt"' EXIT
-mount "$dev" "$mnt"
+mkfs.fat -F 32 -n AIBOXBOOT "$boot_part" >/dev/null
+mkfs.btrfs -q -f -L AIBOXDATA "$data_part"
+
+mount "$data_part" "$mnt"
 
 # Sous-volumes (liste partagée avec aibox-data-mount.service) ; « nocow » :
 # sans copie à l'écriture ni compression (modèles LLM, swap).
@@ -68,7 +135,44 @@ install -d -m 0755 "$mnt/@state/pacman-pkg" "$mnt/@state/coredump"
 # Swap de secours (zram reste prioritaire)
 btrfs filesystem mkswapfile --size "$swap_size" "$mnt/@swap/swapfile" >/dev/null
 
+# Démarrage : systemd-boot, puis l'image dans aibox-<version>/ (la partition peut
+# en garder deux pour revenir en arrière). L'entrée désigne la partition par son
+# UUID : la clé Ventoy, si elle est branchée, n'est pas prise à sa place.
+mount -o umask=0077 "$boot_part" "$esp"
+bootctl install --quiet --esp-path="$esp" $( (( efivars )) || echo --no-variables) >/dev/null
+
+name="aibox-$version"
+echo "Copie de l'image sur $boot_part…"
+cp -rT "$src/$basedir" "$esp/$name"
+(cd "$esp/$name/x86_64" && sha512sum -c --quiet airootfs.sha512) \
+    || { echo "Copie de l'image corrompue (somme SHA-512 fausse)." >&2; exit 1; }
+
+boot_uuid="$(blkid -s UUID -o value "$boot_part")"
+opts="$(sed -E 's/(^| )(archisobasedir|archisosearchuuid|archisolabel|archisodevice)=\S+//g; s/^ +//' <<<"$opts")"
+entry() {  # entry <id> <titre> <options>
+    cat >"$esp/loader/entries/$1.conf" <<EOF
+title    $2
+version  $version
+sort-key aibox
+linux    /$name${kernel#/"$basedir"}
+initrd   /$name${initrd#/"$basedir"}
+options  archisobasedir=$name archisodevice=UUID=$boot_uuid $3
+EOF
+}
+entry "$name" "aibox $version" "$opts"
+entry "$name-noram" "aibox $version (sans copie en RAM, dépannage)" \
+    "$(sed -E 's/(^| )copytoram=\S+//g; s/^ +//' <<<"$opts") copytoram=n"
+cat >"$esp/loader/loader.conf" <<EOF
+default $name.conf
+timeout 3
+editor  no
+EOF
+
 echo
 btrfs subvolume list "$mnt"
 echo
-echo "Disque AIBOXDATA prêt (swap de secours : $swap_size). Redémarre pour l'utiliser : sudo systemctl reboot"
+lsblk -o NAME,SIZE,FSTYPE,LABEL,PARTLABEL "$dev"
+echo
+echo "Disque prêt : démarrage aibox $version sur AIBOXBOOT, données sur AIBOXDATA (swap de secours : $swap_size)."
+(( efivars )) && echo "Entrée « Linux Boot Manager » ajoutée en tête de l'ordre de démarrage du BIOS ; la clé Ventoy reste utilisable en secours."
+echo "Redémarre (sans la clé) pour l'utiliser : sudo systemctl reboot"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # aibox-diag : rapport de diagnostic (session TV, écran, GPU, réseau, mémoire,
-# journal complet du démarrage). Enregistré sur la partition de données de la clé
-# Ventoy (aibox-diag/) si elle est présente, sinon dans /run/aibox-diag, et affiché.
+# journal complet du démarrage). Enregistré dans aibox-diag/ sur la clé Ventoy si
+# elle est branchée, sinon sur la partition AIBOXBOOT du disque, et affiché.
 #   sudo aibox-diag            rapport complet
 # Lancé aussi automatiquement 2 minutes après le démarrage (aibox-diag.timer).
 set -uo pipefail
@@ -29,19 +29,23 @@ section() { printf '\n===== %s =====\n' "$1"; }
     section "Journal complet du démarrage"; journalctl -b --no-pager 2>&1
 } > "$report" 2>&1
 
-# Partition de données Ventoy (exFAT, étiquette « Ventoy »), si présente
+# Copie persistante : partition de données de la clé Ventoy (exFAT, « Ventoy »)
+# si elle est branchée, sinon partition de démarrage du disque (FAT32, « AIBOXBOOT »).
 dest=""
-part="$(blkid -L Ventoy 2>/dev/null || true)"
-if [[ -n "$part" ]]; then
+for label in Ventoy AIBOXBOOT; do
+    part="$(blkid -L "$label" 2>/dev/null || true)"
+    [[ -n "$part" ]] || continue
     mnt="$(findmnt -n -o TARGET "$part" 2>/dev/null | head -1)"
+    own=0
     if [[ -z "$mnt" ]]; then
-        mnt=/run/aibox-ventoy; mkdir -p "$mnt"
-        mount "$part" "$mnt" 2>/dev/null || mnt=""
+        mnt=/run/aibox-diag-mnt; mkdir -p "$mnt"
+        mount "$part" "$mnt" 2>/dev/null && own=1 || mnt=""
     fi
     if [[ -n "$mnt" ]]; then
-        mkdir -p "$mnt/aibox-diag" && cp "$report" "$mnt/aibox-diag/" && sync && dest="$mnt/aibox-diag/$(basename "$report")"
-        [[ "$mnt" == /run/aibox-ventoy ]] && umount "$mnt"
+        mkdir -p "$mnt/aibox-diag" && cp "$report" "$mnt/aibox-diag/" && sync && dest="$label : aibox-diag/$(basename "$report")"
+        (( own )) && umount "$mnt"
     fi
-fi
+    [[ -n "$dest" ]] && break
+done
 echo "Rapport : $report"
-[[ -n "$dest" ]] && echo "Copié sur la clé Ventoy : aibox-diag/$(basename "$report")" || echo "(pas de partition Ventoy accessible : rapport en RAM seulement)"
+[[ -n "$dest" ]] && echo "Copié sur $dest" || echo "(ni clé Ventoy ni partition AIBOXBOOT : rapport en RAM seulement)"

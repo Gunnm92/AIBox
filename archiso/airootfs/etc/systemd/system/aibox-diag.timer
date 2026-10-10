@@ -1,8 +1,10 @@
 [Unit]
-Description=Rapport de diagnostic aibox, 2 minutes après le démarrage
+Description=Rapport de diagnostic aibox, 2 minutes après le démarrage du système
 
 [Timer]
-OnBootSec=2min
+# Compté depuis le démarrage de systemd, pas du noyau : la copie de l image en RAM
+# depuis une clé USB lente peut à elle seule prendre ~2 minutes.
+OnStartupSec=2min
 
 [Install]
 WantedBy=timers.target

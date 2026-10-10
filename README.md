@@ -201,7 +201,8 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 
 ### Sur la machine
 
-- **Disque de données** (une fois) : `sudo aibox-setup-disk /dev/nvmeXnY`, puis redémarrer. Il efface le disque et demande de retaper son chemin. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
+- **Installation sur le disque** (une fois) : démarrer sur la clé, puis `sudo aibox-setup-disk /dev/nvme0n1` (retaper le chemin pour confirmer). Il efface le disque et crée deux partitions : **AIBOXBOOT** (FAT32, 4 Go : systemd-boot et l'image, pour démarrer sans la clé, en quelques secondes au lieu de ~2 minutes depuis une clé USB 2.0) et **AIBOXDATA** (btrfs : les données). Redémarrer sans la clé. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
+- **Mise à jour du système** : nouvelle ISO sur la clé Ventoy, démarrer dessus et `sudo aibox-update-boot` ; ou depuis le disque, `sudo aibox-update-boot --iso aibox-….iso`. La nouvelle version devient celle par défaut ; la précédente reste dans le menu de démarrage pour revenir en arrière. Les données ne sont pas touchées.
 - **Écran (TV)** : la session TV démarre au boot sur l'écran : lanceur Steam / Moonlight. Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
 - **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build) ; actuellement seulement la clé de code-server. Sinon : terminal du bureau noVNC, RDP ou code-server.
 - **noVNC** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`.
@@ -219,7 +220,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
 - **Clavier** (noVNC) : `aibox-keyboard mac` (Mac français, par défaut), `aibox-keyboard pc` (PC français), ou toute disposition xkb (`aibox-keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
-- **`aibox-diag`** : rapport de diagnostic, écrit aussi tout seul sur la clé Ventoy (`aibox-diag/`) 2 minutes après le démarrage.
+- **`aibox-diag`** : rapport de diagnostic, écrit aussi tout seul 2 minutes après le démarrage, dans `aibox-diag/` sur la clé Ventoy si elle est branchée, sinon sur la partition AIBOXBOOT.
 - **`aibox-mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
 
 ## Utilisation complète (prévue)

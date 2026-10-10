@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# aibox-update-boot : installe une nouvelle image aibox sur la partition de
+# démarrage du disque (AIBOXBOOT), sans toucher aux données (AIBOXDATA).
+#
+#   sudo aibox-update-boot [--iso FICHIER.iso] [--keep 2]
+#
+# L'image est celle qui a démarré (clé Ventoy ou ISO gravée), ou --iso (obligatoire
+# quand on a démarré depuis le disque lui-même). Elle est copiée dans
+# aibox-<version>/, vérifiée (SHA-512), ajoutée au menu de systemd-boot et mise par
+# défaut. Seules les --keep versions les plus récentes sont gardées (2 : la nouvelle
+# et la précédente, pour revenir en arrière depuis le menu) ; celle qui tourne n'est
+# jamais supprimée. Préparation initiale du disque : aibox-setup-disk.
+set -euo pipefail
+
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+
+iso="" keep=2
+while (( $# )); do
+    case "$1" in
+        --iso) iso="${2:?}"; shift 2 ;;
+        --keep) keep="${2:?}"; shift 2 ;;
+        *) usage ;;
+    esac
+done
+(( keep >= 1 )) || usage
+
+(( EUID == 0 )) || { echo "À lancer en root : sudo $0 $*" >&2; exit 1; }
+boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
+[[ -n "$boot_part" ]] || { echo "Pas de partition AIBOXBOOT : préparer le disque avec aibox-setup-disk." >&2; exit 1; }
+
+work="$(mktemp -d)"
+src="$work/src" esp="$work/esp"
+mkdir "$src" "$esp"
+trap 'umount -q "$esp" "$src" 2>/dev/null; rmdir "$esp" "$src" "$work" 2>/dev/null' EXIT
+
+# Image à installer : --iso, sinon le support qui a démarré (archisosearchuuid).
+if [[ -n "$iso" ]]; then
+    [[ -f "$iso" ]] || { echo "$iso introuvable." >&2; exit 1; }
+    mount -o loop,ro "$iso" "$src"
+else
+    uuid="$(grep -oP '(^| )archisosearchuuid=\K\S+' /proc/cmdline || true)"
+    if [[ -z "$uuid" || ! -e "/dev/disk/by-uuid/$uuid" ]]; then
+        echo "Démarré depuis le disque (ou image introuvable) : donner --iso FICHIER.iso." >&2; exit 1
+    fi
+    mount -o ro "/dev/disk/by-uuid/$uuid" "$src"
+fi
+
+# Ligne de commande du noyau : celle de l'entrée par défaut de l'ISO (grub.cfg)
+grub_cfg="$src/boot/grub/grub.cfg"
+[[ -f "$grub_cfg" ]] || { echo "Ce n'est pas une ISO aibox (pas de boot/grub/grub.cfg)." >&2; exit 1; }
+read -r kernel opts < <(grep -m1 -oP '^\s*linux\s+\K.*' "$grub_cfg")
+initrd="$(grep -m1 -oP '^\s*initrd\s+\K\S+' "$grub_cfg")"
+basedir="$(grep -oP '(^| )archisobasedir=\K\S+' <<<"$opts")"
+version="$(<"$src/$basedir/version")"
+for f in "$kernel" "$initrd" "/$basedir/x86_64/airootfs.erofs"; do
+    [[ -f "$src$f" ]] || { echo "Fichier manquant dans l'ISO : $f" >&2; exit 1; }
+done
+
+mount -o umask=0077 "$boot_part" "$esp"
+name="aibox-$version"
+running="$(grep -oP '(^| )archisobasedir=\K\S+' /proc/cmdline || true)"
+
+# Place libre : l'image entière, plus une marge
+need=$(( $(du -sm "$src/$basedir" | cut -f1) + 64 ))
+free=$(( $(df -m --output=avail "$esp" | tail -1) ))
+if [[ -d "$esp/$name" ]]; then free=$(( free + $(du -sm "$esp/$name" | cut -f1) )); fi
+(( free >= need )) || { echo "Pas assez de place sur AIBOXBOOT ($free Mo libres, $need Mo nécessaires) : réduire --keep." >&2; exit 1; }
+
+# Copie dans un dossier temporaire, vérification, puis remplacement
+echo "Copie de l'image aibox $version sur $boot_part…"
+rm -rf "$esp/$name.new"
+cp -rT "$src/$basedir" "$esp/$name.new"
+(cd "$esp/$name.new/x86_64" && sha512sum -c --quiet airootfs.sha512) \
+    || { rm -rf "$esp/$name.new"; echo "Copie de l'image corrompue (somme SHA-512 fausse)." >&2; exit 1; }
+if [[ -d "$esp/$name" ]]; then
+    [[ "$name" == "$running" ]] && echo "Remplace la version en cours ($name) : elle reste en RAM jusqu'au redémarrage."
+    rm -rf "$esp/$name"
+fi
+mv "$esp/$name.new" "$esp/$name"
+
+# Entrées du menu (même format qu'aibox-setup-disk) : la partition est désignée
+# par son UUID, la clé Ventoy n'est pas prise à sa place.
+boot_uuid="$(blkid -s UUID -o value "$boot_part")"
+opts="$(sed -E 's/(^| )(archisobasedir|archisosearchuuid|archisolabel|archisodevice)=\S+//g; s/^ +//' <<<"$opts")"
+entry() {  # entry <id> <titre> <options>
+    cat >"$esp/loader/entries/$1.conf" <<EOF
+title    $2
+version  $version
+sort-key aibox
+linux    /$name${kernel#/"$basedir"}
+initrd   /$name${initrd#/"$basedir"}
+options  archisobasedir=$name archisodevice=UUID=$boot_uuid $3
+EOF
+}
+entry "$name" "aibox $version" "$opts"
+entry "$name-noram" "aibox $version (sans copie en RAM, dépannage)" \
+    "$(sed -E 's/(^| )copytoram=\S+//g; s/^ +//' <<<"$opts") copytoram=n"
+cat >"$esp/loader/loader.conf" <<EOF
+default $name.conf
+timeout 3
+editor  no
+EOF
+
+# Ne garder que les --keep versions les plus récentes (jamais celle qui tourne)
+mapfile -t versions < <(find "$esp" -maxdepth 1 -type d -name 'aibox-[0-9]*' ! -name '*.new' -printf '%f\n' | sort -V)
+for old in "${versions[@]:0:$(( ${#versions[@]} > keep ? ${#versions[@]} - keep : 0 ))}"; do
+    [[ "$old" == "$running" || "$old" == "$name" ]] && continue
+    rm -rf "${esp:?}/$old" "$esp/loader/entries/$old.conf" "$esp/loader/entries/$old-noram.conf"
+    echo "Ancienne version retirée : $old"
+done
+
+echo
+echo "Versions sur AIBOXBOOT :"
+find "$esp" -maxdepth 1 -type d -name 'aibox-[0-9]*' ! -name '*.new' -printf '  %f\n' | sort -V
+echo "Par défaut au prochain démarrage : aibox $version (les autres restent dans le menu)."
+echo "Redémarrer pour l'utiliser : sudo systemctl reboot"

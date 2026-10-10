@@ -26,6 +26,7 @@ amdgpu_top
 
 # Réseau, accès, Bluetooth
 networkmanager
+wireless-regdb
 openssh
 sudo
 bluez
@@ -45,6 +46,7 @@ xfce4-appfinder
 xfce4-terminal
 xfce4-taskmanager
 thunar
+thunar-volman
 mousepad
 network-manager-applet
 xorg-xwayland
@@ -89,6 +91,7 @@ pipewire
 pipewire-pulse
 pipewire-alsa
 wireplumber
+rtkit
 python-pygame
 
 # RDP (compilé depuis l'AUR au build) : passerelle vers le bureau d'administration
@@ -106,7 +109,8 @@ umu-launcher
 # par Lemonade dans /srv/models (disque de données)
 lemonade-server
 
-# Disque de données et outils
+# Disque de données et démarrage sur le NVMe (aibox-setup-disk : FAT32)
+dosfstools
 btrfs-progs
 nvme-cli
 btop
