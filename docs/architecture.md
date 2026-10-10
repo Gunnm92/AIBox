@@ -59,7 +59,8 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 `aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `~/.config/aibox/tv-mode`. Ce fichier est modifié par `aibox-tv-mode`.
 
 **Cycle de vie** :
-- **Démarrage** : la manette s'allume, le dongle DualSense apparaît sur l'USB, et `71-aibox-tv.rules` démarre le service. Ça marche aussi au démarrage de la machine si la manette est déjà allumée.
+- **Démarrage** : la manette s'allume, le dongle DualSense apparaît ou se reconnecte sur l'USB, et `71-aibox-tv.rules` démarre le service.
+- **Démarrage de la machine** : `aibox-tv-boot.service` (`/usr/local/lib/aibox/tv-boot-check`) démarre la session si la manette est déjà allumée. L'événement udev n'est pas émis pour un périphérique déjà présent. Et le dongle s'annonce même manette éteinte, jusqu'à la première connexion de la manette : le script lit une seconde de rapports sur son hidraw, et seuls des rapports qui changent (compteur, gyroscope) signifient une manette connectée.
 - **Arrêt** : la manette s'éteint, le dongle disparaît, et `aibox-tv-idle.timer` arrête la session 2 minutes plus tard. Il est annulé si la manette revient.
 - **Codes de sortie de `tv-session`** :
   - 75 : Steam a été fermé par l'utilisateur, ou Steam tourne déjà ailleurs. Fin de la session, sans relance (`RestartPreventExitStatus=75`) ;

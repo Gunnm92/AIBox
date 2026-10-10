@@ -3,6 +3,9 @@
 # (desktop, plasma…) bascule la session TV sur labwc et son lanceur (voir
 # aibox-tv-mode) ; Steam se ferme et aibox-tv relance la session dans le mode
 # choisi (sans ce fichier, Steam fermé termine la session TV).
+# Trace dans le journal (journalctl -t steamos-session-select) : Steam l'appelle
+# aussi hors de « Passer au bureau », selon les cas.
+logger -t steamos-session-select "appelé par Steam : ${*:-(sans argument)}"
 case "${1:-}" in
     gamescope) mode=gamescope ;;
     "") mode="" ;;
