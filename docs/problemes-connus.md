@@ -52,9 +52,9 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Cause** : Thunar et les portails, réveillés par D-Bus avant que labwc ait publié son affichage, démarraient sans `WAYLAND_DISPLAY` ni `DISPLAY`.
 - **Solution** : affichage par défaut dans `/etc/systemd/user.conf.d/10-aibox-admin-display.conf` (corrigé).
 
-### Thunar ne prend pas le nouveau thème
-- **Cause** : Thunar tourne en démon et ne recharge pas le thème à chaud.
-- **Solution** : `systemctl --user restart thunar`.
+### Thunar ne prend pas le thème
+- **Cause** : Thunar tourne en démon et ne recharge pas le thème à chaud. Au démarrage du bureau, il était réveillé avant que `xfsettingsd` ait publié le thème (11/10/2026).
+- **Solution** : `aibox-admin-xfsettingsd.service` en `Type=dbus` (`BusName=org.gtk.Settings`), et `thunar.service.d/aibox.conf` le fait démarrer après. Après un changement de thème : `systemctl --user restart thunar`.
 
 ## Son et manette
 

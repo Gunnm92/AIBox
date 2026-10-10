@@ -5,6 +5,11 @@ Requires=aibox-admin-labwc.service
 After=aibox-admin-labwc.service 
 
 [Service]
+# Prêt quand il publie les réglages GTK (org.gtk.Settings), pas dès son
+# lancement : xfdesktop, puis Thunar qu'il réveille, chargeaient sinon le
+# thème par défaut (Thunar, démon, ne suit pas les changements à chaud).
+Type=dbus
+BusName=org.gtk.Settings
 Slice=admin.slice
 WorkingDirectory=%h
 EnvironmentFile=/etc/aibox/admin-desktop.env
