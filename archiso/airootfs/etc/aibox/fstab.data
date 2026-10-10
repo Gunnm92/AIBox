@@ -1,0 +1,13 @@
+# Disque de données AIBOXDATA, monté par aibox-data-mount.service (mount -a -T).
+LABEL=AIBOXDATA /home                                  btrfs subvol=@home,noatime,compress=zstd:1 0 0
+LABEL=AIBOXDATA /var/lib/flatpak                       btrfs subvol=@flatpak,noatime,compress=zstd:1 0 0
+LABEL=AIBOXDATA /var/lib/bluetooth                     btrfs subvol=@bluetooth,noatime 0 0
+LABEL=AIBOXDATA /etc/NetworkManager/system-connections btrfs subvol=@nm,noatime 0 0
+LABEL=AIBOXDATA /var/lib/aibox/ssh                     btrfs subvol=@ssh,noatime 0 0
+LABEL=AIBOXDATA /var/lib/aibox/state                   btrfs subvol=@state,noatime,compress=zstd:1 0 0
+LABEL=AIBOXDATA /srv/models                            btrfs subvol=@models,noatime 0 0
+LABEL=AIBOXDATA /var/lib/aibox/swap                    btrfs subvol=@swap,noatime 0 0
+# Écritures système hors RAM (dossiers créés par aibox-setup-disk dans @state)
+/var/lib/aibox/state/var-tmp     /var/tmp                  none bind 0 0
+/var/lib/aibox/state/pacman-pkg  /var/cache/pacman/pkg     none bind 0 0
+/var/lib/aibox/state/coredump    /var/lib/systemd/coredump none bind 0 0

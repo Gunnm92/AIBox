@@ -1,0 +1,14 @@
+[Unit]
+Description=Disque de données AIBOXDATA : montage s'il est présent
+DefaultDependencies=no
+After=systemd-udev-trigger.service systemd-remount-fs.service local-fs-pre.target
+Before=local-fs.target
+Wants=systemd-udev-trigger.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/aibox/data-mount
+
+[Install]
+WantedBy=local-fs.target

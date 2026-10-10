@@ -1,23 +1,8 @@
 # tmpfs limité (voir spec, « Contraintes mémoire »)
 tmpfs /dev/shm tmpfs rw,nosuid,nodev,size=8G 0 0
 
-# Disque de données AIBOXDATA (préparé une fois par aibox-setup-disk).
-# nofail + délai court : sans disque, le système démarre en mode éphémère.
-# x-systemd.before : nofail retire l'ordre par rapport à local-fs.target, on le
-# remet explicitement pour les services qui utilisent ces dossiers.
-LABEL=AIBOXDATA /home                                btrfs subvol=@home,noatime,compress=zstd:1,nofail,x-systemd.device-timeout=5s,x-systemd.before=user@1000.service 0 0
-LABEL=AIBOXDATA /var/lib/flatpak                     btrfs subvol=@flatpak,noatime,compress=zstd:1,nofail,x-systemd.device-timeout=5s 0 0
-LABEL=AIBOXDATA /var/lib/bluetooth                   btrfs subvol=@bluetooth,noatime,nofail,x-systemd.device-timeout=5s,x-systemd.before=bluetooth.service 0 0
-LABEL=AIBOXDATA /etc/NetworkManager/system-connections btrfs subvol=@nm,noatime,nofail,x-systemd.device-timeout=5s,x-systemd.before=NetworkManager.service 0 0
-LABEL=AIBOXDATA /var/lib/aibox/ssh                   btrfs subvol=@ssh,noatime,nofail,x-systemd.device-timeout=5s,x-systemd.before=aibox-ssh-hostkeys.service 0 0
-LABEL=AIBOXDATA /var/lib/aibox/state                 btrfs subvol=@state,noatime,compress=zstd:1,nofail,x-systemd.device-timeout=5s 0 0
-LABEL=AIBOXDATA /srv/models                          btrfs subvol=@models,noatime,nofail,x-systemd.device-timeout=5s 0 0
-LABEL=AIBOXDATA /var/lib/aibox/swap                  btrfs subvol=@swap,noatime,nofail,x-systemd.device-timeout=5s 0 0
-
-# Écritures système hors RAM (dossiers créés par aibox-setup-disk dans @state)
-/var/lib/aibox/state/var-tmp     /var/tmp                  none bind,nofail,x-systemd.requires-mounts-for=/var/lib/aibox/state 0 0
-/var/lib/aibox/state/pacman-pkg  /var/cache/pacman/pkg     none bind,nofail,x-systemd.requires-mounts-for=/var/lib/aibox/state 0 0
-/var/lib/aibox/state/coredump    /var/lib/systemd/coredump none bind,nofail,x-systemd.requires-mounts-for=/var/lib/aibox/state 0 0
-
-# Swap de secours (zram reste prioritaire)
-/var/lib/aibox/swap/swapfile none swap nofail,x-systemd.requires-mounts-for=/var/lib/aibox/swap 0 0
+# Le disque de données AIBOXDATA n'est PAS ici : il est monté par
+# aibox-data-mount.service (/etc/aibox/fstab.data), seulement s'il est présent.
+# Dans /etc/fstab, un disque absent laisserait des montages « en échec », et les
+# services qui en dépendent implicitement (session TV via /home, Bluetooth via
+# /var/lib/bluetooth…) seraient annulés en mode éphémère.

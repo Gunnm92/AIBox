@@ -1,6 +1,6 @@
 [Unit]
 Description=Disque de données AIBOXDATA (ou mode éphémère)
-After=home.mount var-lib-flatpak.mount var-lib-aibox-state.mount
+After=aibox-data-mount.service local-fs.target
 Before=user@1000.service getty@tty1.service sshd.service aibox-flathub.service
 
 [Service]

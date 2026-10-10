@@ -50,7 +50,7 @@ mnt="$(mktemp -d)"
 trap 'umount "$mnt" 2>/dev/null; rmdir "$mnt"' EXIT
 mount "$dev" "$mnt"
 
-# Sous-volumes (liste partagée avec aibox-data-layout.service) ; « nocow » :
+# Sous-volumes (liste partagée avec aibox-data-mount.service) ; « nocow » :
 # sans copie à l'écriture ni compression (modèles LLM, swap).
 grep -vE '^\s*(#|$)' /usr/local/lib/aibox/subvolumes | while read -r sv flag; do
     btrfs -q subvolume create "$mnt/$sv"
