@@ -1,0 +1,7 @@
+# Applications par défaut d'aibox (l'utilisateur peut les changer : ~/.config/mimeapps.list)
+[Default Applications]
+application/x-ms-dos-executable=aibox-run-exe.desktop
+application/x-msdownload=aibox-run-exe.desktop
+application/vnd.microsoft.portable-executable=aibox-run-exe.desktop
+application/x-msi=aibox-run-exe.desktop
+application/x-ms-installer=aibox-run-exe.desktop

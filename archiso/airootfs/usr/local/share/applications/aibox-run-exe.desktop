@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lancer avec Proton
+Comment=Lance un programme Windows avec le Proton déjà installé (préfixe partagé)
+Exec=aibox-run-exe %f
+Icon=wine
+Terminal=false
+NoDisplay=true
+MimeType=application/x-ms-dos-executable;application/x-msdownload;application/vnd.microsoft.portable-executable;application/x-msi;application/x-ms-installer;

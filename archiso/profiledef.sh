@@ -31,6 +31,7 @@ file_permissions=(
   ["/usr/local/bin/aibox-keyboard"]="0:0:755"
   ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
   ["/usr/local/bin/aibox-diag"]="0:0:755"
+  ["/usr/local/bin/aibox-run-exe"]="0:0:755"
   ["/usr/local/sbin/aibox-setup-disk"]="0:0:755"
   ["/usr/local/sbin/aibox-update-boot"]="0:0:755"
   ["/usr/local/lib/aibox/"]="0:0:755"
