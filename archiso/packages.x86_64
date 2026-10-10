@@ -129,5 +129,8 @@ dosfstools
 btrfs-progs
 nvme-cli
 btop
+# GPU AMD dans btop (chargé à l'exécution : librocm_smi64) ; ~31 Mo avec ses
+# dépendances ROCm
+rocm-smi-lib
 less
 nano
