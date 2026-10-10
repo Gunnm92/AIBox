@@ -33,9 +33,37 @@ export STEAM_GAMESCOPE_HDR_SUPPORTED=1 STEAM_GAMESCOPE_VRR_SUPPORTED=1 \
     STEAM_GAMESCOPE_FANCY_SCALING_SUPPORT=1 STEAM_MULTIPLE_XWAYLANDS=1 \
     SRT_URLOPEN_PREFER_STEAM=1 QT_IM_MODULE=steam GTK_IM_MODULE=Steam
 export AIBOX_TV_MODE=gamescope
+# Steam déjà ouvert ailleurs (bureau d'administration, noVNC) : un seul Steam à
+# la fois, celui de la TV lui passerait la main et s'arrêterait aussitôt, et
+# gamescope avec lui, en boucle (10/10/2026). La session TV laisse la place :
+# code 75, que aibox-tv.service ne relance pas (RestartPreventExitStatus).
+if pgrep -u "$(id -u)" -x steam >/dev/null; then
+    echo "Steam est déjà ouvert (bureau d'administration ?) : session TV non lancée." >&2
+    exit 75
+fi
 # Steam directement, pas le lanceur : avec --steam, gamescope n'affiche que la
 # fenêtre choisie par Steam (« SteamControlled ») — le lanceur seul restait
 # invisible (écran noir, 10/10/2026). Pas de -W/-H : la résolution préférée de
-# la TV. gamescope s'arrête avec Steam, et le service relance la session.
-exec "${nocaps[@]}" gamescope --steam -e --xwayland-count 2 --hdr-enabled -- \
-    steam -gamepadui -steamos3 -steampal -steamdeck
+# la TV. gamescope s'arrête avec Steam (et plante à l'arrêt, d'où son code
+# inutilisable) : Steam note sa propre sortie dans $steam_exit.
+#   - Steam fermé par l'utilisateur (Quitter, Éteindre) : fin de la session TV
+#     (75, pas de relance) ; la manette rallumée la relance ;
+#   - « Passer au bureau » (steamos-session-select, $switch) : relance (0) dans
+#     le nouveau mode ;
+#   - gamescope planté, Steam encore là : relance (1).
+steam_exit="${XDG_RUNTIME_DIR}/aibox-tv-steam-exit"
+switch="${XDG_RUNTIME_DIR}/aibox-tv-switch"
+rm -f "$steam_exit" "$switch"
+"${nocaps[@]}" gamescope --steam -e --xwayland-count 2 --hdr-enabled -- \
+    sh -c 'steam -gamepadui -steamos3 -steampal -steamdeck; echo $? > "$1"' sh "$steam_exit" &
+gs=$!
+# Arrêt du service (manette éteinte, systemctl stop) : signal transmis à
+# gamescope, qui ferme Steam ; sans cela ils survivraient à la session.
+trap 'kill -TERM "$gs" 2>/dev/null' TERM INT
+while kill -0 "$gs" 2>/dev/null; do wait "$gs" || true; done
+if [[ -e "$switch" ]]; then
+    rm -f "$switch"
+    exit 0
+fi
+[[ -e "$steam_exit" ]] && exit 75
+exit 1

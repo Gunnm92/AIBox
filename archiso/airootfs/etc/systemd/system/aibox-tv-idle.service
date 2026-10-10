@@ -1,0 +1,7 @@
+[Unit]
+Description=Arrêt de la session TV (manette éteinte)
+
+[Service]
+Type=oneshot
+# Arrêt demandé : Restart=always de aibox-tv ne la relance pas.
+ExecStart=/usr/bin/systemctl stop aibox-tv.service

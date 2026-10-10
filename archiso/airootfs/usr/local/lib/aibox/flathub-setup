@@ -10,3 +10,6 @@ for app in io.github.kolunmi.Bazaar it.mijorus.gearlever; do
     echo "Installation de $app..."
     flatpak install --system --noninteractive flathub "$app"
 done
+# Thème des applis libadwaita en Flatpak : ~/.config/gtk-4.0 (CSS copié par
+# admin-session) en lecture pour toutes les applis.
+flatpak override --system --filesystem=xdg-config/gtk-4.0:ro

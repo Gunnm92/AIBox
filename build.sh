@@ -102,6 +102,9 @@ wsq="$root/work/dl/wsquashfs-launcher-$wsq_ref"
 [[ -s "$wsq" ]] || curl -fsSL -o "$wsq" "https://raw.githubusercontent.com/Gunnm92/wsquashfs-launcher/$wsq_ref/wsquashfs-launcher"
 bash -n "$wsq"
 
+# --- Thème WhiteSur (thème GTK, icônes, curseurs), compilé une fois puis en cache ---
+ws_tar="$("$root/tools/whitesur.sh")"
+
 # --- Paquets AUR (xrdp), compilés une fois, servis à mkarchiso par un dépôt local ---
 # --nocheck : 4 tests de la suite de xrdp (configuration du codec graphique)
 # échouent dans le conteneur de build.
@@ -131,7 +134,7 @@ engine run --rm --privileged \
     -v "$root:$root" \
     -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
     -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e WSQ="$wsq" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
-    -e AIBOX_VERSION="$AIBOX_VERSION" \
+    -e AIBOX_VERSION="$AIBOX_VERSION" -e WS_TAR="$ws_tar" \
     "$image" bash -euo pipefail -c '
         pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools >/dev/null
         cp -a "$ROOT/archiso" /tmp/profile
@@ -142,6 +145,8 @@ engine run --rm --privileged \
         install -m 0600 "$ROOT/work/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
         install -m 0600 "$ROOT/work/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
         install -D -m 0755 "$WSQ" "$air/usr/local/bin/wsquashfs-launcher"
+        # WhiteSur : usr/share/themes et usr/share/icons (tools/whitesur.sh)
+        tar --zstd -C "$air" -xf "$WS_TAR"
         # Partages NAS par défaut (aibox-nas) : keys/nas-mounts et keys/nas.cred
         if [[ -s "$ROOT/keys/nas-mounts" && -s "$ROOT/keys/nas.cred" ]]; then
             install -m 0644 "$ROOT/keys/nas-mounts" "$air/etc/aibox/nas-mounts"

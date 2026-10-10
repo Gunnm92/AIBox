@@ -109,7 +109,7 @@ Le code commun avec SteamBox est repris, pas réécrit (sous-module git figé su
 
 - `labwc-session.sh`, `xfce-defaults.sh` : bureau d'administration, clavier, thème labwc ;
 - la logique `desktop_exec` de `desktop-env.sh`, transposée en unités `systemd --user` au lieu de s6 ;
-- l'installation de WhiteSur (thème, icônes, curseur, libadwaita), extraite dans un script de build commun `install-whitesur` ;
+- l'installation de WhiteSur (thème, icônes, curseur, libadwaita) : `tools/whitesur.sh`, mêmes commits que SteamBox ;
 - la vérification des icônes `.desktop` et le `fc-cache -s` final (sinon glycin est tué par seccomp) ;
 - les réglages wayvnc et noVNC (page d'accueil avec `resize=scale` et `reconnect`). websockify (pas de paquet, installé par pip) est remplacé par le paquet websocat.
 
@@ -126,7 +126,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 - **Session TV** : gamescope pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS ; « Passer au bureau » dans Steam (ou `aibox-tv-mode labwc`) mène à labwc et à un lanceur (Steam, Moonlight) à la manette ou au clavier, sur les images de Bing.
 
-Pas encore : déclenchement de la session TV par la DualSense, assistant vocal, thème WhiteSur.
+Pas encore : assistant vocal.
 
 **Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak et son portail GTK, fuse2/fuse3, zram, cifs-utils, nss-mdns, labwc + XFCE, wayvnc, websocat, nginx, xrdp, podman, distrobox, git, lemonade-server, steam, wsquashfs-launcher.
 
@@ -205,7 +205,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 
 - **Installation sur le disque** (une fois) : démarrer sur la clé, puis `sudo aibox-setup-disk /dev/nvme0n1` (retaper le chemin pour confirmer). Il efface le disque et crée deux partitions : **AIBOXBOOT** (FAT32, 8 Go, de quoi garder deux versions : systemd-boot et l'image, pour démarrer sans la clé, en quelques secondes au lieu de ~2 minutes depuis une clé USB 2.0) et **AIBOXDATA** (btrfs : les données). Redémarrer sans la clé. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
 - **Mises à jour** : voir [Mises à jour](#mises-à-jour).
-- **Écran (TV)** : la session TV démarre au boot sur l'écran : Steam sous gamescope (ou, en mode labwc, le lanceur). Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
+- **Écran (TV)** : la session TV démarre quand la manette s'allume et s'arrête 2 minutes après son extinction ou quand on quitte Steam (voir [Session TV](#session-tv)) : Steam sous gamescope (ou, en mode labwc, le lanceur). Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
 - **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build) ; actuellement seulement la clé de code-server. Sinon : terminal du bureau noVNC, RDP ou code-server.
 - **noVNC** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`.
 - **Applications** : Bazaar pour Flathub (au premier lancement, il charge le catalogue pendant une à deux minutes), Gear Lever pour les AppImage. Steam est natif dans l'image : ne pas installer le Flatpak de Steam. Pas de mot de passe demandé (`default` est administrateur, comme pour `sudo`).
@@ -299,9 +299,10 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 - **Jeux non-Steam** (`.wsquashfs`…) : pas de `gamescope` dans les options de lancement, la session est déjà dans gamescope ; si un jeu ne propose pas le HDR, `DXVK_HDR=1 %command% …`. Un chemin contenant des espaces se met entre guillemets.
 
-- **Démarrage** : pour l'instant, la session TV démarre avec la machine. *Prévu* : une règle udev la démarre quand une manette apparaît (DualSense `054c:0ce6` et `054c:0df2`).
-- **Arrêt** (*prévu*) : quand la manette disparaît, un minuteur de 2 minutes arrête la session si elle ne revient pas.
-- **TV** : elle perd le signal et se met d'elle-même en veille.
+- **Démarrage** : quand la manette s'allume. Le dongle DualSense (`054c:0ce6` ou `054c:0df2`) apparaît alors sur l'USB, et la règle udev `71-aibox-tv.rules` démarre `aibox-tv.service`. C'est aussi le cas au démarrage de la machine si la manette est déjà allumée. Pas de session TV sinon : la machine reste un serveur, joignable par noVNC.
+- **Arrêt** : 2 minutes après l'extinction de la manette (`aibox-tv-idle.timer`, réglable avec `systemctl edit aibox-tv-idle.timer`), sauf si elle revient entre-temps. La session s'arrête aussi quand on quitte Steam (Quitter, Éteindre) : rallumer la manette la relance. « Passer au bureau » la relance en mode labwc. Si gamescope ou Steam plante, elle est relancée.
+- **Steam déjà ouvert ailleurs** (bureau d'administration, noVNC) : la session TV ne démarre pas et lui laisse la place, puisqu'un seul Steam peut tourner à la fois.
+- **TV** : à l'arrêt de la session, l'écran est mis en veille (fbcon) : la TV perd le signal.
 
 ## Paquets principaux
 

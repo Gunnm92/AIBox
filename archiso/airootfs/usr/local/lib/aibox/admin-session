@@ -5,6 +5,19 @@
 set -euo pipefail
 cd "${HOME}"
 
+# Thème choisi dans XFCE (xfconf, Paramètres → Apparence), WhiteSur par défaut
+# (xfce-defaults, après ce script au premier démarrage). Lu à chaque démarrage
+# du bureau : un changement de thème vaut pour les bordures et libadwaita au
+# démarrage suivant.
+xsetting() { xfconf-query -c xsettings -p "$1" 2>/dev/null || echo "$2"; }
+gtk_theme="$(xsetting /Net/ThemeName WhiteSur-Dark)"
+cursor_theme="$(xsetting /Gtk/CursorThemeName WhiteSur-cursors)"
+cursor_size="$(xsetting /Gtk/CursorSize 24)"
+theme_dir=""
+for d in "${HOME}/.themes" "${HOME}/.local/share/themes" /usr/share/themes; do
+    [[ -d "$d/$gtk_theme" ]] && { theme_dir="$d/$gtk_theme"; break; }
+done
+
 # Clavier : labwc lit XKB_* dans ~/.config/labwc/environment, pas dans son environnement.
 mkdir -p "${HOME}/.config/labwc"
 # Même disposition que wayvnc (aibox-keyboard).
@@ -15,14 +28,21 @@ set +a
 cat > "${HOME}/.config/labwc/environment" <<EOT
 XKB_DEFAULT_LAYOUT=${KEYBOARD_LAYOUT}
 XKB_DEFAULT_VARIANT=${KEYBOARD_VARIANT}
-XCURSOR_SIZE=24
+XCURSOR_THEME=${cursor_theme}
+XCURSOR_SIZE=${cursor_size}
 EOT
+
+# Bordures de fenêtres : thème labwc du thème GTK choisi s'il en fournit un
+# (WhiteSur), sinon celui de labwc par défaut (Orchis, Mc-OS… n'en ont pas).
+labwc_theme=""
+[[ -n "$theme_dir" && -d "$theme_dir/labwc" ]] && labwc_theme="  <theme><name>${gtk_theme}</name></theme>"
 
 # xwaylandPersistence (cf. SteamBox) : sinon Xwayland s'arrête après le dernier
 # client X11, et les applis X11 lancées ensuite échouent (DISPLAY=:0 fixe).
 cat > "${HOME}/.config/labwc/rc.xml" <<EOT
 <?xml version="1.0"?>
 <labwc_config>
+${labwc_theme}
   <core>
     <xwaylandPersistence>yes</xwaylandPersistence>
   </core>
@@ -47,6 +67,33 @@ panel="${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 if [[ ! -e "$panel" ]]; then
     mkdir -p "${panel%/*}"
     cp /etc/aibox/xfce4-panel.xml "$panel"
+fi
+
+# libadwaita (applis GNOME récentes, Bazaar, Gear Lever…) ignore le thème GTK
+# et ne lit que ~/.config/gtk-4.0/gtk.css : on y copie celui du thème choisi
+# (WhiteSur : libadwaita/gtk-Dark.css ; autre thème : son gtk-4.0/gtk.css), avec
+# ses images. Copie et non lien : les applis Flatpak ne voient pas
+# /usr/share/themes. Seulement si ce dossier est vide ou déjà géré ici
+# (.aibox-theme) : un CSS personnel n'est jamais remplacé.
+gtk4="${HOME}/.config/gtk-4.0"
+adw_src=""
+if [[ -n "$theme_dir" ]]; then
+    if [[ -f "$theme_dir/libadwaita/gtk-Dark.css" ]]; then
+        adw_src="$theme_dir/libadwaita" adw_css=gtk-Dark.css
+    elif [[ -f "$theme_dir/gtk-4.0/gtk.css" ]]; then
+        adw_src="$theme_dir/gtk-4.0" adw_css=gtk.css
+    fi
+fi
+if [[ -n "$adw_src" ]] && { [[ -f "$gtk4/.aibox-theme" ]] || [[ ! -e "$gtk4/gtk.css" ]]; } \
+   && [[ "$(cat "$gtk4/.aibox-theme" 2>/dev/null)" != "$gtk_theme" ]]; then
+    rm -rf "$gtk4/gtk.css" "$gtk4/gtk-dark.css" "$gtk4/assets" "$gtk4/windows-assets"
+    mkdir -p "$gtk4"
+    cp "$adw_src/$adw_css" "$gtk4/gtk.css"
+    cp "$adw_src/$adw_css" "$gtk4/gtk-dark.css"
+    for a in assets windows-assets; do
+        [[ -d "$adw_src/$a" ]] && cp -a "$adw_src/$a" "$gtk4/$a"
+    done
+    echo "$gtk_theme" > "$gtk4/.aibox-theme"
 fi
 
 # Cache de polices à jour avant tout composant graphique (cf. SteamBox : glycin

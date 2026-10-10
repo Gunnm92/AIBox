@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Appelé par Steam en mode SteamOS (session TV gamescope) : « Passer au bureau »
 # (desktop, plasma…) bascule la session TV sur labwc et son lanceur (voir
-# aibox-tv-mode) ; dans tous les cas Steam se ferme et
-# aibox-tv relance la session dans le mode choisi.
+# aibox-tv-mode) ; Steam se ferme et aibox-tv relance la session dans le mode
+# choisi (sans ce fichier, Steam fermé termine la session TV).
 case "${1:-}" in
     gamescope) mode=gamescope ;;
     "") mode="" ;;
@@ -12,4 +12,6 @@ if [[ -n "$mode" ]]; then
     mkdir -p "${HOME}/.config/aibox"
     echo "$mode" > "${HOME}/.config/aibox/tv-mode"
 fi
+# Relance de la session (et non fin) : tv-session lit ce fichier.
+touch "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aibox-tv-switch"
 exec steam -shutdown

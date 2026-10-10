@@ -1,0 +1,8 @@
+# Session TV à la manette : le dongle DualSense (DS5Dongle, 054c:0ce6 ou 0df2)
+# apparaît sur l'USB quand la manette s'allume et disparaît quand elle s'éteint.
+# Apparition : session TV démarrée (aussi au démarrage de la machine, manette
+# déjà allumée) et arrêt programmé annulé. Disparition : arrêt dans 2 minutes
+# (aibox-tv-idle.timer), annulé si la manette revient d'ici là.
+# Autre manette : une ligne de plus avec son idVendor/idProduct.
+SUBSYSTEM=="usb", ACTION=="add", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="054c", ATTR{idProduct}=="0ce6|0df2", TAG+="systemd", ENV{SYSTEMD_WANTS}+="aibox-tv.service", RUN+="/usr/bin/systemctl --no-block stop aibox-tv-idle.timer"
+SUBSYSTEM=="usb", ACTION=="remove", ENV{DEVTYPE}=="usb_device", ENV{ID_VENDOR_ID}=="054c", ENV{ID_MODEL_ID}=="0ce6|0df2", RUN+="/usr/bin/systemctl --no-block start aibox-tv-idle.timer"

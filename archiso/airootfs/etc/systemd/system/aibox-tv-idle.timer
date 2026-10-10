@@ -1,0 +1,8 @@
+[Unit]
+Description=Arrêt de la session TV 2 minutes après l'extinction de la manette
+
+[Timer]
+# Délai réglable : systemctl edit aibox-tv-idle.timer (OnActiveSec=…).
+OnActiveSec=2min
+AccuracySec=5s
+Unit=aibox-tv-idle.service

@@ -2,6 +2,8 @@
 Description=Session TV (gamescope et Steam ; labwc et lanceur en secours, aibox-tv-mode)
 After=systemd-user-sessions.service user@1000.service aibox-data.service
 Wants=user@1000.service
+# Démarrée par la manette (71-aibox-tv.rules), arrêtée 2 minutes après son
+# extinction (aibox-tv-idle.timer) ; pas au démarrage de la machine.
 # La session prend l'écran et tty1 (plus de console en connexion automatique).
 Conflicts=getty@tty1.service
 After=getty@tty1.service
@@ -24,11 +26,17 @@ UtmpMode=user
 Environment=XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=aibox-tv LANG=fr_FR.UTF-8
 Environment=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 Environment=XDG_DATA_DIRS=/home/default/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+# Écran rallumé, puis mis en veille à l'arrêt (fbcon, DPMS) : la TV perd le
+# signal et se met d'elle-même en veille. « + » : en root.
+ExecStartPre=+/bin/sh -c 'echo 0 > /sys/class/graphics/fb0/blank || true'
 ExecStart=/usr/local/lib/aibox/tv-session
 # À l'arrêt, labwc efface l'environnement d'activation : on le remet sur l'administration.
 ExecStopPost=/usr/local/lib/aibox/activation-env-admin
+ExecStopPost=+/bin/sh -c 'echo 4 > /sys/class/graphics/fb0/blank || true'
 Restart=always
+# 75 : Steam fermé par l'utilisateur, ou déjà ouvert ailleurs (tv-session) :
+# fin de la session TV, sans relance.
+RestartPreventExitStatus=75
+SuccessExitStatus=75
 RestartSec=3
 
-[Install]
-WantedBy=multi-user.target

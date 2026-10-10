@@ -84,3 +84,13 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Exemple** : gamescope 3.16.30 dans l'image, alors que 3.16.31 était disponible sur la machine.
 - **Cause** : le build passe par les dépôts de `archiso/pacman.conf`, qui ne sont pas forcément ceux de la machine.
 - **Solution** : vérifier les versions dans `pkglist.x86_64.txt` de l'ISO montée.
+
+## Session TV (suite)
+
+### La session TV se relance en boucle, gamescope plante (11/10/2026)
+- **Cause** : Steam était déjà ouvert sur le bureau d'administration, depuis noVNC. Le Steam de la TV lui passe la main et s'arrête, gamescope tombe avec lui, puis `Restart=always` relance le tout. Le journal montre « Primary child shut down! ».
+- **Solution** : `tv-session` ne démarre pas si Steam est déjà ouvert (code 75, sans relance).
+
+### Steam fermé, il revient aussitôt (11/10/2026)
+- **Cause** : `Restart=always` relançait la session après « Quitter » dans Steam.
+- **Solution** : Steam note sa propre sortie, et `tv-session` termine alors la session (code 75). Rallumer la manette la relance.

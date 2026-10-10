@@ -26,10 +26,10 @@ set_default() {
     xfconf-query -c "$1" -p "$2" -n -t "$3" -s "$4" 2>/dev/null || true
 }
 
-# Thème WhiteSur à venir ; en attendant, Adwaita sombre (fourni par GTK).
-set_default xsettings /Net/ThemeName string "Adwaita-dark"
-set_default xsettings /Net/IconThemeName string "Adwaita"
-set_default xsettings /Gtk/CursorThemeName string "Adwaita"
+# WhiteSur (thème, icônes, curseur ; tools/whitesur.sh, dans l'image).
+set_default xsettings /Net/ThemeName string "WhiteSur-Dark"
+set_default xsettings /Net/IconThemeName string "WhiteSur-dark"
+set_default xsettings /Gtk/CursorThemeName string "WhiteSur-cursors"
 set_default xsettings /Gtk/CursorSize int 24
 set_default xsettings /Gtk/FontName string "DejaVu Sans 10"
 set_default xsettings /Gtk/MonospaceFontName string "DejaVu Sans Mono 10"

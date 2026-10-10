@@ -4,6 +4,10 @@ Ce dépôt construit **aibox** : un système CachyOS qui tourne entièrement en 
 
 Lis d'abord [docs/README.md](docs/README.md). Pour toute modification du système, suis [docs/iso.md](docs/iso.md) pas à pas.
 
+**Contexte** :
+- **SteamBox** est un autre projet, plus ancien : un conteneur sur le serveur Unraid, dépôt `Gunnm92/SteamBox`. Ne travaille que sur aibox, et ne pousse que sur `Gunnm92/AIBox`.
+- **Ordre de vérité** : le code de `archiso/`, puis `docs/` et ce fichier (l'état actuel), puis `spec.md`, qui est la spécification et le journal daté des décisions, avec des passages devenus historiques.
+
 ## Règles
 
 1. **Le système est jetable.** Un changement dans `/etc`, `/usr` ou un `pacman -S` disparaît au redémarrage. Un changement durable se fait **dans le dépôt** (`archiso/`), puis en reconstruisant l'image.
