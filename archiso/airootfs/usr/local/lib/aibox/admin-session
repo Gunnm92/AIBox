@@ -9,7 +9,18 @@ cd "${HOME}"
 # (xfce-defaults, après ce script au premier démarrage). Lu à chaque démarrage
 # du bureau : un changement de thème vaut pour les bordures et libadwaita au
 # démarrage suivant.
-xsetting() { xfconf-query -c xsettings -p "$1" 2>/dev/null || echo "$2"; }
+# xfconfd (activé par D-Bus) peut ne pas répondre tout de suite au démarrage :
+# on l'attend, et une valeur vide compte comme absente (sinon le « thème » vide
+# trouvait le dossier ~/.themes lui-même, sans bordures labwc, 11/10/2026).
+for _ in $(seq 1 20); do
+    xfconf-query -c xsettings -l >/dev/null 2>&1 && break
+    sleep 0.5
+done
+xsetting() {
+    local v
+    v="$(xfconf-query -c xsettings -p "$1" 2>/dev/null || true)"
+    echo "${v:-$2}"
+}
 gtk_theme="$(xsetting /Net/ThemeName WhiteSur-Dark)"
 cursor_theme="$(xsetting /Gtk/CursorThemeName WhiteSur-cursors)"
 cursor_size="$(xsetting /Gtk/CursorSize 24)"
