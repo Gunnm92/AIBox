@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # aibox-setup-disk : prépare le disque interne de l'aibox (une seule fois).
 #
-#   sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G] [--boot-size 4G] [--iso FICHIER.iso] [--no-efivars]
+#   sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G] [--boot-size 8G] [--iso FICHIER.iso] [--no-efivars]
 #
 # EFFACE tout le disque et crée une table GPT à deux partitions :
-#   1. AIBOXBOOT (FAT32, partition EFI) : systemd-boot et l'image aibox, pour
+#   1. AIBOXBOOT (FAT32, partition EFI, 8 Go) : systemd-boot et l'image aibox, pour
 #      démarrer sans la clé (copie en RAM en quelques secondes au lieu de minutes) ;
-#   2. AIBOXDATA (btrfs) : les sous-volumes montés au démarrage (voir /etc/fstab) :
+#      8 Go : de quoi garder deux versions (retour en arrière), même plus grosses
+#      (ex. avec KDE) ; agrandir cette partition plus tard demanderait tout refaire ;
+#   2. AIBOXDATA (btrfs) : les sous-volumes montés au démarrage (voir /etc/aibox/fstab.data) :
 #      @home @flatpak @bluetooth @nm @ssh @state @models @swap
 #      (liste : /usr/local/lib/aibox/subvolumes)
 # L'image copiée est celle qui a démarré (clé Ventoy ou ISO gravée), ou --iso.
@@ -20,7 +22,7 @@ dev="${1:-}"
 [[ -n "$dev" && "$dev" != -* ]] || usage
 shift
 swap_size="16G"
-boot_size="4G"
+boot_size="8G"
 iso=""
 efivars=1
 while (( $# )); do
