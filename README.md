@@ -201,9 +201,9 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 
 ### Sur la machine
 
-- **Disque de données** (une fois) : `sudo aibox-setup-disk /dev/nvmeXnY`, puis redémarrer. Il efface le disque et demande de retaper son chemin. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`).
+- **Disque de données** (une fois) : `sudo aibox-setup-disk /dev/nvmeXnY`, puis redémarrer. Il efface le disque et demande de retaper son chemin. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
 - **Écran (TV)** : la session TV démarre au boot sur l'écran : lanceur Steam / Moonlight. Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
-- **SSH** : `ssh default@<ip>` (clé uniquement).
+- **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build) ; actuellement seulement la clé de code-server. Sinon : terminal du bureau noVNC, RDP ou code-server.
 - **noVNC** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`.
 - **Applications** : Bazaar pour Flathub (au premier lancement, il charge le catalogue pendant une à deux minutes), Gear Lever pour les AppImage. Steam est natif dans l'image : ne pas installer le Flatpak de Steam. Pas de mot de passe demandé (`default` est administrateur, comme pour `sudo`).
 - **Conteneurs** : `podman` (sans root ni démon ; la commande `docker` marche aussi), `podman-compose`. Conteneurs et images dans `~/.local/share/containers`, sur le disque.
@@ -219,6 +219,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
 - **Clavier** (noVNC) : `aibox-keyboard mac` (Mac français, par défaut), `aibox-keyboard pc` (PC français), ou toute disposition xkb (`aibox-keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
+- **`aibox-diag`** : rapport de diagnostic, écrit aussi tout seul sur la clé Ventoy (`aibox-diag/`) 2 minutes après le démarrage.
 - **`aibox-mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
 
 ## Utilisation complète (prévue)

@@ -1,7 +1,7 @@
 [Unit]
 Description=code-server : VS Code dans le navigateur (https://<ip>:6080/code/)
-# Installé dans le home : seulement avec le disque de données, jamais en RAM.
-ConditionPathIsMountPoint=/home
+# Installé dans le home : sur le disque de données, ou en mode éphémère dans le
+# /home en RAM (tmpfs de 16 Go max, ~700 Mo) : pratique pour corriger à chaud.
 
 [Service]
 Slice=dev.slice

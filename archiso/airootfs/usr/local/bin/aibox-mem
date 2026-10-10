@@ -42,7 +42,7 @@ done
 
 echo
 echo "== Disque de données"
-if mountpoint -q /home; then
+if [[ -e /run/aibox/data-present ]]; then
     echo "  AIBOXDATA monté ($(findmnt -n -o SOURCE /home | sed 's/\[.*//'))"
     df -h --output=size,used,avail /home | sed 's/^/  /'
 else

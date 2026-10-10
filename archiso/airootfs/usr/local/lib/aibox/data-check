@@ -13,7 +13,7 @@ user_dir() {
         [[ -d "$path" ]] || install -d -o default -g default "$path"
     done
 }
-if mountpoint -q /home; then
+if [[ -e /run/aibox/data-present ]]; then
     install -d -m 0700 -o default -g default /home/default
     install -d -o default -g default /home/default/Applications
     # Dossiers des raccourcis d'applis (Flatpak, AppImage) créés d'avance : le menu
@@ -36,6 +36,7 @@ if mountpoint -q /home; then
     echo "aibox : disque de données AIBOXDATA monté ($(findmnt -n -o SOURCE /home))."
     rm -f /run/motd.d/aibox-data
 else
+    install -d -m 0700 -o default -g default /home/default
     msg="aibox : MODE ÉPHÉMÈRE, aucun disque AIBOXDATA. Rien n'est conservé au redémarrage. Préparer un disque : sudo aibox-setup-disk /dev/nvmeXnY"
     echo "$msg"
     echo "$msg" > /run/motd.d/aibox-data

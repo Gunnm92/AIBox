@@ -6,10 +6,16 @@
 set -uo pipefail
 dev=/dev/disk/by-label/AIBOXDATA
 for _ in $(seq 1 50); do [[ -e "$dev" ]] && break; sleep 0.1; done
+mkdir -p /run/aibox
 if [[ ! -e "$dev" ]]; then
-    echo "Pas de disque AIBOXDATA : mode éphémère."
+    # Mode éphémère : /home en tmpfs de 16 Go maximum (la RAM n'est prise que
+    # pour ce qui y est écrit) au lieu de l'overlay du système limité à 1 Go,
+    # pour pouvoir tester Steam, etc. Tout est perdu au redémarrage.
+    mount -t tmpfs -o mode=0755,size=16G,nosuid,nodev tmpfs /home
+    echo "Pas de disque AIBOXDATA : mode éphémère (/home en RAM, 16 Go max)."
     exit 0
 fi
+touch /run/aibox/data-present
 
 top=/run/aibox/data-top
 mkdir -p "$top"
