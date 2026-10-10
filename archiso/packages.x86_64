@@ -40,6 +40,9 @@ wayvnc
 websocat
 nginx
 xfce4-panel
+# Volume : icône du panneau et mixeur (son de la manette, sorties HDMI…)
+xfce4-pulseaudio-plugin
+pavucontrol
 xfce4-settings
 # Seulement pour Paramètres → Session et démarrage (applications au démarrage) ;
 # la session XFCE elle-même n'est pas utilisée (labwc + services).
