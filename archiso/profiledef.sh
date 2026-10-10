@@ -32,6 +32,7 @@ file_permissions=(
   ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
   ["/usr/local/bin/aibox-diag"]="0:0:755"
   ["/usr/local/bin/aibox-run-exe"]="0:0:755"
+  ["/usr/local/bin/wsquashfs-launcher"]="0:0:755"
   ["/usr/lib/ds5dongle/ds5dongle-loopback-stop"]="0:0:755"
   ["/usr/local/sbin/aibox-setup-disk"]="0:0:755"
   ["/usr/local/sbin/aibox-update-boot"]="0:0:755"
@@ -40,4 +41,5 @@ file_permissions=(
   ["/etc/aibox/novnc.htpasswd"]="1000:1000:600"
   ["/etc/aibox/wayvnc-rdp.conf"]="1000:1000:600"
   ["/etc/aibox/novnc-tls.key"]="1000:1000:600"
+  ["/etc/aibox/nas.cred"]="0:0:600"
 )

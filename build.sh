@@ -80,7 +80,7 @@ novnc_tar="$root/work/dl/noVNC-$novnc_version.tar.gz"
 echo "$novnc_sha256  $novnc_tar" | sha256sum -c --quiet
 
 # --- wsquashfs-launcher (jeux Windows au format Batocera), version figée ---
-wsq_ref="${WSQUASHFS_REF:-f2892b89afe6c3293fa545b1c369e788bebc9214}"
+wsq_ref="${WSQUASHFS_REF:-15dc9eb5f6ef33a6b68f28de4aebbd98f267c3fc}"
 wsq="$root/work/dl/wsquashfs-launcher-$wsq_ref"
 [[ -s "$wsq" ]] || curl -fsSL -o "$wsq" "https://raw.githubusercontent.com/Gunnm92/wsquashfs-launcher/$wsq_ref/wsquashfs-launcher"
 bash -n "$wsq"
@@ -120,7 +120,7 @@ engine run --rm --privileged \
         # Dépôt local des paquets AUR, pour ce build seulement
         printf "\n[aibox-aur]\nSigLevel = Optional TrustAll\nServer = file://%s/work/aur/repo\n" "$ROOT" >> /tmp/profile/pacman.conf
         air=/tmp/profile/airootfs
-        install -m 0644 "$ROOT/work/authorized_keys" "$air/etc/ssh/authorized_keys/default"
+        install -D -m 0644 "$ROOT/work/authorized_keys" "$air/etc/ssh/authorized_keys/default"
         install -m 0600 "$ROOT/work/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
         install -m 0600 "$ROOT/work/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
         install -D -m 0755 "$WSQ" "$air/usr/local/bin/wsquashfs-launcher"
