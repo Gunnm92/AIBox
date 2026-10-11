@@ -1,0 +1,11 @@
+[Unit]
+Description=Clavier et souris de Moonlight dans le bureau d'administration (evdev-bridge)
+# Démarré et arrêté avec Sunshine (app-dev.lizardbyte.app.Sunshine.service.d).
+PartOf=app-dev.lizardbyte.app.Sunshine.service
+After=app-dev.lizardbyte.app.Sunshine.service aibox-admin-labwc.service
+
+[Service]
+Slice=admin.slice
+ExecStart=/usr/local/lib/aibox/evdev-bridge
+Restart=on-failure
+RestartSec=2

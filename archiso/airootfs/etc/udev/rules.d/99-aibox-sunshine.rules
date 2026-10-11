@@ -6,5 +6,7 @@
 # uaccess (73-seat-late), qui efface les ACL des utilisateurs sans session.
 KERNEL=="uinput|uhid", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
 SUBSYSTEM=="hidraw", KERNEL=="hidraw*", IMPORT{parent}="HID_*"
-SUBSYSTEM=="hidraw", ENV{HID_NAME}=="Sunshine (libvirtualhid)*", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
-SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Sunshine (libvirtualhid)*", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
+SUBSYSTEM=="hidraw", ENV{HID_NAME}=="*libvirtualhid*", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
+# Noms « libvirtualhid Keyboard », « libvirtualhid Mouse »… (Sunshine 2026.10),
+# « Sunshine (libvirtualhid) … » avant : lus par evdev-bridge pour le bureau.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="*libvirtualhid*", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"

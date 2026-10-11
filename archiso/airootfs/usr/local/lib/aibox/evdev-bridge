@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# evdev-bridge (repris de SteamBox, evdev-bridge/ du dépôt) : rejoue dans le
+# bureau d'administration (labwc headless, wayland-0) le clavier et la souris
+# virtuels que Sunshine crée pour Moonlight. labwc headless ne lit aucun
+# périphérique d'entrée ; il les reçoit par ses protocoles d'entrée virtuelle
+# (zwlr_virtual_pointer, zwp_virtual_keyboard). Disposition du clavier : celle
+# du bureau d'administration (aibox-keyboard), comme wayvnc.
+set -a
+. /etc/aibox/keyboard.env
+[[ -r "${HOME}/.config/aibox/keyboard.env" ]] && . "${HOME}/.config/aibox/keyboard.env"
+set +a
+export WAYLAND_DISPLAY=wayland-0
+exec /usr/local/bin/evdev-bridge-native

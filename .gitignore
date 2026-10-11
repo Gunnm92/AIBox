@@ -2,3 +2,4 @@ work/
 out/
 keys/*
 !keys/README.md
+evdev-bridge/evdev-bridge-native

@@ -136,8 +136,12 @@ engine run --rm --privileged \
     -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e WSQ="$wsq" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
     -e AIBOX_VERSION="$AIBOX_VERSION" -e WS_TAR="$ws_tar" \
     "$image" bash -euo pipefail -c '
-        pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools >/dev/null
+        pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools \
+            gcc make wayland libxkbcommon >/dev/null
         cp -a "$ROOT/archiso" /tmp/profile
+        # evdev-bridge (clavier et souris de Moonlight dans le bureau d administration)
+        cp -a "$ROOT/evdev-bridge" /tmp/evdev-bridge
+        make -s -C /tmp/evdev-bridge
         # Dépôt local des paquets AUR, pour ce build seulement
         printf "\n[aibox-aur]\nSigLevel = Optional TrustAll\nServer = file://%s/work/aur/repo\n" "$ROOT" >> /tmp/profile/pacman.conf
         air=/tmp/profile/airootfs
@@ -145,6 +149,7 @@ engine run --rm --privileged \
         install -m 0600 "$ROOT/work/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
         install -m 0600 "$ROOT/work/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
         install -D -m 0755 "$WSQ" "$air/usr/local/bin/wsquashfs-launcher"
+        install -D -m 0755 /tmp/evdev-bridge/evdev-bridge-native "$air/usr/local/bin/evdev-bridge-native"
         # WhiteSur : usr/share/themes et usr/share/icons (tools/whitesur.sh)
         tar --zstd -C "$air" -xf "$WS_TAR"
         # Partages NAS par défaut (aibox-nas) : keys/nas-mounts et keys/nas.cred
