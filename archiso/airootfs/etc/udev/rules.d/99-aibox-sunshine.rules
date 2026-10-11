@@ -1,0 +1,10 @@
+# Sunshine : manettes, clavier et souris virtuels (uinput, uhid, et les
+# périphériques qu'il crée avec libvirtualhid). Les règles du paquet ne les
+# donnent qu'à la session assise devant l'écran (uaccess) ; ici il n'y en a pas
+# quand la TV est éteinte (bureau d'administration sans écran) : accès direct
+# pour l'utilisateur default (uid 1000), par ACL. En 99 : après la règle
+# uaccess (73-seat-late), qui efface les ACL des utilisateurs sans session.
+KERNEL=="uinput|uhid", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", IMPORT{parent}="HID_*"
+SUBSYSTEM=="hidraw", ENV{HID_NAME}=="Sunshine (libvirtualhid)*", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="Sunshine (libvirtualhid)*", RUN+="/usr/bin/setfacl -m u:1000:rw $env{DEVNAME}"
