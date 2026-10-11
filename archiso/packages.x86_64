@@ -112,8 +112,8 @@ lib32-libpulse
 # RDP (compilé depuis l'AUR au build) : passerelle vers le bureau d'administration
 xrdp
 
-# Sunshine (paquet LizardByte, dépôt local au build) : diffusion du bureau
-# d'administration vers Moonlight (VAAPI) ; lancé à la main, pas au démarrage
+# Sunshine (dépôts CachyOS) : diffusion du bureau d'administration vers
+# Moonlight (VAAPI) ; lancé à la main, pas au démarrage
 sunshine
 
 # Jeux Windows au format Batocera (.wsquashfs) : wsquashfs-launcher (script

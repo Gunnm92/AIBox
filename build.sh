@@ -16,10 +16,6 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$root/tools/engine.sh"
 novnc_version="1.7.0"
 novnc_sha256="b1003a11b6e6e8d8f7f5e5586daae7f8ca651d8aee0aa155ff9ac841c48f52c6"
-# Sunshine (LizardByte) : ni dans les dépôts CachyOS ni dans Arch ; paquet Arch
-# officiel de ses versions GitHub, servi par le dépôt local (comme xrdp).
-sunshine_version="2026.914.233613"
-sunshine_sha256="17eb8c4d823a2693038f40aeeab56943ef0d5d6ace8ac90b3693905b0acbba87"
 test_key=0
 [[ "${1:-}" == "--test-key" ]] && test_key=1
 
@@ -109,7 +105,7 @@ bash -n "$wsq"
 # --- Thème WhiteSur (thème GTK, icônes, curseurs), compilé une fois puis en cache ---
 ws_tar="$("$root/tools/whitesur.sh")"
 
-# --- Paquets hors dépôts (xrdp compilé depuis l'AUR, Sunshine), servis à mkarchiso par un dépôt local ---
+# --- Paquets AUR (xrdp), compilés une fois, servis à mkarchiso par un dépôt local ---
 # --nocheck : 4 tests de la suite de xrdp (configuration du codec graphique)
 # échouent dans le conteneur de build.
 aur_pkgs=(xrdp)
@@ -129,14 +125,6 @@ for pkg in "${aur_pkgs[@]}"; do
             chown -R "$HOST_UID:$HOST_GID" "$ROOT/work/aur"
         '
 done
-# Sunshine : paquet officiel, version figée et vérifiée, dans le même dépôt local.
-sunshine_pkg="sunshine-$sunshine_version-1-x86_64.pkg.tar.zst"
-if [[ ! -f "$root/work/aur/repo/$sunshine_pkg" ]]; then
-    rm -f "$root/work/aur/repo"/sunshine-[0-9]*.pkg.tar.zst
-    curl -fsSL -o "$root/work/aur/repo/$sunshine_pkg" \
-        "https://github.com/LizardByte/Sunshine/releases/download/v$sunshine_version/$sunshine_pkg"
-fi
-echo "$sunshine_sha256  $root/work/aur/repo/$sunshine_pkg" | sha256sum -c --quiet
 engine run --rm -v "$root:$root" "$image" sh -c \
     "cd '$root/work/aur/repo' && rm -f aibox-aur.db* aibox-aur.files* && repo-add -q aibox-aur.db.tar.zst *.pkg.tar.zst && chown -R $(id -u):$(id -g) ."
 
