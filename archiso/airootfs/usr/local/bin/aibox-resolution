@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# aibox-resolution : taille de l'écran virtuel du bureau d'administration
+# (labwc headless, HEADLESS-1). noVNC la règle sur sa fenêtre ; Sunshine ne la
+# change jamais lui-même, et Paramètres → Affichage ne sait pas la modifier.
+#   aibox-resolution 1920x1080[@60]   taille choisie
+#   aibox-resolution client           celle du client Moonlight (commande « do »
+#                                     d'une appli Sunshine : SUNSHINE_CLIENT_*)
+#   aibox-resolution                  taille actuelle
+set -euo pipefail
+export WAYLAND_DISPLAY=wayland-0
+case "${1:-}" in
+    "") wlr-randr --output HEADLESS-1 | awk '/current/ {print $1}'; exit 0 ;;
+    client)
+        mode="${SUNSHINE_CLIENT_WIDTH:-1920}x${SUNSHINE_CLIENT_HEIGHT:-1080}"
+        [[ -n "${SUNSHINE_CLIENT_FPS:-}" ]] && mode+="@${SUNSHINE_CLIENT_FPS}"
+        ;;
+    [0-9]*x[0-9]*) mode="$1" ;;
+    *) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac
+exec wlr-randr --output HEADLESS-1 --custom-mode "$mode"

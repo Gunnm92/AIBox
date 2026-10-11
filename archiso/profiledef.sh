@@ -36,6 +36,7 @@ file_permissions=(
   ["/usr/local/bin/aibox-run-exe"]="0:0:755"
   ["/usr/local/bin/wsquashfs-launcher"]="0:0:755"
   ["/usr/local/bin/evdev-bridge-native"]="0:0:755"
+  ["/usr/local/bin/aibox-resolution"]="0:0:755"
   ["/usr/local/bin/aibox-tv-mode"]="0:0:755"
   ["/usr/local/bin/steamos-session-select"]="0:0:755"
   ["/usr/lib/ds5dongle/ds5dongle-loopback-stop"]="0:0:755"
