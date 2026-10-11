@@ -6,5 +6,7 @@ set -a
 . /etc/aibox/keyboard.env
 [[ -r "${HOME}/.config/aibox/keyboard.env" ]] && . "${HOME}/.config/aibox/keyboard.env"
 set +a
-exec /usr/bin/wayvnc --render-cursor --max-fps=30 \
+# --gpu : encodage H.264 par le GPU (VAAPI) pour les clients qui le gèrent
+# (noVNC 1.7 dans un navigateur avec WebCodecs) ; 60 images/s.
+exec /usr/bin/wayvnc --gpu --render-cursor --max-fps=60 \
     --keyboard="${KEYBOARD_LAYOUT}${KEYBOARD_VARIANT:+-${KEYBOARD_VARIANT}}" 127.0.0.1 5900
