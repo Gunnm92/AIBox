@@ -32,6 +32,10 @@ sudo
 bluez
 bluez-utils
 
+# Shell de default : fish, avec le résumé de la machine (fastfetch) à l'ouverture
+fish
+fastfetch
+
 # Bureau d'administration (noVNC) : labwc headless + panneau XFCE, wayvnc,
 # websocat (pont WebSocket, websockify n'a pas de paquet), nginx (noVNC en HTTPS)
 labwc

@@ -98,7 +98,7 @@ networkmanager, bluez, openssh, flatpak, fuse2, fuse3, zram-generator. Plus le d
 Ligne de commande du noyau : copytoram=y, cow_spacesize=1G, ttm.pages_limit=28835840, ttm.page_pool_size=4194304.
 BIOS : UMA au minimum (512 Mo), Secure Boot désactivé.
 Montages en RAM limités : /tmp (2 Go), /dev/shm (8 Go), journal (RuntimeMaxUse=128M).
-Utilisateur default (uid 1000), sudo, sans mot de passe root. Clé SSH déposée au build.
+Utilisateur default (uid 1000), sudo, sans mot de passe root. Clé SSH déposée au build. Shell fish depuis le 13/10/2026 (/etc/fish/conf.d/aibox.fish : ~/.local/bin dans le PATH, résumé fastfetch à l'ouverture) ; root reste en bash, les scripts aussi.
 Disque de données : un outil aibox-setup-disk /dev/nvmeXnY, lancé une seule fois à la main, formate le disque en btrfs avec l'étiquette AIBOXDATA et les sous-volumes @home, @flatpak, @bluetooth, @nm, @ssh, @state, @models (nodatacow, sans compression) et @swap (nocow, avec le swapfile).
 Au démarrage, des unités de montage systemd (par étiquette) montent /home et /srv/models, et relient par bind mount (pas de lien symbolique) /var/lib/flatpak, /var/lib/bluetooth, /etc/NetworkManager/system-connections, /var/tmp, /var/cache/pacman, /var/lib/systemd/coredump, les clés d'hôte SSH et le machine-id. Le swapfile est activé.
 Sans disque AIBOXDATA, le système démarre en mode éphémère avec un message clair, au lieu d'échouer. En mode éphémère, /home est un tmpfs de 16 Go maximum (la RAM n'est prise que pour ce qui y est écrit) : l'overlay du système (1 Go) ne suffisait pas au premier lancement de Steam (2,4 Go). code-server s'y installe aussi (~700 Mo), pour pouvoir corriger à chaud ; Bazaar/Flathub et Lemonade restent réservés au disque.
