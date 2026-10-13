@@ -251,6 +251,8 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 
 Un `pacman -Syu` sur la machine ne sert à rien : il ne modifie que la RAM et disparaît au redémarrage.
 
+**Mise à jour automatique de l'image** : chaque nuit vers 4 h, `aibox-auto-update` compare les paquets de l'image installée aux dépôts, demande au LLM local (Lemonade) si la mise à jour vaut la peine (sécurité, noyau, pilotes graphiques, Steam, Lemonade…), et si oui reconstruit l'image, la vérifie et l'installe sur AIBOXBOOT. Message sur Discord (Hermes) ; jamais de redémarrage automatique. Détails : [docs/exploitation.md](docs/exploitation.md#mise-à-jour-automatique-de-limage).
+
 **Construire l'ISO sur aibox lui-même** (Ubuntu et son Docker n'existent plus) : il faut le disque de données (le stockage de Podman y est mis, dans `/var/lib/aibox/state/containers` ; environ 10 Go pendant le build). Le dépôt et ses secrets sont sauvegardés sur le NAS (`Workspace/AIBox`, avec `keys/`) :
 
 ```sh

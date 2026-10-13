@@ -1,0 +1,11 @@
+[Unit]
+Description=Vérification nocturne des mises à jour de l'image aibox
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=15min
+# Rattrape une vérification manquée (machine éteinte à 4 h).
+Persistent=true
+
+[Install]
+WantedBy=timers.target

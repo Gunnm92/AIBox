@@ -1,0 +1,16 @@
+[Unit]
+Description=Mise à jour de l'image aibox décidée par le LLM local (aibox-auto-update)
+# Le dépôt et les builds sont sur le disque de données.
+ConditionPathIsMountPoint=/var/lib/aibox/state
+
+[Service]
+Type=oneshot
+Slice=dev.slice
+WorkingDirectory=%h
+# hermes (notification Discord) est dans ~/.local/bin
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/usr/local/bin/aibox-auto-update
+# Chargement du modèle, réflexion du LLM puis build : large.
+TimeoutStartSec=90min

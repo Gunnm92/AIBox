@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# aibox-auto-update : mise à jour de l'image décidée par un LLM local.
+#
+#   aibox-auto-update [--dry-run] [--no-install] [--force] [--pkglist FICHIER]
+#
+# Lancé chaque nuit par aibox-auto-update.timer (service utilisateur de default) :
+#   1. compare les paquets de l'image par défaut sur AIBOXBOOT (pkglist.x86_64.txt,
+#      et non l'image qui tourne : une image installée en attente de redémarrage
+#      n'est pas réinstallée) aux versions des dépôts du build (archiso/pacman.conf) ;
+#   2. demande à Lemonade si la mise à jour est utile (réponse JSON ; le LLM ne
+#      fait que décider, il n'exécute rien) ;
+#   3. si oui : ./build.sh, vérification de l'image (version, droits des fichiers
+#      de profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
+#   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
+#
+# Garde-fous : pas de build si le dépôt a des changements non commités (image
+# -dirty), si un jeu tourne, si Lemonade ne répond pas ou s'il manque de place.
+#   --dry-run     comparaison et avis du LLM seulement
+#   --no-install  construit et vérifie l'image, sans l'installer
+#   --force       sans l'avis du LLM (mise à jour même sans paquet nouveau)
+#   --pkglist F   liste « nom version » de référence à la place de l'image
+#                 installée (pour tester la décision avec --dry-run)
+#
+# Réglages : /etc/aibox/auto-update.conf, surchargés par
+# ~/.config/aibox/auto-update.conf. Dernière décision :
+# ~/.local/state/aibox/auto-update/derniere-decision.json.
+set -uo pipefail
+
+dry_run=0 no_install=0 force=0 pkglist=""
+while (( $# )); do
+    case "$1" in
+        --dry-run) dry_run=1 ;;
+        --no-install) no_install=1 ;;
+        --force) force=1 ;;
+        --pkglist) pkglist="${2:?--pkglist FICHIER}"; shift ;;
+        *) echo "Usage : aibox-auto-update [--dry-run] [--no-install] [--force] [--pkglist FICHIER]" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+# Réglages par défaut
+REPO="${HOME}/Workspace/AIBox"
+LEMONADE_URL="http://127.0.0.1:13305/api/v1"
+MODEL="Qwen3.8-27B-GGUF"
+NOTIFY_TO="discord"
+MIN_FREE_GB=12
+for conf in /etc/aibox/auto-update.conf "${HOME}/.config/aibox/auto-update.conf"; do
+    # shellcheck source=/dev/null
+    [[ -r "$conf" ]] && . "$conf"
+done
+
+state="${HOME}/.local/state/aibox/auto-update"
+mkdir -p "$state"
+work="$(mktemp -d)"
+trap 'sudo rm -rf "$work"' EXIT
+
+log() { echo "$*" >&2; }
+
+notify() {  # notify <message>
+    log "Notification : $1"
+    if command -v hermes >/dev/null 2>&1; then
+        hermes send -q --to "$NOTIFY_TO" --subject "aibox — mise à jour" "$1" \
+            || log "Notification impossible (hermes send)."
+    else
+        log "hermes absent : pas de notification."
+    fi
+}
+
+fail() {  # fail <message> : prévient et s'arrête
+    notify "Échec : $1"
+    exit 1
+}
+
+# Une seule exécution à la fois
+exec 9>"$state/verrou"
+flock -n 9 || { log "Déjà en cours."; exit 0; }
+
+# --- Garde-fous ---
+[[ -d "$REPO/.git" ]] || fail "dépôt introuvable ($REPO)."
+boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
+[[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }
+if pgrep -f '[S]teamLaunch AppId=' >/dev/null; then
+    log "Un jeu tourne : mise à jour reportée à la prochaine fois."
+    exit 0
+fi
+
+# --- 1. Paquets de l'image par défaut sur AIBOXBOOT ---
+esp="$work/esp"
+mkdir -p "$esp"
+sudo mount -o ro,umask=0077 "$boot_part" "$esp" || fail "montage de AIBOXBOOT impossible."
+default_name="$(sudo sed -n 's/^default \(.*\)\.conf$/\1/p' "$esp/loader/loader.conf")"
+sudo cat "$esp/$default_name/pkglist.x86_64.txt" > "$work/image.txt" 2>/dev/null
+sudo umount "$esp"
+if [[ -n "$pkglist" ]]; then
+    cp "$pkglist" "$work/image.txt" || exit 2
+    log "Référence : $pkglist (--pkglist)"
+fi
+[[ -s "$work/image.txt" ]] || fail "liste des paquets de $default_name introuvable sur AIBOXBOOT."
+image_version="${default_name#aibox-}"
+log "Image par défaut : $image_version"
+
+# --- Versions disponibles dans les dépôts du build ---
+# Base pacman jetable : le pacman du système n'est pas touché.
+db="$work/db"
+mkdir -p "$db"
+sudo pacman --config "$REPO/archiso/pacman.conf" --dbpath "$db" -Sy >/dev/null 2>&1 \
+    || fail "synchronisation des dépôts impossible (réseau ?)."
+# Premier dépôt qui fournit le paquet, dans l'ordre de pacman.conf (comme le build)
+pacman --config "$REPO/archiso/pacman.conf" --dbpath "$db" -Sl 2>/dev/null \
+    | awk '!seen[$2]++ {print $2, $3, $1}' > "$work/depots.txt"
+
+# Paquets plus récents dans les dépôts : « nom ancienne nouvelle dépôt ». Les
+# paquets hors dépôts (AUR compilés au build) sont ignorés.
+: > "$work/maj.txt"
+awk 'NR == FNR {avail[$1] = $2 " " $3; next}
+     ($1 in avail) {split(avail[$1], a, " "); if (a[1] != $2) print $1, $2, a[1], a[2]}' \
+    "$work/depots.txt" "$work/image.txt" \
+    | while read -r name old new repo; do
+        (( $(vercmp "$new" "$old") > 0 )) && echo "$name $old $new $repo"
+    done > "$work/maj.txt"
+count="$(wc -l < "$work/maj.txt")"
+log "Paquets à mettre à jour : $count"
+
+# Âge de l'image (AAAA.MM.JJ au début de la version)
+image_date="$(cut -d. -f1-3 <<<"$image_version" | tr . -)"
+age_days=$(( ( $(date +%s) - $(date -d "$image_date" +%s 2>/dev/null || date +%s) ) / 86400 ))
+
+# --- 2. Décision ---
+if (( force )); then
+    decision='{"mettre_a_jour": true, "raison": "lancé avec --force", "paquets_importants": []}'
+elif (( count == 0 )); then
+    log "Rien de nouveau dans les dépôts."
+    exit 0
+else
+    prompt="Tu décides si l'image système d'aibox (CachyOS en RAM : jeux Steam sur TV, LLM locaux avec Lemonade sur un AMD Ryzen AI Max+ 395 / Radeon 8060S) doit être reconstruite cette nuit. Reconstruire coûte quelques minutes et demande un redémarrage plus tard, décidé par l'utilisateur.
+
+Image installée : $image_version (âge : $age_days jours). $count paquets ont une version plus récente :
+$(head -n 300 "$work/maj.txt")
+
+Mets à jour (true) si au moins un de ces cas : correctif de sécurité probable (openssl, openssh, glibc, sudo, systemd, curl, gnutls, nss, polkit, linux-firmware, noyau…) ; noyau linux-cachyos ; pilotes graphiques (mesa, vulkan-radeon, lib32-mesa, linux-firmware-amdgpu, ROCm) ; jeux (steam, gamescope, pipewire, wireplumber) ; lemonade-server ; ou image de plus de 21 jours avec plusieurs mises à jour. Sinon (seulement des paquets mineurs, rien d'important), réponds false.
+
+Réponds UNIQUEMENT par un objet JSON, sans texte autour :
+{\"mettre_a_jour\": true|false, \"raison\": \"une ou deux phrases en français\", \"paquets_importants\": [\"nom ancienne → nouvelle\", …]}"
+    body="$(jq -n --arg m "$MODEL" --arg p "$prompt" \
+        '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000}')"
+    response="$(curl -sf -m 1200 -H 'Content-Type: application/json' \
+        -d "$body" "$LEMONADE_URL/chat/completions")" \
+        || fail "Lemonade ne répond pas ($LEMONADE_URL, modèle $MODEL) : pas de décision, pas de build."
+    # Le modèle peut réfléchir avant de répondre : on garde le dernier objet JSON
+    # qui contient mettre_a_jour (booléen).
+    decision="$(jq -r '.choices[0].message.content // ""' <<<"$response" | python3 -I -c '
+import json, re, sys
+text = re.sub(r"<think>.*?</think>", "", sys.stdin.read(), flags=re.S)
+found = None
+for i, c in enumerate(text):
+    if c != "{":
+        continue
+    try:
+        d, _ = json.JSONDecoder().raw_decode(text[i:])
+    except ValueError:
+        continue
+    if isinstance(d, dict) and isinstance(d.get("mettre_a_jour"), bool):
+        found = d
+if found is not None:
+    print(json.dumps(found, ensure_ascii=False))
+')"
+    [[ -n "$decision" ]] || fail "réponse du LLM illisible (pas de JSON avec mettre_a_jour)."
+fi
+jq --arg v "$image_version" --arg c "$count" '. + {image: $v, paquets: ($c | tonumber), date: (now | todate)}' \
+    <<<"$decision" > "$state/derniere-decision.json"
+cp "$work/maj.txt" "$state/derniers-paquets.txt"
+update="$(jq -r '.mettre_a_jour' <<<"$decision")"
+reason="$(jq -r '.raison // ""' <<<"$decision")"
+important="$(jq -r '(.paquets_importants // [])[:12] | map("• " + .) | join("\n")' <<<"$decision")"
+log "Décision : $update — $reason"
+
+if [[ "$update" != "true" ]]; then
+    exit 0
+fi
+if (( dry_run )); then
+    log "--dry-run : pas de build."
+    exit 0
+fi
+
+# --- 3. Build ---
+[[ -z "$(git -C "$REPO" status --porcelain)" ]] \
+    || fail "le dépôt a des changements non commités : build reporté (l'image serait -dirty)."
+free_gb=$(( $(df -BG --output=avail "$REPO" | tail -1 | tr -dc 0-9) ))
+(( free_gb >= MIN_FREE_GB )) || fail "pas assez de place pour construire ($free_gb Go libres, $MIN_FREE_GB nécessaires)."
+
+log "Construction de l'image…"
+if ! (cd "$REPO" && nice -n 10 ./build.sh > "$state/build.log" 2>&1); then
+    fail "le build a échoué : voir $state/build.log
+$(grep -m3 -i -E 'error|erreur|cannot' "$state/build.log")"
+fi
+iso="$(readlink -f "$REPO/out/aibox-latest.iso")"
+new_version="$(sed -n 's/^Version : //p' "$state/build.log" | tail -1)"
+[[ -n "$new_version" && "$iso" == *"aibox-$new_version-x86_64.iso" ]] \
+    || fail "ISO construite introuvable ($iso, version « $new_version »)."
+[[ "$new_version" != *-dirty ]] || fail "image -dirty ($new_version) : pas installée."
+
+# --- Vérification de l'image (docs/iso.md, « Vérifier une image ») ---
+m="$work/iso"
+mkdir -p "$m/iso" "$m/root"
+check="$work/verification.txt"
+sudo sh -c "mount -o loop,ro '$iso' '$m/iso' && mount -t erofs -o loop,ro '$m/iso/aibox/x86_64/airootfs.erofs' '$m/root'" \
+    || fail "montage de l'ISO $new_version impossible."
+{
+    [[ "$(cat "$m/iso/aibox/version")" == "$new_version" ]] || echo "version de l'image différente de $new_version"
+    # Droits déclarés dans profiledef.sh (piège déjà rencontré : scripts non exécutables)
+    grep -oP '^\s*\["\K[^"]+"\]="[0-9]+:[0-9]+:[0-7]+' "$REPO/archiso/profiledef.sh" | while IFS= read -r line; do
+        path="${line%%\"]*}" mode="${line##*:}"
+        [[ "$path" == */ ]] && continue
+        actual="$(sudo stat -c %a "$m/root$path" 2>/dev/null)" || { echo "absent : $path"; continue; }
+        [[ "$actual" == "$mode" ]] || echo "droits de $path : $actual au lieu de $mode"
+    done
+    # Les paquets à mettre à jour sont au moins à la version attendue
+    while read -r name _old new _repo; do
+        got="$(awk -v n="$name" '$1 == n {print $2; exit}' "$m/iso/aibox/pkglist.x86_64.txt")"
+        [[ -n "$got" ]] && (( $(vercmp "$got" "$new") >= 0 )) || echo "paquet $name : ${got:-absent} au lieu de $new"
+    done < "$work/maj.txt"
+} > "$check" 2>&1
+sudo umount "$m/root"; sleep 1; sudo umount "$m/iso" || sudo umount -l "$m/iso"
+[[ -s "$check" ]] && fail "image $new_version refusée à la vérification :
+$(head -n 10 "$check")"
+log "Image $new_version vérifiée."
+
+if (( no_install )); then
+    log "--no-install : image construite et vérifiée, pas installée ($iso)."
+    exit 0
+fi
+
+# --- 4. Installation (la version précédente reste au menu de démarrage) ---
+sudo aibox-update-boot --iso "$iso" > "$state/installation.log" 2>&1 \
+    || fail "aibox-update-boot a échoué : voir $state/installation.log"
+
+notify "Nouvelle image installée : $new_version (remplace $image_version, $count paquets mis à jour).
+Raison : $reason
+${important:+$important
+}Elle démarrera au prochain allumage ; l'ancienne reste au menu. Arrêt complet puis rallumage conseillé (pas de redémarrage à chaud)."
