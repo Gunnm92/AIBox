@@ -207,11 +207,16 @@ sudo sh -c "mount -o loop,ro '$iso' '$m/iso' && mount -t erofs -o loop,ro '$m/is
     || fail "montage de l'ISO $new_version impossible."
 {
     [[ "$(cat "$m/iso/aibox/version")" == "$new_version" ]] || echo "version de l'image différente de $new_version"
-    # Droits déclarés dans profiledef.sh (piège déjà rencontré : scripts non exécutables)
+    # Droits déclarés dans profiledef.sh (piège déjà rencontré : scripts non
+    # exécutables). Un fichier du dépôt doit être dans l'image ; un fichier créé
+    # par build.sh depuis keys/ (nas.cred…) est facultatif.
     grep -oP '^\s*\["\K[^"]+"\]="[0-9]+:[0-9]+:[0-7]+' "$REPO/archiso/profiledef.sh" | while IFS= read -r line; do
         path="${line%%\"]*}" mode="${line##*:}"
         [[ "$path" == */ ]] && continue
-        actual="$(sudo stat -c %a "$m/root$path" 2>/dev/null)" || { echo "absent : $path"; continue; }
+        if ! actual="$(sudo stat -c %a "$m/root$path" 2>/dev/null)"; then
+            [[ -e "$REPO/archiso/airootfs$path" ]] && echo "absent : $path"
+            continue
+        fi
         [[ "$actual" == "$mode" ]] || echo "droits de $path : $actual au lieu de $mode"
     done
     # Les paquets à mettre à jour sont au moins à la version attendue
