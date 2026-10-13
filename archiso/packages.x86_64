@@ -86,7 +86,9 @@ podman-docker
 
 # Outils de base (petits). Le reste (base-devel, compilateurs, SDK, vim…) va dans
 # des environnements Distrobox, sur le disque : base-devel seul pèserait 478 Mo.
+# make seul (2 Mo) : pour les Makefile de projets qui ne font que lancer des commandes.
 git
+make
 github-cli
 distrobox
 jq

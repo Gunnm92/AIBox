@@ -96,6 +96,7 @@ firmwares allégés : linux-firmware complet pèse plus d'1 Go. On ne garde que 
 mesa, vulkan-radeon et leurs versions lib32 ;
 networkmanager, bluez, openssh, flatpak, fuse2, fuse3, zram-generator. Plus le démarrage EROFS lz4hc et copytoram.
 cachyos-hooks (13/10/2026) : ses crochets pacman réécrivent os-release, lsb-release et issue au nom de CachyOS (ID=cachyos, ID_LIKE=arch), comme sur une installation CachyOS ; mkarchiso y ajoute ensuite IMAGE_ID et IMAGE_VERSION.
+make (13/10/2026) : seul, sans compilateur, pour les Makefile de projets ; la compilation reste dans Distrobox.
 /etc/pacman.conf de l'image (13/10/2026) : celui du paquet pacman, avec les dépôts du build (cachyos, core, extra, multilib) ; avant, le système n'avait que core et extra, et un pacman -S en RAM ne trouvait ni les paquets CachyOS ni multilib.
 Ligne de commande du noyau : copytoram=y, cow_spacesize=1G, ttm.pages_limit=28835840, ttm.page_pool_size=4194304.
 BIOS : UMA au minimum (512 Mo), Secure Boot désactivé.
