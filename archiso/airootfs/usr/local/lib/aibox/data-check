@@ -22,8 +22,9 @@ if [[ -e /run/aibox/data-present ]]; then
     for d in .local/share/applications .local/share/flatpak/exports/share/applications; do
         user_dir "$d"
     done
-    # Lemonade : modèles (cache Hugging Face) et backends, sur @models.
-    install -d -o default -g default /srv/models/huggingface /srv/models/lemonade
+    # Lemonade : modèles (cache Hugging Face) et backends ; ComfyUI (conteneur
+    # Podman de default) : ses modèles. Sur @models.
+    install -d -o default -g default /srv/models/huggingface /srv/models/lemonade /srv/models/comfyui
     # Images des machines virtuelles (GNOME Boxes, virt-manager en Flatpak) :
     # sans copie à l'écriture, sinon btrfs fragmente ces gros fichiers réécrits
     # en place. L'attribut ne vaut que pour les fichiers créés ensuite : les
