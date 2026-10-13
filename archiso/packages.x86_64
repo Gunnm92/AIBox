@@ -8,6 +8,9 @@ cachyos-keyring
 cachyos-mirrorlist
 cachyos-v3-mirrorlist
 cachyos-v4-mirrorlist
+# Nom CachyOS dans os-release, lsb-release et issue (crochets pacman), comme une
+# installation CachyOS ; sinon le paquet filesystem d'Arch annonce « Arch Linux ».
+cachyos-hooks
 
 # Firmwares allégés (pas de linux-firmware complet), d'après le matériel de la machine :
 #   amdgpu    GPU Radeon 8060S
