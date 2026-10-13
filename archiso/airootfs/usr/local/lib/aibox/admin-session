@@ -72,12 +72,16 @@ wlr-randr --output HEADLESS-1 --custom-mode 1920x1080 &
 systemctl --user start xdg-desktop-autostart.target &
 EOT
 
-# Panneau XFCE : configuration par défaut d'aibox si l'utilisateur n'en a pas
+# Panneau XFCE (barre du haut et dock) : configuration par défaut d'aibox si
+# l'utilisateur n'en a pas
 # (évite la question « configuration par défaut ou panneau vide ? »).
 panel="${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 if [[ ! -e "$panel" ]]; then
     mkdir -p "${panel%/*}"
     cp /etc/aibox/xfce4-panel.xml "$panel"
+    # Applis épinglées du dock (greffon docklike, plugin-20 de ce panneau)
+    mkdir -p "${HOME}/.config/xfce4/panel"
+    cp /etc/aibox/docklike-20.rc "${HOME}/.config/xfce4/panel/docklike-20.rc"
 fi
 
 # libadwaita (applis GNOME récentes, Bazaar, Gear Lever…) ignore le thème GTK

@@ -97,6 +97,7 @@ mesa, vulkan-radeon et leurs versions lib32 ;
 networkmanager, bluez, openssh, flatpak, fuse2, fuse3, zram-generator. Plus le démarrage EROFS lz4hc et copytoram.
 cachyos-hooks (13/10/2026) : ses crochets pacman réécrivent os-release, lsb-release et issue au nom de CachyOS (ID=cachyos, ID_LIKE=arch), comme sur une installation CachyOS ; mkarchiso y ajoute ensuite IMAGE_ID et IMAGE_VERSION.
 make (13/10/2026) : seul, sans compilateur, pour les Makefile de projets ; la compilation reste dans Distrobox.
+Dock du bureau d'administration (13/10/2026) : second panneau XFCE en bas, centré, masquage intelligent, greffon xfce4-docklike-plugin (applis épinglées et fenêtres ouvertes, via libxfce4windowing, compatible labwc ; Plank, prévu par WhiteSur, ne marche que sous X11) ; la liste des fenêtres quitte la barre du haut. Défauts : /etc/aibox/xfce4-panel.xml et /etc/aibox/docklike-20.rc, copiés par admin-session seulement si l'utilisateur n'a pas de panneau.
 /etc/pacman.conf de l'image (13/10/2026) : celui du paquet pacman, avec les dépôts du build (cachyos, core, extra, multilib) ; avant, le système n'avait que core et extra, et un pacman -S en RAM ne trouvait ni les paquets CachyOS ni multilib.
 Ligne de commande du noyau : copytoram=y, cow_spacesize=1G, ttm.pages_limit=28835840, ttm.page_pool_size=4194304.
 BIOS : UMA au minimum (512 Mo), Secure Boot désactivé.

@@ -49,6 +49,8 @@ nginx
 xfce4-panel
 # Volume : icône du panneau et mixeur (son de la manette, sorties HDMI…)
 xfce4-pulseaudio-plugin
+# Dock en bas du bureau (applis épinglées et fenêtres ouvertes), compatible Wayland
+xfce4-docklike-plugin
 pavucontrol
 xfce4-settings
 # Seulement pour Paramètres → Session et démarrage (applications au démarrage) ;

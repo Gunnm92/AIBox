@@ -118,7 +118,7 @@ Le code commun avec SteamBox est repris, pas réécrit (sous-module git figé su
 Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtuels) :
 
 - **Système en RAM** : l'ISO démarre, copie le système en RAM, la clé peut être retirée.
-- **Bureau d'administration** XFCE complet en français (panneau, bureau, paramètres, Thunar, réseau), par noVNC en HTTPS avec mot de passe ; l'écran s'adapte à la fenêtre du navigateur.
+- **Bureau d'administration** XFCE complet en français (barre du haut, dock en bas façon macOS, bureau, paramètres, Thunar, réseau), par noVNC en HTTPS avec mot de passe ; l'écran s'adapte à la fenêtre du navigateur.
 - **Disque de données** `AIBOXDATA` : `/home`, Flatpak, réseau, Bluetooth, clés SSH, cache pacman, `/var/tmp`, swap et modèles persistent ; sans disque, mode éphémère.
 - **Applications** : magasin **Bazaar** (Flathub) et **Gear Lever** (AppImage), installés automatiquement sur le disque ; les applis s'ajoutent au menu XFCE.
 
