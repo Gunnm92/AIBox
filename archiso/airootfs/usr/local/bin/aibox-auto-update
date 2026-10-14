@@ -41,7 +41,7 @@ done
 # Réglages par défaut
 REPO="${HOME}/Workspace/AIBox"
 LEMONADE_URL="http://127.0.0.1:13305/api/v1"
-MODEL="Qwen3.8-27B-GGUF"
+MODEL="Qwen3.8-35B-A3B-Distill"
 NOTIFY_TO="discord"
 MIN_FREE_GB=12
 for conf in /etc/aibox/auto-update.conf "${HOME}/.config/aibox/auto-update.conf"; do
@@ -142,7 +142,7 @@ Mets à jour (true) si au moins un de ces cas : correctif de sécurité probable
 Réponds UNIQUEMENT par un objet JSON, sans texte autour :
 {\"mettre_a_jour\": true|false, \"raison\": \"une ou deux phrases en français\", \"paquets_importants\": [\"nom ancienne → nouvelle\", …]}"
     body="$(jq -n --arg m "$MODEL" --arg p "$prompt" \
-        '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000}')"
+        '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000, chat_template_kwargs: {enable_thinking: false}}')"
     response="$(curl -sf -m 1200 -H 'Content-Type: application/json' \
         -d "$body" "$LEMONADE_URL/chat/completions")" \
         || fail "Lemonade ne répond pas ($LEMONADE_URL, modèle $MODEL) : pas de décision, pas de build."
