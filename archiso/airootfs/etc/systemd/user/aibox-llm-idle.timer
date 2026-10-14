@@ -1,0 +1,9 @@
+[Unit]
+Description=Vérifie toutes les 5 minutes les modèles GPU inutilisés de Lemonade
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

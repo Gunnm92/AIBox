@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# llm-unload : décharge les modèles GPU de Lemonade, qui ne le fait jamais seul
+# (pas de délai d'inactivité ; max_loaded_models ne fait que remplacer un modèle).
+#
+#   llm-unload --idle [--dry-run]   modèles GPU inutilisés depuis IDLE_MINUTES
+#                                   (aibox-llm-idle.timer, toutes les 5 minutes)
+#   llm-unload --tv [--dry-run]     tous les modèles GPU, si TV_UNLOAD=1
+#                                   (démarrage de aibox-tv.service : mémoire pour le jeu)
+#
+# Jamais déchargés : les modèles d'autres appareils (NPU : petits, sans GPU), les
+# modèles occupés (is_busy, is_streaming) et les modèles épinglés (pinned).
+# Réglages : /etc/aibox/llm.conf, surchargés par ~/.config/aibox/llm.conf.
+set -uo pipefail
+
+LEMONADE_URL="http://127.0.0.1:13305/api/v1"
+IDLE_MINUTES=30
+TV_UNLOAD=1
+UNLOAD_DEVICES="gpu"
+for conf in /etc/aibox/llm.conf "${HOME}/.config/aibox/llm.conf"; do
+    # shellcheck source=/dev/null
+    [[ -r "$conf" ]] && . "$conf"
+done
+
+mode="" dry_run=0
+for arg in "$@"; do
+    case "$arg" in
+        --idle|--tv) mode="${arg#--}" ;;
+        --dry-run) dry_run=1 ;;
+        *) echo "Usage : llm-unload --idle|--tv [--dry-run]" >&2; exit 2 ;;
+    esac
+done
+[[ -n "$mode" ]] || { echo "Usage : llm-unload --idle|--tv [--dry-run]" >&2; exit 2; }
+[[ "$mode" == tv && "$TV_UNLOAD" != 1 ]] && exit 0
+
+# Lemonade arrêté (mode éphémère, pas de disque de modèles) : rien à faire.
+health="$(curl -sf -m 5 "$LEMONADE_URL/health")" || exit 0
+
+# last_use est en millisecondes depuis le démarrage de lemond : l'heure
+# « actuelle » dans la même unité est l'âge du processus.
+now_ms=0
+if [[ "$mode" == idle ]]; then
+    pid="$(systemctl --user show -p MainPID --value lemond.service 2>/dev/null)"
+    [[ -n "$pid" && "$pid" != 0 ]] || exit 0
+    now_ms=$(( $(ps -o etimes= -p "$pid" | tr -d ' ') * 1000 ))
+fi
+
+mapfile -t targets < <(jq -r --arg devices "$UNLOAD_DEVICES" --arg mode "$mode" \
+    --argjson now "$now_ms" --argjson idle "$(( IDLE_MINUTES * 60000 ))" '
+    .all_models_loaded[]?
+    | select(.device as $d | ($devices | split(" ") | index($d)))
+    | select((.is_busy or .is_streaming or .pinned) | not)
+    | select($mode == "tv" or ($now - .last_use) > $idle)
+    | .model_name' <<<"$health")
+
+for model in "${targets[@]}"; do
+    if (( dry_run )); then
+        echo "À décharger ($mode) : $model"
+        continue
+    fi
+    if curl -sf -m 30 -X POST "$LEMONADE_URL/unload" -H 'Content-Type: application/json' \
+        -d "$(jq -n --arg m "$model" '{model_name: $m}')" >/dev/null; then
+        echo "Déchargé ($mode) : $model"
+    else
+        echo "Échec du déchargement ($mode) : $model" >&2
+    fi
+done

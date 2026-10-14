@@ -29,6 +29,9 @@ Environment=XDG_DATA_DIRS=/home/default/.local/share/flatpak/exports/share:/var/
 # Écran rallumé, puis mis en veille à l'arrêt (fbcon, DPMS) : la TV perd le
 # signal et se met d'elle-même en veille. « + » : en root.
 ExecStartPre=+/bin/sh -c 'echo 0 > /sys/class/graphics/fb0/blank || true'
+# Mémoire GPU pour le jeu : modèles GPU de Lemonade déchargés (TV_UNLOAD,
+# /etc/aibox/llm.conf) ; « - » : un échec ne bloque pas la session.
+ExecStartPre=-/usr/local/lib/aibox/llm-unload --tv
 ExecStart=/usr/local/lib/aibox/tv-session
 # À l'arrêt, labwc efface l'environnement d'activation : on le remet sur l'administration.
 ExecStopPost=/usr/local/lib/aibox/activation-env-admin

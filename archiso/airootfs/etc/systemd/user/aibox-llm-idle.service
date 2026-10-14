@@ -1,0 +1,7 @@
+[Unit]
+Description=Décharge les modèles GPU de Lemonade inutilisés (llm-unload --idle)
+After=lemond.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/aibox/llm-unload --idle
