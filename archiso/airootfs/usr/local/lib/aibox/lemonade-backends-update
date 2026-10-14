@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# lemonade-backends-update : met à jour les moteurs de Lemonade qu'une nouvelle
+# version du serveur déclare périmés (state « update_required »).
+#
+# Une image aibox peut apporter un lemonade-server plus récent que les moteurs
+# téléchargés sur le disque (/srv/models/lemonade/bin) : Lemonade masque alors
+# leurs modèles (14/10/2026 : FastFlowLM 1.0.6, modèles NPU de Hermes et Whisper
+# invisibles). Lancé à chaque démarrage par aibox-lemonade-backends.service.
+# Seuls les moteurs déjà installés sont mis à jour, jamais de nouveaux.
+set -uo pipefail
+
+url="http://127.0.0.1:13305/api/v1"
+
+# Lemonade démarre avec la session : on l'attend (2 minutes au plus).
+for _ in $(seq 1 60); do
+    curl -sf -m 3 "$url/health" >/dev/null && break
+    sleep 2
+done
+info="$(curl -sf -m 10 "$url/system-info")" || { echo "Lemonade ne répond pas : rien à faire." >&2; exit 0; }
+
+mapfile -t stale < <(jq -r '.recipes | to_entries[] | .key as $r
+    | .value.backends // {} | to_entries[]
+    | select(.value.state == "update_required") | "\($r):\(.key)"' <<<"$info")
+
+if (( ${#stale[@]} == 0 )); then
+    echo "Moteurs de Lemonade à jour."
+    exit 0
+fi
+status=0
+for backend in "${stale[@]}"; do
+    echo "Mise à jour du moteur $backend…"
+    if lemonade backends install "$backend"; then
+        echo "Moteur $backend à jour."
+    else
+        echo "Échec de la mise à jour de $backend." >&2
+        status=1
+    fi
+done
+exit "$status"

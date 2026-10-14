@@ -1,0 +1,16 @@
+[Unit]
+Description=Met à jour les moteurs de Lemonade périmés après une nouvelle image
+After=lemond.service network-online.target
+Wants=lemond.service
+# Les moteurs sont sur le disque de modèles, comme Lemonade.
+ConditionPathIsMountPoint=/srv/models
+
+[Service]
+Type=oneshot
+Slice=llm.slice
+ExecStart=/usr/local/lib/aibox/lemonade-backends-update
+# Téléchargements de quelques centaines de Mo.
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=default.target
