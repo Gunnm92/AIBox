@@ -240,7 +240,7 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 
 | Quoi | Comment |
 |---|---|
-| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | nouvelle ISO (`./build.sh`), puis `sudo aibox-update-boot --iso out/aibox-….iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
+| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | commit poussé sur GitHub, nouvelle ISO (`sudo aibox-build`), puis `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
 | Applis Flatpak (Moonlight, Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
 | Steam, jeux, Proton | Steam se met à jour seul (dans le home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher |
 | AppImage | Gear Lever |
@@ -251,16 +251,17 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 
 Un `pacman -Syu` sur la machine ne sert à rien : il ne modifie que la RAM et disparaît au redémarrage.
 
-**Mise à jour automatique de l'image** : chaque nuit vers 4 h, `aibox-auto-update` compare les paquets de l'image installée aux dépôts, demande au LLM local (Lemonade) si la mise à jour vaut la peine (sécurité, noyau, pilotes graphiques, Steam, Lemonade…), et si oui reconstruit l'image, la vérifie et l'installe sur AIBOXBOOT. Message sur Discord (Hermes) ; jamais de redémarrage automatique. Détails : [docs/exploitation.md](docs/exploitation.md#mise-à-jour-automatique-de-limage).
+**Mise à jour automatique de l'image** : chaque nuit vers 4 h, `aibox-auto-update` construit les nouveaux commits poussés sur GitHub ; sinon, il compare les paquets de l'image installée aux dépôts et demande au LLM local (Lemonade) si la mise à jour vaut la peine (sécurité, noyau, pilotes graphiques, Steam, Lemonade…). Si oui, il reconstruit l'image (`aibox-build`), la vérifie et l'installe sur AIBOXBOOT. Message sur Discord (Hermes) ; jamais de redémarrage automatique. Détails : [docs/exploitation.md](docs/exploitation.md#mise-à-jour-automatique-de-limage).
 
-**Construire l'ISO sur aibox lui-même** (Ubuntu et son Docker n'existent plus) : il faut le disque de données (le stockage de Podman y est mis, dans `/var/lib/aibox/state/containers` ; environ 10 Go pendant le build). Le dépôt et ses secrets sont sauvegardés sur le NAS (`Workspace/AIBox`, avec `keys/`) :
+**Construire l'ISO sur aibox lui-même** : c'est le service `aibox-build`. Il construit ce qui est poussé sur GitHub (`origin/main`), dans sa propre copie du dépôt, avec ses secrets et ses caches sur le disque de données (`/var/lib/aibox/state/build/`, sous-volume `@state` ; le stockage de Podman est dans `/var/lib/aibox/state/containers`). Il faut environ 12 Go libres. Le dossier de travail `~/Workspace/AIBox` ne sert qu'à développer :
 
 ```sh
-rsync -a /mnt/Workspace/AIBox/ ~/Workspace/AIBox/    # une fois (keys/ compris)
-cd ~/Workspace/AIBox && git pull
-./build.sh                                            # Podman en root (sudo)
-sudo aibox-update-boot --iso out/aibox-latest.iso   # puis arrêt complet et rallumage
+sudo aibox-build --import ~/Workspace/AIBox            # une fois : keys/ et caches de work/
+sudo aibox-build                                        # build de origin/main (Podman en root)
+sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso   # puis arrêt complet et rallumage
 ```
+
+Les secrets sont sauvegardés sur le NAS (`Workspace/AIBox/keys/`) : pour une machine neuve, `rsync -a /mnt/Workspace/AIBox/ ~/Workspace/AIBox/`, puis `--import`.
 
 Si la nouvelle version pose problème : choisir la précédente au menu de démarrage, sinon la clé Ventoy ([docs/iso.md](docs/iso.md), « Revenir en arrière »).
 

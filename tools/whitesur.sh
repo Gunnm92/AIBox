@@ -22,14 +22,15 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 gtk_ref="${WHITESUR_REF:-d5782652d412137e26fb8ff55b55a5572e4c6995}"
 icons_ref="${WHITESUR_ICONS_REF:-73d8040da51a9ed74e47c7366e7e9ff437601a5c}"
 cursors_ref="${WHITESUR_CURSORS_REF:-e190baf618ed95ee217d2fd45589bd309b37672b}"
-out="$root/work/dl/whitesur-${gtk_ref:0:7}-${icons_ref:0:7}-${cursors_ref:0:7}.tar.zst"
+dl="${AIBOX_WORK:-$root/work}/dl"
+out="$dl/whitesur-${gtk_ref:0:7}-${icons_ref:0:7}-${cursors_ref:0:7}.tar.zst"
 
 if [[ ! -s "$out" ]]; then
     echo "Compilation de WhiteSur (une fois, gardé dans work/dl/)…" >&2
-    mkdir -p "$root/work/dl"
+    mkdir -p "$dl"
     # pacman -Sy sans -u dans le conteneur : son image de base a parfois des
     # paquets plus récents que les miroirs (rétrogradation de zstd, hook en échec).
-    engine run --rm -v "$root/work/dl:/out" \
+    engine run --rm -v "$dl:/out" \
         -e GTK_REF="$gtk_ref" -e ICONS_REF="$icons_ref" -e CURSORS_REF="$cursors_ref" \
         -e OUT="/out/${out##*/}" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
         "$image" bash -euo pipefail -c '

@@ -5,13 +5,13 @@ Ce guide s'adresse à l'agent (LLM local) comme à l'utilisateur. Suis les étap
 ## 0. Principe
 
 - Le système qui tourne est une **image en lecture seule chargée en RAM**. Toute modification de `/etc` ou de `/usr`, et tout `pacman -S`, est **perdu au redémarrage**.
-- Pour un changement durable, on **modifie le dépôt**, on **reconstruit l'image** (`./build.sh`), puis on **l'installe** sur la partition `AIBOXBOOT` (`aibox-update-boot`). Elle sert ensuite au démarrage suivant.
+- Pour un changement durable, on **modifie le dépôt**, on le **pousse sur GitHub**, on **reconstruit l'image** (`sudo aibox-build`, qui construit `origin/main`), puis on **l'installe** sur la partition `AIBOXBOOT` (`aibox-update-boot`). Elle sert ensuite au démarrage suivant.
 - Les données (`/home`, Flatpak, modèles…) ne sont jamais touchées par ces opérations.
 
 Cycle complet :
 
 ```
-modifier le dépôt → tester en RAM → commit → ./build.sh → vérifier l'image → aibox-update-boot → arrêt + rallumage → vérifier
+modifier le dépôt → tester en RAM → commit → push (avec accord) → sudo aibox-build → vérifier l'image → aibox-update-boot → arrêt + rallumage → vérifier
 ```
 
 ## 1. Avant de commencer
@@ -35,7 +35,7 @@ cat /proc/cmdline | grep -o 'archisobasedir=[^ ]*'                # version qui 
 | Ajouter ou retirer un paquet | `archiso/packages.x86_64` | un paquet par ligne, avec un commentaire qui dit pourquoi ; le paquet doit exister dans les dépôts CachyOS ou Arch |
 | Ajouter ou modifier un fichier de configuration | `archiso/airootfs/<chemin réel>` (par exemple `archiso/airootfs/etc/aibox/nginx.conf`) | les droits : voir plus bas |
 | Ajouter un **script exécutable** | `archiso/airootfs/usr/local/bin/…` (commandes) ou `…/usr/local/lib/aibox/…` (internes) | **le déclarer dans `file_permissions` de `archiso/profiledef.sh`** (`"0:0:755"`), sauf sous `/usr/local/lib/aibox/`, déjà couvert |
-| Ajouter un fichier secret | `keys/` + une ligne `install -m 0600 …` dans `build.sh` | et une entrée `"0:0:600"` dans `profiledef.sh` |
+| Ajouter un fichier secret | `/var/lib/aibox/state/build/keys/` (root, 600) + une ligne `install -m 0600 "$KEYS/…"` dans `build.sh` | et une entrée `"0:0:600"` dans `profiledef.sh` |
 | Ajouter un service système | `archiso/airootfs/etc/systemd/system/x.service` | l'activer avec un lien : `ln -s ../x.service archiso/airootfs/etc/systemd/system/multi-user.target.wants/x.service` |
 | Ajouter un service utilisateur | `archiso/airootfs/etc/systemd/user/x.service` | lien dans `…/etc/systemd/user/default.target.wants/` |
 | Changer les options du noyau | `kernel_params_x86_64` dans `archiso/profiledef.sh` ; `copytoram` dans `archiso/grub/grub.cfg` | `aibox-update-boot` reprend les options de l'ISO |
@@ -94,27 +94,31 @@ Co-Authored-By: …
 EOF
 ```
 
-Ne pousse pas (`git push`) sans l'accord de l'utilisateur.
+Ne pousse pas (`git push`) sans l'accord de l'utilisateur. Mais `aibox-build` ne construit **que ce qui est poussé** sur `Gunnm92/AIBox` : sans push, pas d'image.
 
 ## 5. Construire
 
 ```sh
-nice -n 10 ./build.sh > /tmp/build.log 2>&1; echo "exit=$?"
-tail -3 /tmp/build.log                     # → ISO : out/aibox-<version>-x86_64.iso (lien : out/aibox-latest.iso)
+sudo aibox-build                           # ou : sudo systemctl start aibox-build
+cat /var/lib/aibox/state/build/dernier-build.json                 # statut, version, commit, chemin de l'ISO, durée
 ```
 
-- La durée est de 3 à 6 minutes. Lance-le en arrière-plan si ton outil le permet.
-- Il faut environ 10 Go libres sur le disque de données.
-- Un échec affiche son erreur à la fin de `/tmp/build.log`. Cherche la première ligne `error` ou `cannot`.
-- **Version** : `AAAA.MM.JJ.HHMM-<commit>`, par exemple `2026.10.10.2145-cf122c2`, avec la date et l'heure du build et le commit du dépôt. Le suffixe `-dirty` veut dire que `archiso/` ou `build.sh` avaient des changements non commités : commite d'abord. `AIBOX_VERSION=… ./build.sh` impose une version.
-- `out/` garde les 3 ISO les plus récentes ; `out/aibox-latest.iso` pointe sur la dernière.
+- `aibox-build` remet sa propre copie du dépôt (`/var/lib/aibox/state/build/src`) à `origin/main`, puis lance `build.sh` avec les secrets de `/var/lib/aibox/state/build/keys` et les caches de `/var/lib/aibox/state/build/work`. Le dossier de travail `~/Workspace/AIBox` n'intervient pas : il peut avoir des changements en cours.
+- La durée est d'environ 1 à 2 minutes avec les caches (paquets, xrdp, noVNC, WhiteSur), et de 3 à 6 minutes sans. Lance-le en arrière-plan si ton outil le permet.
+- Il faut au moins 12 Go libres sur le disque de données. `aibox-build` refuse de construire sinon, et aussi en mode éphémère.
+- Un échec affiche son erreur à la fin de `/var/lib/aibox/state/build/build.log`. Cherche la première ligne `error` ou `cannot`.
+- **Version** : `AAAA.MM.JJ.HHMM-<commit>`, par exemple `2026.10.10.2145-cf122c2`, avec la date et l'heure du build et le commit construit. Une image d'`aibox-build` n'est jamais `-dirty`. `--ref <branche ou commit>` construit autre chose que `main`.
+- `/var/lib/aibox/state/build/out/` garde les 3 ISO les plus récentes ; `aibox-latest.iso` pointe sur la dernière.
+- **Première fois** : `sudo aibox-build --import ~/Workspace/AIBox` reprend `keys/` et les caches de `work/`.
+- **Essai d'un commit non poussé** : `sudo AIBOX_BUILD_REMOTE=$HOME/Workspace/AIBox aibox-build` (l'adresse de GitHub revient au build suivant).
+- **Build à la main dans le dépôt**, pour un essai en VM : `./build.sh` utilise `keys/`, `work/` et `out/` du dépôt, et l'image peut être `-dirty`. Ne l'installe pas.
 
 ## 6. Vérifier l'image
 
 Monte l'ISO, puis son système (EROFS), en lecture seule, et contrôle ce que tu as modifié.
 
 ```sh
-iso=out/aibox-latest.iso
+iso=/var/lib/aibox/state/build/out/aibox-latest.iso
 m=$(mktemp -d); mkdir -p $m/iso $m/root
 sudo sh -c "mount -o loop,ro $iso $m/iso && mount -t erofs -o loop,ro $m/iso/aibox/x86_64/airootfs.erofs $m/root"
 cat $m/iso/aibox/version                                  # version (date, heure, commit)
@@ -130,7 +134,7 @@ Lance `mount` et `umount` dans le **même** `sudo sh -c "…"` si ton shell tour
 
 ```sh
 sudo blkid -L AIBOXBOOT                                   # la partition existe
-sudo aibox-update-boot --iso out/aibox-latest.iso
+sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
 ```
 
 Le script copie l'image dans `AIBOXBOOT/aibox-<version>/`, vérifie sa somme SHA-512, écrit les entrées de systemd-boot et la met par défaut. Il garde les **2** versions les plus récentes (`--keep 2`).
@@ -154,13 +158,11 @@ Puis vérifie précisément ce qui a changé : le service, le fichier, le compor
 
 ## 10. Revenir en arrière
 
-1. **Au menu de démarrage** (systemd-boot, 3 secondes) : choisis la version précédente. Pour qu'elle redevienne la version par défaut, réinstalle son ISO avec `aibox-update-boot --iso` : `out/` garde les 3 dernières.
+1. **Au menu de démarrage** (systemd-boot, 3 secondes) : choisis la version précédente. Pour qu'elle redevienne la version par défaut, réinstalle son ISO avec `aibox-update-boot --iso` : `/var/lib/aibox/state/build/out/` garde les 3 dernières.
 2. **Reconstruire une version précédente** depuis git :
    ```sh
-   git log --oneline                       # repérer le bon commit
-   git stash -u                            # si des changements sont en cours
-   git checkout <commit> && ./build.sh && sudo aibox-update-boot --iso out/aibox-latest.iso
-   git checkout main
+   git log --oneline                       # repérer le bon commit (poussé sur GitHub)
+   sudo aibox-build --ref <commit> && sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
    ```
    L'ISO porte la date du jour et le commit choisi.
 3. **Clé Ventoy** : démarre dessus (menu du BIOS), sur une ISO aibox qu'elle contient, puis réinstalle depuis là : `sudo aibox-update-boot` sans `--iso`.
@@ -171,8 +173,8 @@ Pour un problème limité à la session TV, il y a plus simple : `aibox-tv-mode 
 
 | Action | Commande |
 |---|---|
-| Construire | `./build.sh` |
-| Installer | `sudo aibox-update-boot --iso out/aibox-latest.iso` |
+| Construire | `sudo aibox-build` (ce qui est poussé sur GitHub) |
+| Installer | `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` |
 | Versions installées | `sudo mount -o ro /dev/disk/by-label/AIBOXBOOT /mnt && ls /mnt; sudo umount /mnt` |
 | Version qui tourne | `grep -o 'archisobasedir=[^ ]*' /proc/cmdline` |
 | Paquets de l'image | `pkglist.x86_64.txt` dans l'ISO montée |

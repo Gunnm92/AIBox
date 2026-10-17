@@ -6,15 +6,18 @@
 # Lancé chaque nuit par aibox-auto-update.timer (service utilisateur de default) :
 #   1. compare les paquets de l'image par défaut sur AIBOXBOOT (pkglist.x86_64.txt,
 #      et non l'image qui tourne : une image installée en attente de redémarrage
-#      n'est pas réinstallée) aux versions des dépôts du build (archiso/pacman.conf) ;
-#   2. demande à Lemonade si la mise à jour est utile (réponse JSON ; le LLM ne
-#      fait que décider, il n'exécute rien) ;
-#   3. si oui : ./build.sh, vérification de l'image (version, droits des fichiers
-#      de profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
+#      n'est pas réinstallée) aux versions des dépôts du build (archiso/pacman.conf
+#      d'origin/main, dans la copie du dépôt d'aibox-build) ;
+#   2. décide : de nouveaux commits sur GitHub (origin/main) sont toujours
+#      construits ; sinon, Lemonade dit si les paquets valent une mise à jour
+#      (réponse JSON ; le LLM ne fait que décider, il n'exécute rien) ;
+#   3. si oui : sudo aibox-build (construit origin/main, hors du dossier de
+#      travail), vérification de l'image (version, droits des fichiers de
+#      profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
 #   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
 #
-# Garde-fous : pas de build si le dépôt a des changements non commités (image
-# -dirty), si un jeu tourne, si Lemonade ne répond pas ou s'il manque de place.
+# Garde-fous : pas de build si un jeu tourne ou si Lemonade ne répond pas ; la
+# place libre et les secrets sont vérifiés par aibox-build.
 #   --dry-run     comparaison et avis du LLM seulement
 #   --no-install  construit et vérifie l'image, sans l'installer
 #   --force       sans l'avis du LLM (mise à jour même sans paquet nouveau)
@@ -41,11 +44,11 @@ while (( $# )); do
 done
 
 # Réglages par défaut
-REPO="${HOME}/Workspace/AIBox"
+BUILD_DIR="/var/lib/aibox/state/build"
+BUILD_REF="main"
 LEMONADE_URL="http://127.0.0.1:13305/api/v1"
 MODEL="Qwen3.8-35B-A3B-Distill"
 NOTIFY_TO="discord"
-MIN_FREE_GB=12
 for conf in /etc/aibox/auto-update.conf "${HOME}/.config/aibox/auto-update.conf"; do
     # shellcheck source=/dev/null
     [[ -r "$conf" ]] && . "$conf"
@@ -89,13 +92,18 @@ exec 9>"$state/verrou"
 flock -n 9 || { log "Déjà en cours."; exit 0; }
 
 # --- Garde-fous ---
-[[ -d "$REPO/.git" ]] || fail "dépôt introuvable ($REPO)."
 boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
 [[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }
 if pgrep -f '[S]teamLaunch AppId=' >/dev/null; then
     log "Un jeu tourne : mise à jour reportée à la prochaine fois."
     exit 0
 fi
+
+# Copie du dépôt d'aibox-build, remise à origin/<ref> (GitHub)
+src="$BUILD_DIR/src"
+src_commit="$(sudo aibox-build --fetch-only --ref "$BUILD_REF" 2>>"$journal")" \
+    || fail "mise à jour de la copie du dépôt impossible (réseau ? GitHub ?) : voir $journal."
+log "Dépôt : origin/$BUILD_REF à $src_commit"
 
 # --- 1. Paquets de l'image par défaut sur AIBOXBOOT ---
 esp="$work/esp"
@@ -116,10 +124,10 @@ log "Image par défaut : $image_version"
 # Base pacman jetable : le pacman du système n'est pas touché.
 db="$work/db"
 mkdir -p "$db"
-sudo pacman --config "$REPO/archiso/pacman.conf" --dbpath "$db" -Sy >/dev/null 2>&1 \
+sudo pacman --config "$src/archiso/pacman.conf" --dbpath "$db" -Sy >/dev/null 2>&1 \
     || fail "synchronisation des dépôts impossible (réseau ?)."
 # Premier dépôt qui fournit le paquet, dans l'ordre de pacman.conf (comme le build)
-pacman --config "$REPO/archiso/pacman.conf" --dbpath "$db" -Sl 2>/dev/null \
+pacman --config "$src/archiso/pacman.conf" --dbpath "$db" -Sl 2>/dev/null \
     | awk '!seen[$2]++ {print $2, $3, $1}' > "$work/depots.txt"
 
 # Paquets plus récents dans les dépôts : « nom ancienne nouvelle dépôt ». Les
@@ -134,6 +142,18 @@ awk 'NR == FNR {avail[$1] = $2 " " $3; next}
 count="$(wc -l < "$work/maj.txt")"
 log "Paquets à mettre à jour : $count"
 
+# Nouveaux commits : le commit de l'image est à la fin de sa version
+# (AAAA.MM.JJ.HHMM-<commit>[-dirty]).
+image_commit="${image_version%-dirty}"; image_commit="${image_commit##*-}"
+commits=""
+if [[ "$image_commit" != "$src_commit" ]]; then
+    commits="$(sudo git -C "$src" log --oneline "$image_commit..HEAD" 2>/dev/null)" \
+        || commits="(commit de l'image $image_commit inconnu du dépôt)"
+    [[ -n "$commits" ]] || commits="(commit de l'image $image_commit différent de $src_commit)"
+    log "Nouveaux commits depuis $image_commit :
+$commits"
+fi
+
 # Âge de l'image (AAAA.MM.JJ au début de la version)
 image_date="$(cut -d. -f1-3 <<<"$image_version" | tr . -)"
 age_days=$(( ( $(date +%s) - $(date -d "$image_date" +%s 2>/dev/null || date +%s) ) / 86400 ))
@@ -141,6 +161,10 @@ age_days=$(( ( $(date +%s) - $(date -d "$image_date" +%s 2>/dev/null || date +%s
 # --- 2. Décision ---
 if (( force )); then
     decision='{"mettre_a_jour": true, "raison": "lancé avec --force", "paquets_importants": []}'
+elif [[ -n "$commits" ]]; then
+    # Un changement poussé est voulu : il est construit sans demander au LLM.
+    decision="$(jq -n --arg c "$(head -n 12 <<<"$commits")" \
+        '{mettre_a_jour: true, raison: ("nouveaux commits sur GitHub :\n" + $c), paquets_importants: []}')"
 elif (( count == 0 )); then
     log "Rien de nouveau dans les dépôts."
     exit 0
@@ -195,18 +219,13 @@ if (( dry_run )); then
     exit 0
 fi
 
-# --- 3. Build ---
-[[ -z "$(git -C "$REPO" status --porcelain)" ]] \
-    || fail "le dépôt a des changements non commités : build reporté (l'image serait -dirty)."
-free_gb=$(( $(df -BG --output=avail "$REPO" | tail -1 | tr -dc 0-9) ))
-(( free_gb >= MIN_FREE_GB )) || fail "pas assez de place pour construire ($free_gb Go libres, $MIN_FREE_GB nécessaires)."
-
+# --- 3. Build (aibox-build : origin/<ref>, caches et secrets sur le disque) ---
 log "Construction de l'image…"
-if ! (cd "$REPO" && nice -n 10 ./build.sh > "$state/build.log" 2>&1); then
+if ! sudo aibox-build --ref "$BUILD_REF" > "$state/build.log" 2>&1; then
     fail "le build a échoué : voir $state/build.log
-$(grep -m3 -i -E 'error|erreur|cannot' "$state/build.log")"
+$(grep -m3 -i -E 'error|erreur|cannot|place|secrets|authorized_keys' "$state/build.log")"
 fi
-iso="$(readlink -f "$REPO/out/aibox-latest.iso")"
+iso="$(readlink -f "$BUILD_DIR/out/aibox-latest.iso")"
 new_version="$(sed -n 's/^Version : //p' "$state/build.log" | tail -1)"
 [[ -n "$new_version" && "$iso" == *"aibox-$new_version-x86_64.iso" ]] \
     || fail "ISO construite introuvable ($iso, version « $new_version »)."
@@ -223,11 +242,11 @@ sudo sh -c "mount -o loop,ro '$iso' '$m/iso' && mount -t erofs -o loop,ro '$m/is
     # Droits déclarés dans profiledef.sh (piège déjà rencontré : scripts non
     # exécutables). Un fichier du dépôt doit être dans l'image ; un fichier créé
     # par build.sh depuis keys/ (nas.cred…) est facultatif.
-    grep -oP '^\s*\["\K[^"]+"\]="[0-9]+:[0-9]+:[0-7]+' "$REPO/archiso/profiledef.sh" | while IFS= read -r line; do
+    grep -oP '^\s*\["\K[^"]+"\]="[0-9]+:[0-9]+:[0-7]+' "$src/archiso/profiledef.sh" | while IFS= read -r line; do
         path="${line%%\"]*}" mode="${line##*:}"
         [[ "$path" == */ ]] && continue
         if ! actual="$(sudo stat -c %a "$m/root$path" 2>/dev/null)"; then
-            [[ -e "$REPO/archiso/airootfs$path" ]] && echo "absent : $path"
+            [[ -e "$src/archiso/airootfs$path" ]] && echo "absent : $path"
             continue
         fi
         [[ "$actual" == "$mode" ]] || echo "droits de $path : $actual au lieu de $mode"

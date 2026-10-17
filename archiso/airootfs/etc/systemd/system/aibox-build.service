@@ -1,0 +1,14 @@
+[Unit]
+Description=Build de l'ISO aibox depuis GitHub (aibox-build)
+Documentation=file:///usr/local/sbin/aibox-build
+# Caches, secrets et ISO sur le disque de données (sous-volume @state)
+ConditionPathIsMountPoint=/var/lib/aibox/state
+After=network-online.target aibox-data-mount.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/aibox-build
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=90min

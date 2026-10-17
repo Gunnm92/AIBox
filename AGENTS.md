@@ -13,7 +13,7 @@ Lis d'abord [docs/README.md](docs/README.md). Pour toute modification du systèm
 1. **Le système est jetable.** Un changement dans `/etc`, `/usr` ou un `pacman -S` disparaît au redémarrage. Un changement durable se fait **dans le dépôt** (`archiso/`), puis en reconstruisant l'image.
 2. **Teste en RAM avant de construire.** Copie le fichier modifié à sa place sur la machine, relance le service, vérifie. Construis l'image seulement quand ça marche.
 3. **Vérifie l'image avant de l'installer** : monte-la et regarde le fichier modifié et ses droits ([docs/iso.md](docs/iso.md), « Vérifier une image »).
-4. **Commite avant de construire.** La version de l'image (`AAAA.MM.JJ.HHMM-<commit>`) dit de quel commit elle vient ; `-dirty` signale un build avec des changements non commités, à éviter pour une image installée.
+4. **Commite et pousse avant de construire.** `sudo aibox-build` ne construit que `origin/main` sur GitHub (le push demande l'accord de l'utilisateur, règle 5). La version de l'image (`AAAA.MM.JJ.HHMM-<commit>`) dit de quel commit elle vient. `./build.sh` dans le dépôt ne sert qu'aux essais : `-dirty` signale des changements non commités, jamais pour une image installée.
 5. **Ne lance jamais sans accord explicite de l'utilisateur** : `aibox-setup-disk` (efface un disque), `dd`, `mkfs`, un redémarrage de la machine (`systemctl reboot`), un `git push`, ou la suppression de fichiers dans `~/Games` ou sur le NAS.
 6. **Redémarrage** : préfère un arrêt complet puis rallumage. Un redémarrage à chaud bloque le démarrage environ 65 s (Bluetooth MT7925, voir [docs/problemes-connus.md](docs/problemes-connus.md)).
 7. **Secrets** : `keys/` n'est pas versionné. Ne l'affiche pas, ne le copie pas ailleurs, ne le commite jamais.

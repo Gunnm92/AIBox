@@ -81,7 +81,7 @@ Le bureau d'administration doit avoir pris `wayland-0` et `:0` avant la session 
 
 ## Construction
 
-`build.sh` lance `mkarchiso` dans un conteneur CachyOS privilégié. Sur aibox, c'est Podman en root, avec son stockage sur le disque de données. Le profil est dans `archiso/` :
+`build.sh` lance `mkarchiso` dans un conteneur CachyOS privilégié. Sur aibox, c'est Podman en root, avec son stockage sur le disque de données. Le service `aibox-build` lance `build.sh` depuis sa copie du dépôt (`origin/main`, dans `/var/lib/aibox/state/build/src`), avec les secrets (`keys/`), les caches (`work/`) et les ISO (`out/`) dans `/var/lib/aibox/state/build/` : variables `AIBOX_KEYS`, `AIBOX_WORK` et `AIBOX_OUT` de `build.sh`. Le profil est dans `archiso/` :
 
 - `packages.x86_64` : les paquets ;
 - `profiledef.sh` : le format de l'image et les **droits des fichiers** ;

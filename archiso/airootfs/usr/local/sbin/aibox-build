@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# aibox-build : construit l'ISO aibox depuis GitHub (Gunnm92/AIBox), hors du
+# dossier de travail, avec ses caches et ses secrets sur le disque de données.
+#
+#   sudo aibox-build [--ref main]          met à jour la copie et construit (--ref : branche ou commit)
+#   sudo aibox-build --fetch-only          met à jour la copie seulement (affiche le commit)
+#   sudo aibox-build --import ~/Workspace/AIBox   reprend keys/ et work/ d'un dépôt (une fois)
+#
+# Tout est dans /var/lib/aibox/state/build (sous-volume @state, pas en RAM) :
+#   src/   copie du dépôt, remise à origin/<ref> à chaque build (jamais -dirty)
+#   keys/  secrets intégrés à l'image (voir keys/README.md du dépôt)
+#   work/  caches (paquets, AUR, téléchargements) ; out/ : les 3 dernières ISO
+#   build.log, dernier-build.json : journal et résultat du dernier build
+# Seul ce qui est poussé sur GitHub est construit. Aussi : systemctl start aibox-build.
+# AIBOX_BUILD_REMOTE=<chemin ou URL> : autre dépôt (essai d'un commit local non poussé).
+set -euo pipefail
+
+usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+
+remote="${AIBOX_BUILD_REMOTE:-https://github.com/Gunnm92/AIBox.git}"
+ref="main" fetch_only=0 import=""
+while (( $# )); do
+    case "$1" in
+        --ref) ref="${2:?}"; shift 2 ;;
+        --fetch-only) fetch_only=1; shift ;;
+        --import) import="${2:?}"; shift 2 ;;
+        *) usage ;;
+    esac
+done
+
+(( EUID == 0 )) || { echo "À lancer en root : sudo $0 $*" >&2; exit 1; }
+state=/var/lib/aibox/state
+mountpoint -q "$state" || { echo "Pas de disque de données (mode éphémère) : construire l'ISO demande le disque." >&2; exit 1; }
+base="$state/build"
+mkdir -p "$base/work" "$base/out"
+install -d -m 0700 "$base/keys"
+
+# Une seule exécution à la fois
+exec 9>"$base/verrou"
+flock -n 9 || { echo "Un build est déjà en cours." >&2; exit 1; }
+
+# --- Reprise des secrets et des caches d'un dépôt (une fois) ---
+if [[ -n "$import" ]]; then
+    [[ -d "$import/keys" ]] || { echo "$import/keys introuvable." >&2; exit 1; }
+    for f in "$import"/keys/*; do
+        [[ -f "$f" && "${f##*/}" != README.md ]] || continue
+        install -m 0600 "$f" "$base/keys/"
+        echo "Secret repris : ${f##*/}"
+    done
+    # Même btrfs : --reflink partage les blocs, la copie est quasi gratuite.
+    for d in pkgcache aur dl; do
+        [[ -d "$import/work/$d" && ! -e "$base/work/$d" ]] || continue
+        cp -a --reflink=auto "$import/work/$d" "$base/work/$d"
+        echo "Cache repris : work/$d ($(du -sh "$base/work/$d" | cut -f1))"
+    done
+    exit 0
+fi
+
+# --- Copie du dépôt, remise à origin/<ref> ---
+if [[ ! -d "$base/src/.git" ]]; then
+    git clone -q "$remote" "$base/src" >&2
+fi
+git -C "$base/src" remote set-url origin "$remote"
+git -C "$base/src" fetch -q origin >&2
+# --ref : une branche de GitHub (origin/<ref>), sinon un commit ou une étiquette
+target="origin/$ref"
+git -C "$base/src" rev-parse -q --verify "$target^{commit}" >/dev/null || target="$ref"
+git -C "$base/src" reset -q --hard "$target"
+git -C "$base/src" clean -q -fdx
+commit="$(git -C "$base/src" rev-parse --short=7 HEAD)"
+if (( fetch_only )); then
+    echo "$commit"
+    exit 0
+fi
+
+# --- Garde-fous ---
+[[ -s "$base/keys/authorized_keys" ]] \
+    || { echo "Pas de $base/keys/authorized_keys : reprendre les secrets avec --import." >&2; exit 1; }
+free_gb=$(( $(df -BG --output=avail "$state" | tail -1 | tr -dc 0-9) ))
+(( free_gb >= 12 )) || { echo "Place insuffisante sur le disque de données : ${free_gb} Go (12 au moins)." >&2; exit 1; }
+
+# --- Build ---
+start=$(date +%s)
+echo "Build de $commit (origin/$ref)…"
+status=ok
+AIBOX_KEYS="$base/keys" AIBOX_WORK="$base/work" AIBOX_OUT="$base/out" \
+    nice -n 10 "$base/src/build.sh" 2>&1 | tee "$base/build.log" || status=echec
+version="$(sed -n 's/^Version : //p' "$base/build.log" | tail -1)"
+iso="$base/out/aibox-$version-x86_64.iso"
+[[ "$status" == ok && -f "$iso" ]] || status=echec
+
+jq -n --arg statut "$status" --arg version "$version" --arg commit "$commit" --arg ref "$ref" \
+    --arg iso "$iso" --arg date "$(date -u +%FT%TZ)" --argjson duree $(( $(date +%s) - start )) \
+    '{statut: $statut, version: $version, commit: $commit, ref: $ref, iso: $iso, date: $date, duree_s: $duree}' \
+    > "$base/dernier-build.json"
+
+if [[ "$status" != ok ]]; then
+    echo "Échec du build : voir $base/build.log" >&2
+    exit 1
+fi
+echo "ISO : $iso"
