@@ -2,7 +2,7 @@
 
 Un home server branché à la TV, avec une **IA toujours disponible qui écoute et pilote la maison**. C'est un système live CachyOS qui démarre sur clé USB, tourne entièrement en RAM, et garde toutes les données de l'utilisateur sur un disque séparé. La partie TV et administration reprend les briques de SteamBox (conteneur Unraid).
 
-> **État : prototype**, en service sur la machine. Documentation détaillée (architecture, modifier et installer l'image, dépannage, problèmes connus) : [docs/](docs/README.md). Consignes pour les agents : [AGENTS.md](AGENTS.md). Spécification : [spec.md](spec.md).
+> **État : prototype**, en service sur la machine. Toutes les commandes aibox : [docs/commandes.md](docs/commandes.md). Documentation détaillée (architecture, modifier et installer l'image, dépannage, problèmes connus) : [docs/](docs/README.md). Consignes pour les agents : [AGENTS.md](AGENTS.md). Spécification : [spec.md](spec.md).
 
 ## En bref
 
@@ -97,7 +97,7 @@ archiso/                 profil archiso (écrit à partir de releng/baseline, ad
   ├─ grub/               menu de démarrage UEFI (et loopback.cfg pour Ventoy)
   └─ airootfs/           fichiers ajoutés à l'image : utilisateur, SSH, limites mémoire,
                          services, aibox-mem
-docs/                    documentation détaillée (architecture, image, exploitation, problèmes connus)
+docs/                    documentation détaillée (commandes, architecture, image, exploitation, problèmes connus)
 AGENTS.md                consignes pour les agents (LLM local…)
 keys/                    clé SSH, mot de passe et certificat noVNC (non versionné)
 build.sh                 construit l'ISO dans un conteneur CachyOS → out/
