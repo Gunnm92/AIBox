@@ -37,19 +37,23 @@ ExecStartPre=/bin/sh -c 'for i in $(seq 1 30); do pactl list short sinks | grep 
 # Both are resolved at start time. When ASM/Sonar is NOT installed neither sink
 # exists, so we fall back to a single capture of the system default sink and
 # vibrate on everything — haptics keep working with no dependency on ASM.
+# aibox : dans ce cas, pas de target.object. Une cible figée au démarrage restait
+# sur le haut-parleur du PC quand la sortie par défaut passait à la TV (HDMI) ;
+# sans cible, WirePlumber fait suivre la capture à la sortie par défaut
+# (linking.follow-default-target).
 # Each loopback activates only when its sink plays audio. node.dont-reconnect=true
 # on each playback side ensures no fallback to speakers if the dongle disappears
 # at runtime. ($$ is systemd's escape for a literal $ passed to the shell.)
 ExecStart=/bin/sh -c '\
   if pactl list short sinks | grep -q "\\bArctis_Game\\b"; then \
-    GAME_SRC=Arctis_Game; \
+    GAME_TARGET=target.object=Arctis_Game; \
     OUT_SRC=effect_input.sonar-output-eq; \
   else \
-    GAME_SRC=$$(pactl get-default-sink); \
+    GAME_TARGET=; \
     OUT_SRC=; \
   fi; \
   /usr/bin/pw-loopback -c 2 \
-    --capture-props="node.name=ds5_haptics_capture_game media.class=Stream/Input/Audio stream.capture.sink=true target.object=$$GAME_SRC audio.position=[FL,FR] stream.dont-remix=true node.passive=true" \
+    --capture-props="node.name=ds5_haptics_capture_game media.class=Stream/Input/Audio stream.capture.sink=true $$GAME_TARGET audio.position=[FL,FR] stream.dont-remix=true node.passive=true" \
     --playback=ds5_dongle_sink \
     --playback-props="node.name=ds5_haptics_playback_game node.dont-reconnect=true audio.position=[AUX0,AUX1] stream.dont-remix=true node.passive=true" \
   & \
