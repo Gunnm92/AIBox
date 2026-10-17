@@ -23,9 +23,11 @@
 #
 # Réglages : /etc/aibox/auto-update.conf, surchargés par
 # ~/.config/aibox/auto-update.conf. Dernière décision :
-# ~/.local/state/aibox/auto-update/derniere-decision.json.
+# ~/.local/state/aibox/auto-update/derniere-decision.json ; messages :
+# ~/.local/state/aibox/auto-update/journal.log.
 set -uo pipefail
 
+args="$*"
 dry_run=0 no_install=0 force=0 pkglist=""
 while (( $# )); do
     case "$1" in
@@ -54,7 +56,18 @@ mkdir -p "$state"
 work="$(mktemp -d)"
 trap 'sudo rm -rf "$work"' EXIT
 
-log() { echo "$*" >&2; }
+# Messages : sur stderr (journal système) et dans journal.log, sur le disque de
+# données. Le journal système est en RAM (Storage=volatile) et perdu au
+# redémarrage ; journal.log est ramené à 1500 lignes au-delà de 2000.
+journal="$state/journal.log"
+if [[ -f "$journal" ]] && (( $(wc -l < "$journal") > 2000 )); then
+    tail -n 1500 "$journal" > "$journal.tmp" && mv "$journal.tmp" "$journal"
+fi
+log() {
+    echo "$*" >&2
+    printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$journal"
+}
+log "--- aibox-auto-update ${args}"
 
 notify() {  # notify <message>
     log "Notification : $1"

@@ -75,7 +75,7 @@ Les réglages de l'image sont dans `/etc/aibox/`. Pour en changer un, copie le f
 
 | Fichier | Pour |
 |---|---|
-| `auto-update.conf` | `aibox-auto-update` : dépôt, modèle, destinataire, place minimale |
+| `auto-update.conf` | `aibox-auto-update` : dépôt, modèle, destinataire, place minimale. Journal : `~/.local/state/aibox/auto-update/journal.log` |
 | `llm.conf` | `llm-unload` : délai d'inactivité, déchargement à l'ouverture de la TV |
 | `~/.config/aibox/proton.conf` | `aibox-run-exe` : Proton imposé (`PROTON=…`) |
 | `~/.config/aibox/tv-mode` | `aibox-tv-mode` |
