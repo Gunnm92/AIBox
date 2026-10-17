@@ -124,7 +124,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 - **Lemonade** : serveur LLM sur le port 13305, modèles et backends sur le disque.
 
-- **Session TV** : gamescope pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS ; « Passer au bureau » dans Steam (ou `aibox-tv-mode labwc`) mène à labwc et à un lanceur (Steam, Moonlight) à la manette ou au clavier, sur les images de Bing.
+- **Session TV** : gamescope pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS ; « Passer au bureau » dans Steam mène, pour cette session, à labwc et à un lanceur (Steam, Moonlight) à la manette ou au clavier, sur les images de Bing ; sa tuile Steam ramène à Steam sous gamescope. `aibox-tv-mode labwc` rend labwc durable.
 
 Pas encore : assistant vocal.
 
@@ -300,7 +300,7 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 - **gamescope** (par défaut) : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode labwc (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
 - **labwc** : labwc sur la TV (`/etc/aibox/labwc-tv`) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui` ; autres applis dans `tv-apps.json`), sans HDR.
 
-`aibox-tv-mode gamescope` ou `aibox-tv-mode labwc` change de mode et relance la session TV.
+`aibox-tv-mode gamescope` ou `aibox-tv-mode labwc` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement.
 
 - **Jeux non-Steam** (`.wsquashfs`…) : pas de `gamescope` dans les options de lancement, la session est déjà dans gamescope ; si un jeu ne propose pas le HDR, `DXVK_HDR=1 %command% …`. Un chemin contenant des espaces se met entre guillemets.
 

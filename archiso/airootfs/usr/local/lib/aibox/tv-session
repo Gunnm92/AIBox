@@ -14,7 +14,15 @@ done
 [[ -S "${XDG_RUNTIME_DIR}/wayland-0" ]] || { echo "wayland-0 (administration) absent : refus de démarrer" >&2; exit 1; }
 cd "${HOME}"
 unset WAYLAND_DISPLAY DISPLAY
-mode="$(cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || true)"
+# Mode pour cette session seulement (aibox-tv-mode --once : « Passer au bureau »,
+# tuile Steam du lanceur), utilisé une fois ; sinon le mode gardé sur le disque.
+once="${XDG_RUNTIME_DIR}/aibox-tv-mode-once"
+if [[ -s "$once" ]]; then
+    mode="$(cat "$once")"
+    rm -f "$once"
+else
+    mode="$(cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || true)"
+fi
 # La session (PAM/systemd) arrive avec CAP_WAKE_ALARM en capacité ambiante,
 # héritée par toutes les applis : le bac à sable de Steam (bwrap) refuse alors
 # de démarrer (« Unexpected capabilities but not setuid »), et Steam conclut à

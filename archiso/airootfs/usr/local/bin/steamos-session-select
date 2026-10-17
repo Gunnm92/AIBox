@@ -3,6 +3,10 @@
 # (desktop, plasma…) bascule la session TV sur labwc et son lanceur (voir
 # aibox-tv-mode) ; Steam se ferme et aibox-tv relance la session dans le mode
 # choisi (sans ce fichier, Steam fermé termine la session TV).
+# Bascule pour une session seulement (aibox-tv-mode --once, en RAM) : le mode
+# gardé sur le disque n'est pas touché, la session suivante et le démarrage
+# reviennent à Steam sous gamescope. Avant le 17/10/2026, la bascule était
+# gardée : un appel de Steam suffisait à laisser la TV sur labwc pour de bon.
 # Trace dans le journal (journalctl -t steamos-session-select) : Steam l'appelle
 # aussi hors de « Passer au bureau », selon les cas.
 logger -t steamos-session-select "appelé par Steam : ${*:-(sans argument)}"
@@ -11,10 +15,8 @@ case "${1:-}" in
     "") mode="" ;;
     *) mode=labwc ;;
 esac
-if [[ -n "$mode" ]]; then
-    mkdir -p "${HOME}/.config/aibox"
-    echo "$mode" > "${HOME}/.config/aibox/tv-mode"
-fi
+run="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+[[ -n "$mode" ]] && echo "$mode" > "$run/aibox-tv-mode-once"
 # Relance de la session (et non fin) : tv-session lit ce fichier.
-touch "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aibox-tv-switch"
+touch "$run/aibox-tv-switch"
 exec steam -shutdown

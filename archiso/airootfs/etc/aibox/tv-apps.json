@@ -2,6 +2,7 @@
   {
     "name": "Steam",
     "command": ["steam", "-gamepadui"],
+    "command_labwc": ["aibox-tv-mode", "--once", "gamescope"],
     "icon": ["/usr/share/icons/hicolor/256x256/apps/steam.png", "/usr/share/pixmaps/steam.png"]
   }
 ]

@@ -8,7 +8,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 |---|---|---|---|
 | `aibox-run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox-run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
 | `wsquashfs-launcher` | Lancer un jeu Windows au format Batocera (`.wsquashfs`) | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
-| `aibox-tv-mode` | Mode de la session TV : Steam sous gamescope ou labwc avec le lanceur | `aibox-tv-mode [gamescope\|labwc]` | [exploitation.md](exploitation.md#session-tv) |
+| `aibox-tv-mode` | Mode de la session TV : Steam sous gamescope ou labwc avec le lanceur | `aibox-tv-mode [--once] [gamescope\|labwc]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
 | `aibox-auto-update` | Mise à jour de l'image décidée par le LLM local (lancée aussi chaque nuit) | `--dry-run`, `--no-install`, `--force` | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox-nas` | Partages réseau (SMB) montés à la demande | `aibox-nas list`, `sudo aibox-nas add //hôte/partage /mnt/X`, `sudo aibox-nas remove /mnt/X` | [exploitation.md](exploitation.md#partages-du-nas) |
 | `aibox-keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox-keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
@@ -56,7 +56,7 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 | `aibox-tv-watch` | Manette allumée ou éteinte (scrute le dongle toutes les 2 s) | Démarre la session TV, ou programme son arrêt | [architecture.md](architecture.md) |
 | `aibox-tv` | `aibox-tv-watch`, `aibox-tv-mode` | Session TV sur l'écran réel (`tv-session`). À son démarrage : `llm-unload --tv` | [exploitation.md](exploitation.md#session-tv) |
 | `ds5-haptics-loopback` (utilisateur) | Branchement du dongle (udev) | Envoie le son du PC au dongle pour les auto-haptiques | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
-| `steamos-session-select` | « Passer au bureau » dans Steam | Bascule la session TV sur labwc | [architecture.md](architecture.md) |
+| `steamos-session-select` | « Passer au bureau » dans Steam | Bascule la session TV sur labwc, pour cette session seulement | [architecture.md](architecture.md) |
 
 ### Services de démarrage
 

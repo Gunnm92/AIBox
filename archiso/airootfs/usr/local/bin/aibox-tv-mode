@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# aibox-tv-mode [gamescope|labwc] : mode de la session TV, gardé dans
+# aibox-tv-mode [--once] [gamescope|labwc] : mode de la session TV, gardé dans
 # ~/.config/aibox/tv-mode, puis session TV relancée. Sans argument : mode actuel.
 #   gamescope : Steam Big Picture sous gamescope (HDR, FSR) — par défaut ;
 #   labwc     : labwc et le lanceur à tuiles (applis de tv-apps.json).
+#   --once    : pour la prochaine session seulement (en RAM, oublié ensuite) ;
+#               « Passer au bureau » de Steam et la tuile Steam du lanceur.
 set -euo pipefail
 conf="${HOME}/.config/aibox/tv-mode"
+once="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aibox-tv-mode-once"
+[[ "${1:-}" == --once ]] && { conf="$once"; shift; }
 case "${1:-}" in
-    "") cat "$conf" 2>/dev/null || echo gamescope; exit 0 ;;
+    "") cat "$once" 2>/dev/null || cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || echo gamescope; exit 0 ;;
     gamescope|labwc) ;;
-    *) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    *) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
 mkdir -p "${conf%/*}"
 echo "$1" > "$conf"
-echo "Session TV : $1 (redémarrage de la session)"
+[[ "$conf" == "$once" ]] && echo "Session TV : $1, pour cette session (redémarrage de la session)" \
+    || echo "Session TV : $1 (redémarrage de la session)"
 sudo systemctl restart aibox-tv

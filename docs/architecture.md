@@ -56,7 +56,7 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 
 ## Session TV
 
-`aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `~/.config/aibox/tv-mode`. Ce fichier est modifié par `aibox-tv-mode`.
+`aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `$XDG_RUNTIME_DIR/aibox-tv-mode-once` s'il existe (mode pour cette session seulement, effacé aussitôt lu, perdu au redémarrage), sinon d'après `~/.config/aibox/tv-mode` (mode durable). `aibox-tv-mode` écrit le second, `aibox-tv-mode --once` le premier.
 
 **Cycle de vie** :
 - **Démarrage et arrêt** : `aibox-tv-watch.service` (`/usr/local/lib/aibox/tv-watch`) mesure toutes les 2 secondes, sur une demi-seconde, les rapports envoyés par le dongle DualSense sur son hidraw. Au moins deux rapports différents signifient une manette connectée (compteur, gyroscope, environ 640 rapports par seconde). Le service réagit aux changements d'état : manette allumée, il démarre la session et annule l'arrêt programmé ; manette éteinte, il programme l'arrêt. La présence du dongle et ses événements udev ne suffisent pas : il s'annonce aussi manette éteinte, à la mise sous tension du PC, et ne se reconnecte pas toujours à l'allumage de la manette.
@@ -70,7 +70,7 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 - **gamescope** (par défaut) : `gamescope --steam -e --hdr-enabled -- steam -gamepadui -steamos3 -steampal -steamdeck`. gamescope pilote directement la TV, en 4K à 60 Hz, avec HDR et VRR. Le HDR, le FSR et la limite d'images se règlent dans Steam.
 - **labwc** : labwc avec la configuration `/etc/aibox/labwc-tv`, et le lanceur à tuiles `aibox-tv-launcher`. Ses applis sont dans `/etc/aibox/tv-apps.json`, ou dans `~/.config/aibox/tv-apps.json` s'il existe. Le fond d'écran vient de Bing et change toutes les 30 minutes. Ce mode n'a pas de HDR.
 
-« Passer au bureau » dans Steam appelle `steamos-session-select`, qui bascule en mode labwc.
+« Passer au bureau » dans Steam appelle `steamos-session-select`, qui bascule en mode labwc **pour cette session seulement**. Dans le lanceur, la tuile Steam (`command_labwc`) ramène à Steam sous gamescope, de la même façon (`aibox-tv-mode --once gamescope`). Au démarrage suivant, c'est le mode durable, gamescope par défaut. Avant le 17/10/2026, la bascule était durable : un appel de Steam suffisait à laisser la TV sur labwc, sans retour possible à la manette.
 
 Le bureau d'administration doit avoir pris `wayland-0` et `:0` avant la session TV. Les services utilisateur ont cet affichage par défaut (`/etc/systemd/user.conf.d/10-aibox-admin-display.conf`).
 
