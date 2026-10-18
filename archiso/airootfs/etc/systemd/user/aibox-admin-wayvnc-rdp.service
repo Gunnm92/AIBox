@@ -11,6 +11,8 @@ ExecStartPre=/usr/local/lib/aibox/admin-wait
 # Authentification VNC classique (la seule que parle xrdp), en local seulement
 # (IPv4 et IPv6 : xrdp se connecte en [::1] même avec ip=127.0.0.1) ;
 # le chiffrement est assuré entre le client RDP et xrdp (TLS).
-ExecStart=/usr/bin/wayvnc --config=/etc/aibox/wayvnc-rdp.conf --socket=%t/wayvncctl-rdp --render-cursor --max-fps=30 --keyboard=fr 127.0.0.1:5910 [::1]:5910
+# Pas de --render-cursor : le pointeur est dessiné par le client RDP, pas dans l'image
+# (sinon deux pointeurs).
+ExecStart=/usr/bin/wayvnc --config=/etc/aibox/wayvnc-rdp.conf --socket=%t/wayvncctl-rdp --max-fps=30 --keyboard=fr 127.0.0.1:5910 [::1]:5910
 Restart=always
 RestartSec=2
