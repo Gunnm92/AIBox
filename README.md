@@ -278,7 +278,7 @@ sudo aibox-setup-disk /dev/nvmeXnY
 ### 4. Configuration initiale (une seule fois)
 
 - **Appairer la DualSense** depuis le bureau d'administration ou avec `bluetoothctl`.
-- **Installer Moonlight** : `flatpak install flathub com.moonlight_stream.Moonlight`, puis l'ajouter dans Steam comme appli non-Steam. SteamBox est découvert automatiquement sur le réseau local.
+- **Installer Moonlight** : `flatpak install flathub com.moonlight_stream.Moonlight`. Il apparaît dans le lanceur TV à côté de Steam (`/etc/aibox/tv-apps.json`) ; sous gamescope, l'ajouter dans Steam comme appli non-Steam. SteamBox est découvert automatiquement sur le réseau local.
 
 Ces réglages sont gardés sur le disque.
 
