@@ -7,5 +7,7 @@ After=app-dev.lizardbyte.app.Sunshine.service aibox-admin-labwc.service
 [Service]
 Slice=admin.slice
 ExecStart=/usr/local/lib/aibox/evdev-bridge
-Restart=on-failure
+# Restart=always, pas on-failure : evdev-bridge sort avec le code 0 quand un
+# périphérique virtuel de Sunshine disparaît (fin de session Moonlight).
+Restart=always
 RestartSec=2
