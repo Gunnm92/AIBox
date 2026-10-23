@@ -95,12 +95,6 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Cause** : `Restart=always` relançait la session après « Quitter » dans Steam.
 - **Solution** : Steam note sa propre sortie, et `tv-session` termine alors la session (code 75). Rallumer la manette la relance.
 
-### Artefacts dans Moonlight avec le dongle Ethernet USB (23/10/2026)
-- **Symptôme** : image sale dans Moonlight (blocs, bouillie), alors que le débit est correct. Le journal de Moonlight montre `Network dropped frame` et `Failed to parse header of NALU`. Le compteur `rx_dropped` de `eth0` monte pendant la session.
-- **Cause** : le dongle AX88179 (`0b95:1790`, sur un hub Genesys) est piloté par `cdc_ncm`, le pilote générique, au lieu de `ax88179_178a`. Il perd des paquets.
-- **Solution** : `archiso/airootfs/etc/modprobe.d/aibox-ax88179.conf` bloque `cdc_ncm`. Après une image reconstruite et un arrêt complet, vérifier avec `ls -l /sys/bus/usb/devices/6-1.3:2.0/driver` (doit pointer vers `ax88179_178a`). Le port Ethernet intégré (Intel E610, `ixgbe`) n'avait pas de liaison en direct le 23/10/2026.
-- **Effet de bord** : `cdc_ncm` ne se charge plus pour les autres appareils NCM ou MBIM (cdc_mbim en dépend).
-
 ## Applis Flatpak
 
 ### Un chemin en `/run/user/1000/doc/…` au lieu du vrai fichier (11/10/2026)
