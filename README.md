@@ -241,7 +241,8 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 | Quoi | Comment |
 |---|---|
 | Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | commit poussé sur GitHub, nouvelle ISO (`sudo aibox-build`), puis `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
-| Applis Flatpak (Moonlight, Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
+| Applis Flatpak (Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
+| AppImage (Moonlight…) | Gear Lever, ou à la main (fichier remplacé dans `~/AppImages`) |
 | Steam, jeux, Proton | Steam se met à jour seul (dans le home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher |
 | AppImage | Gear Lever |
 | Lemonade : backends et modèles | backends : par Lemonade ; modèles : `lemonade pull <modèle>` |
@@ -278,7 +279,7 @@ sudo aibox-setup-disk /dev/nvmeXnY
 ### 4. Configuration initiale (une seule fois)
 
 - **Appairer la DualSense** depuis le bureau d'administration ou avec `bluetoothctl`.
-- **Installer Moonlight** : `flatpak install flathub com.moonlight_stream.Moonlight`. Il apparaît dans le lanceur TV à côté de Steam (`/etc/aibox/tv-apps.json`) ; sous gamescope, l'ajouter dans Steam comme appli non-Steam. SteamBox est découvert automatiquement sur le réseau local.
+- **Moonlight** : AppImage à `~/AppImages/moonlight.appimage`, sur le disque de données. Il apparaît dans le lanceur TV à côté de Steam (`/etc/aibox/tv-apps.json`, chemin de l'AppImage) ; sous gamescope, l'ajouter dans Steam comme appli non-Steam pointant vers le même fichier. SteamBox est découvert automatiquement sur le réseau local.
 
 Ces réglages sont gardés sur le disque.
 
@@ -319,7 +320,7 @@ Tous disponibles dans les dépôts CachyOS (vérifié le 26/09/2026) :
 - `networkmanager`, `bluez`, `openssh`, `flatpak`, `fuse2`, `fuse3`, `zram-generator`
 - `archiso` pour le build
 
-Écartés de l'image : `cachyos-handheld` (tire Plasma et le matériel du Steam Deck) et `moonlight-qt` (tire Qt6 ; remplacé par le Flatpak).
+Écartés de l'image : `cachyos-handheld` (tire Plasma et le matériel du Steam Deck) et `moonlight-qt` (tire Qt6 ; remplacé par l'AppImage).
 
 ## Feuille de route
 
