@@ -1,16 +1,4 @@
 [
-  {
-    "name": "Steam",
-    "command": ["steam", "-gamepadui"],
-    "command_labwc": ["aibox-tv-mode", "--once", "gamescope"],
-    "icon": ["/usr/share/icons/hicolor/256x256/apps/steam.png", "/usr/share/pixmaps/steam.png"]
-  },
-  {
-    "name": "Moonlight",
-    "command": ["/home/default/AppImages/moonlight.appimage"]
-  },
-  {
-    "name": "Bureau",
-    "command": ["aibox-tv-mode", "--once", "bureau"]
-  }
+  {"name": "Steam", "command": ["steam", "-gamepadui"], "command_labwc": ["aibox-tv-mode", "--once", "gamescope"], "icon": ["/usr/share/icons/hicolor/256x256/apps/steam.png", "/usr/share/pixmaps/steam.png"]},
+  {"name": "Moonlight", "command": ["/home/default/AppImages/moonlight.appimage"]}
 ]
