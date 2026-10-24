@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- labwc de la session TV en mode bureau : fenêtres décorées (le bureau XFCE
+     s'affiche autour), et raccourci pour revenir au lanceur. -->
+<labwc_config>
+  <core>
+    <xwaylandPersistence>yes</xwaylandPersistence>
+  </core>
+  <keyboard>
+    <keybind key="W-l">
+      <action name="Execute" command="aibox-tv-mode --once labwc"/>
+    </keybind>
+  </keyboard>
+</labwc_config>

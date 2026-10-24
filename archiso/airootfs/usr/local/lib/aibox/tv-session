@@ -3,7 +3,9 @@
 #   gamescope (défaut) : gamescope pilote la TV (HDR, FSR, VRR) avec Steam en mode
 #                        SteamOS, comme gamescope-session ;
 #   labwc              : labwc, configuration /etc/aibox/labwc-tv, et le lanceur
-#                        (applis de tv-apps.json) ; « Passer au bureau » dans Steam y mène.
+#                        (applis de tv-apps.json) ; « Passer au bureau » dans Steam y mène ;
+#   bureau             : labwc, configuration /etc/aibox/labwc-bureau, avec le bureau XFCE
+#                        (fond et panneau), sans le lanceur ; Super+L revient au lanceur.
 # Le bureau d'administration (labwc headless) doit déjà avoir pris wayland-0 et
 # :0 : sinon ce compositeur les lui volerait (cf. SteamBox).
 set -euo pipefail
@@ -32,6 +34,10 @@ nocaps=(setpriv --inh-caps=-all --ambient-caps=-all)
 if [[ "$mode" == labwc ]]; then
     export AIBOX_TV_MODE=labwc
     exec "${nocaps[@]}" labwc -C /etc/aibox/labwc-tv
+fi
+if [[ "$mode" == bureau ]]; then
+    export AIBOX_TV_MODE=bureau
+    exec "${nocaps[@]}" labwc -C /etc/aibox/labwc-bureau
 fi
 
 # Réglages de gamescope-session (Steam en mode SteamOS) : menu rapide avec

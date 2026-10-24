@@ -1,0 +1,6 @@
+# Bureau de la session TV : fond et panneau XFCE sur labwc (wayland-1, :1), sans
+# le lanceur. Super+L revient au lanceur.
+# XFCE ne lance qu'une instance par bus de session, et le bus est partagé avec le
+# bureau d'administration : sans bus à part, panneau et fond s'ouvriraient là-bas.
+/usr/local/lib/aibox/activation-env-admin
+dbus-run-session -- sh -c 'xfce4-panel & xfdesktop & wait' &

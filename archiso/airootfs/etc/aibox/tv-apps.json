@@ -10,7 +10,7 @@
     "command": ["/home/default/AppImages/moonlight.appimage"]
   },
   {
-    "name": "Terminal",
-    "command": ["xfce4-terminal"]
+    "name": "Bureau",
+    "command": ["aibox-tv-mode", "--once", "bureau"]
   }
 ]

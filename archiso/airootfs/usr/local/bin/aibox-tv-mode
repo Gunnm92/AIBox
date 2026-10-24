@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# aibox-tv-mode [--once] [gamescope|labwc] : mode de la session TV, gardé dans
+# aibox-tv-mode [--once] [gamescope|labwc|bureau] : mode de la session TV, gardé dans
 # ~/.config/aibox/tv-mode, puis session TV relancée. Sans argument : mode actuel.
 #   gamescope : Steam Big Picture sous gamescope (HDR, FSR) — par défaut ;
-#   labwc     : labwc et le lanceur à tuiles (applis de tv-apps.json).
+#   labwc     : labwc et le lanceur à tuiles (applis de tv-apps.json) ;
+#   bureau    : labwc et le bureau XFCE (fond, panneau), sans le lanceur.
 #   --once    : pour la prochaine session seulement (en RAM, oublié ensuite) ;
 #               « Passer au bureau » de Steam et la tuile Steam du lanceur.
 set -euo pipefail
@@ -11,7 +12,7 @@ once="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aibox-tv-mode-once"
 [[ "${1:-}" == --once ]] && { conf="$once"; shift; }
 case "${1:-}" in
     "") cat "$once" 2>/dev/null || cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || echo gamescope; exit 0 ;;
-    gamescope|labwc) ;;
+    gamescope|labwc|bureau) ;;
     *) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
 mkdir -p "${conf%/*}"

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# aibox-tv-run commande [argument...] : lance une commande sur l'écran de la TV.
+# Depuis le bureau d'administration (noVNC), pour un cas que le lanceur ne gère pas,
+# par exemple un jeu avec la DualSense en direct :
+#   aibox-tv-run env WSQUASHFS_HIDRAW=1 /usr/local/bin/wsquashfs-launcher "<jeu>.wsquashfs"
+# Demande que la TV soit en mode lanceur (aibox-tv-mode labwc) : le compositeur de la
+# TV écoute alors sur wayland-1 et :1. En mode Steam, gamescope a son propre écran.
+set -euo pipefail
+tv_wayland="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/wayland-1"
+if [[ ! -S "$tv_wayland" ]]; then
+    echo "La TV n'est pas en mode lanceur (pas de $tv_wayland). Pour y passer : aibox-tv-mode --once labwc" >&2
+    exit 1
+fi
+[[ $# -gt 0 ]] || { echo "Usage : aibox-tv-run commande [argument...]" >&2; exit 2; }
+export WAYLAND_DISPLAY=wayland-1 DISPLAY=:1
+exec "$@"
