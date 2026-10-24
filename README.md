@@ -299,7 +299,7 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 `aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis `tv-session` lance le mode choisi par `aibox-tv-mode` (gardé dans `~/.config/aibox/tv-mode`) :
 
 - **gamescope** (par défaut) : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode labwc (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
-- **labwc** : labwc sur la TV (`/etc/aibox/labwc-tv`) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui` ; autres applis dans `tv-apps.json`), sans HDR.
+- **labwc** : labwc sur la TV (`/etc/aibox/labwc-tv`) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui` ; autres applis dans `tv-apps.json`, dont « Terminal » pour lancer un jeu à la main et voir sa sortie), sans HDR.
 
 `aibox-tv-mode gamescope` ou `aibox-tv-mode labwc` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement.
 

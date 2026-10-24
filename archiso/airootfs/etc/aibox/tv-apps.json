@@ -8,5 +8,9 @@
   {
     "name": "Moonlight",
     "command": ["/home/default/AppImages/moonlight.appimage"]
+  },
+  {
+    "name": "Terminal",
+    "command": ["xfce4-terminal"]
   }
 ]
