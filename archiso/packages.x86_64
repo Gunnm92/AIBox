@@ -99,6 +99,9 @@ tmux
 unzip
 zip
 wget
+# ImageMagick (22 Mo) : taille et conversion d'images pour les agents d'Hermes
+# (identify, magick), dans le pipeline LinkedIn
+imagemagick
 
 # Session TV : Steam natif (bibliothèques 32 bits), son (PipeWire), lanceur
 # (pygame). vulkan-virtio : GPU partagé dans une VM (Venus), pour les tests.
