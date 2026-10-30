@@ -71,6 +71,12 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Cause** : le profil UCM « HiFi » de la carte HDMI d'AMD ne propose que la stéréo.
 - **Solution** : `52-hdmi-surround.conf` désactive UCM pour cette carte (corrigé), puis on choisit `output:hdmi-surround-extra1`.
 
+## Réseau
+
+### Dongle Ethernet AX88179B : `ax88179_178a` sans lien (29/10/2026)
+- **Constat** : le dongle `0b95:1790` a trois configurations USB : 1 (constructeur, `ax88179_178a`), 2 (NCM, `cdc_ncm`, celle que choisit le noyau) et 3 (ECM, `cdc_ether`). En config 1 (`echo 1 > /sys/bus/usb/devices/6-1.3/bConfigurationValue`), `ax88179_178a` se lie mais le lien ne monte jamais (`Link status is: 0`, `Failed to read reg index 0x0040: -32`) : le pilote du noyau ne gère pas la révision B. Bloquer `cdc_ncm` (essai du 23/10) ne changeait pas de configuration.
+- **Mesures** : NCM et ECM font jeu égal en téléchargement (environ 700 Mbit/s sur un flux, 820 sur quatre, 5 paquets perdus sur 500 000) : rien à changer dans l'image. Les pertes vues dans Moonlight restent à mesurer en UDP.
+
 ## Outils
 
 ### `pgrep -f` ou `pkill -f` tue ton propre shell, ou boucle sans fin
