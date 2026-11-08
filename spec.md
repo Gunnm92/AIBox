@@ -227,3 +227,5 @@ Moonlight vers SteamBox : un jeu en streaming, et un jeu en local ;
 DualSense éteinte : session fermée après 2 minutes ;
 rallumage : la session revient ;
 un modèle d'environ 30 Go chargé, puis un jeu lancé depuis la DualSense : pas d'OOM ; GTT réel vérifié avec amdgpu_top.
+
+Le 08/11/2026 : aibox-auto-update passe par Manifest (passerelle LLM sur aibox) avec le modèle « auto » : Muse-Glimmer-30B en local, OpenRouter seulement si le modèle local est indisponible. Le modèle Qwen3.8 n'était plus dans Lemonade depuis le 06/11 : chaque nuit échouait (« Lemonade ne répond pas »). Clé `mnfst_…` dans ~/.config/aibox/auto-update.conf (LLM_API_KEY, droits 600), envoyée en en-tête Authorization.

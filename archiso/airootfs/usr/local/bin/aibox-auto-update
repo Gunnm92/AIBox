@@ -46,8 +46,8 @@ done
 # Réglages par défaut
 BUILD_DIR="/var/lib/aibox/state/build"
 BUILD_REF="main"
-LEMONADE_URL="http://127.0.0.1:13305/api/v1"
-MODEL="Qwen3.8-35B-A3B-Distill"
+LEMONADE_URL="http://127.0.0.1:2099/v1"
+MODEL="auto"
 NOTIFY_TO="discord"
 for conf in /etc/aibox/auto-update.conf "${HOME}/.config/aibox/auto-update.conf"; do
     # shellcheck source=/dev/null
@@ -180,7 +180,11 @@ Réponds UNIQUEMENT par un objet JSON, sans texte autour :
 {\"mettre_a_jour\": true|false, \"raison\": \"une ou deux phrases en français\", \"paquets_importants\": [\"nom ancienne → nouvelle\", …]}"
     body="$(jq -n --arg m "$MODEL" --arg p "$prompt" \
         '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000, chat_template_kwargs: {enable_thinking: false}}')"
-    response="$(curl -sf -m 1200 -H 'Content-Type: application/json' \
+    # Clé d'API (Manifest exige « Authorization: Bearer mnfst_… ») : facultative
+    # avec Lemonade seul ; elle vient de ~/.config/aibox/auto-update.conf, jamais du dépôt.
+    auth=()
+    [[ -n "${LLM_API_KEY:-}" ]] && auth=(-H "Authorization: Bearer $LLM_API_KEY")
+    response="$(curl -sf -m 1200 -H 'Content-Type: application/json' "${auth[@]}" \
         -d "$body" "$LEMONADE_URL/chat/completions")" \
         || fail "Lemonade ne répond pas ($LEMONADE_URL, modèle $MODEL) : pas de décision, pas de build."
     # Le modèle peut réfléchir avant de répondre : on garde le dernier objet JSON
