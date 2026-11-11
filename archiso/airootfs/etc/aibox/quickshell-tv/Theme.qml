@@ -1,17 +1,19 @@
-// Thème néon des widgets de la TV : toutes les couleurs sont ici.
-// Pour un autre thème, changer ces valeurs (et les SVG de tv-icons/weather).
+// Thème des widgets de la TV : la teinte vient du fond d'écran du jour (PaletteProbe).
+// Lemonade garde sa couleur jaune. Les valeurs ci-dessous sont celles par défaut,
+// avant l'analyse de l'image.
 pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property color cardFill: "#4D07090F"
-    readonly property color cardBorder: "#8000F0FF"
-    readonly property color sheen: "#14FFFFFF"
-    readonly property color track: "#26FFFFFF"
-    readonly property color text: "#F5F7FF"
-    readonly property color text2: "#C8D2EA"
-    readonly property color dim: "#7F8BA8"
-    readonly property color accent: "#00F0FF"
-    readonly property color accent2: "#FF2BD6"
-    readonly property color accentText: "#06121A"
+    property color accent: "#A8C7FA"
+    property color accent2: "#D0BCFF"
+    property color accentText: "#0E1420"
+    property color cardFill: "#AA161A22"
+    property color cardBorder: "#3A9AB4E8"
+    property color sheen: "#14FFFFFF"
+    property color track: "#4D7A8AA8"
+    property color text: "#F1F0F5"
+    property color text2: "#CAC6D0"
+    property color dim: "#938F99"
+    readonly property color lemon: "#FFE14D"
 }

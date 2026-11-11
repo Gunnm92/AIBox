@@ -30,6 +30,14 @@ hl.config({
     },
 })
 
+-- Cartes de widgets : verre dépoli (flou du fond derrière les couches).
+hl.layer_rule({
+    name  = "aibox-widgets-blur",
+    match = { namespace = "^aibox-tv-widgets$" },
+    blur  = true,
+    ignore_alpha = 0.2,
+})
+
 -- Le lanceur prend tout l'écran.
 hl.window_rule({
     name  = "aibox-launcher",

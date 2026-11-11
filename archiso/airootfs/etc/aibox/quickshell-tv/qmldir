@@ -4,3 +4,5 @@ ClockWidget 1.0 ClockWidget.qml
 WeatherWidget 1.0 WeatherWidget.qml
 NewsWidget 1.0 NewsWidget.qml
 SystemWidget 1.0 SystemWidget.qml
+LemonadeWidget 1.0 LemonadeWidget.qml
+PaletteProbe 1.0 PaletteProbe.qml

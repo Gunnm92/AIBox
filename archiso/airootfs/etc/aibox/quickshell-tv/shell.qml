@@ -6,12 +6,27 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "palette.js" as Palette
 
 ShellRoot {
     id: root
 
     property var data: ({})
     property int newsIndex: 0
+
+    // Applique la palette dérivée de la teinte du fond d'écran à tout le thème.
+    function applyPalette(hue) {
+        var p = Palette.derive(hue);
+        Theme.accent = p.accent;
+        Theme.accent2 = p.accent2;
+        Theme.accentText = p.accentText;
+        Theme.cardFill = p.cardFill;
+        Theme.cardBorder = p.cardBorder;
+        Theme.track = p.track;
+        Theme.text = p.text;
+        Theme.text2 = p.text2;
+        Theme.dim = p.dim;
+    }
     readonly property var news: data.news || []
     readonly property real u: (Quickshell.screens.length ? Quickshell.screens[0].height : 1080) / 1080
     readonly property real margin: 50 * u
@@ -56,6 +71,11 @@ ShellRoot {
         WlrLayershell.namespace: "aibox-tv-widgets"
 
         ClockWidget { id: clockCard; u: root.u }
+
+        PaletteProbe {
+            source: root.data.wallpaper ? "file://" + root.data.wallpaper : ""
+            onReady: (hue) => root.applyPalette(hue)
+        }
     }
 
     PanelWindow {
@@ -109,6 +129,24 @@ ShellRoot {
             u: root.u
             sys: root.data.system || ({})
             updated: root.data.updated || ""
+        }
+    }
+
+    PanelWindow {
+        id: lemonadeWindow
+        anchors { top: true; left: true }
+        margins { top: root.margin; left: Math.round(((Quickshell.screens.length ? Quickshell.screens[0].width : 1920) - lemonadeCard.width) / 2) }
+        implicitWidth: lemonadeCard.width
+        implicitHeight: lemonadeCard.height
+        exclusiveZone: 0
+        color: "transparent"
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "aibox-tv-widgets"
+
+        LemonadeWidget {
+            id: lemonadeCard
+            u: root.u
+            lemonade: root.data.lemonade !== undefined ? root.data.lemonade : null
         }
     }
 }

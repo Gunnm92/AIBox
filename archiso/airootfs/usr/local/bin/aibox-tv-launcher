@@ -188,8 +188,8 @@ class Launcher:
 
     def layout(self):
         n = max(len(self.apps), 1)
-        self.tile = int(min(self.h * 0.42, (self.w * 0.8) / n - self.w * 0.03))
-        self.icon_size = int(self.tile * 0.55)
+        self.tile = int(min(self.h * 0.34, (self.w * 0.7) / n - self.w * 0.03))
+        self.icon_size = int(self.tile * 0.44)
         self.font = pygame.font.Font(FONT, max(24, self.tile // 7))
         self.small = pygame.font.Font(FONT, max(20, self.h // 32))
         self.tiny = pygame.font.Font(FONT, max(14, self.h // 60))
@@ -204,12 +204,12 @@ class Launcher:
 
     def tile_rects(self):
         """Rectangles des tuiles, centrées à l'écran (dessin et souris)."""
+        # Les icônes se rangent à droite, l'espace de gauche est laissé aux actualités.
         n = len(self.apps)
-        gap = int(self.w * 0.03)
-        total = n * self.tile + (n - 1) * gap
-        x0 = (self.w - total) // 2
+        pitch = int(self.w * 0.165)
+        cx0 = int(self.w * 0.62) - pitch * (n - 1) // 2
         y = (self.h - self.tile) // 2
-        return [pygame.Rect(x0 + i * (self.tile + gap), y, self.tile, self.tile) for i in range(n)]
+        return [pygame.Rect(cx0 + i * pitch - self.tile // 2, y, self.tile, self.tile) for i in range(n)]
 
     def draw(self, message=None):
         # Dessin sur une surface opaque, copiée ensuite dans la fenêtre : le
@@ -229,20 +229,22 @@ class Launcher:
             s.fill(BG)
         for i, (app, rect) in enumerate(zip(self.apps, self.tile_rects())):
             x, y = rect.x, rect.y
-            pygame.draw.rect(s, TILE_SEL if i == self.sel else TILE, rect, border_radius=self.tile // 10)
+            # Pas de fond carré : seules les icônes. La sélection se voit au nom
+            # (blanc, avec un trait cyan dessous) ; le reste est atténué.
             icon = self.icons[i]
             cx = x + self.tile // 2
             cy = y + int(self.tile * 0.12) + self.icon_size // 2
             if icon:
                 s.blit(icon, (cx - self.icon_size // 2, cy - self.icon_size // 2))
             else:
-                bg = TILE_SEL if i == self.sel else TILE
-                draw_fallback(s, app, cx, cy, self.icon_size // 2, bg, self.glyph_font)
-            label = self.font.render(app["name"], True, TEXT)
-            s.blit(label, (x + (self.tile - label.get_width()) // 2, y + int(self.tile * 0.78)))
+                draw_fallback(s, app, cx, cy, self.icon_size // 2, BG, self.glyph_font)
+            # Pas de nom : le trait cyan sous l'icône marque la sélection.
+            if i == self.sel:
+                bar_w = int(self.icon_size * 0.7)
+                pygame.draw.rect(s, (0, 229, 255), (cx - bar_w // 2, cy + self.icon_size // 2 + 18, bar_w, max(4, self.h // 200)), border_radius=3)
         hint = message or "◀ ▶  choisir      Croix / A / Entrée  lancer"
         h = self.small.render(hint, True, TEXT if self.wallpaper else DIM)
-        s.blit(h, ((self.w - h.get_width()) // 2, int(self.h * 0.85)))
+        s.blit(h, (int(self.w * 0.62) - h.get_width() // 2, int(self.h * 0.71)))
         if self.wallpaper and self.caption:
             c = self.tiny.render(self.caption, True, DIM)
             s.blit(c, (self.w - c.get_width() - 20, self.h - c.get_height() - 14))

@@ -4,7 +4,7 @@ import Quickshell
 
 Card {
     id: card
-    width: 520 * u
+    width: 640 * u
     height: 232 * u
 
     SystemClock {
