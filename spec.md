@@ -243,3 +243,5 @@ Le 11/11/2026, après un audit du dépôt :
 Le 11/11/2026 : retour du mode bureau de la session TV (labwc, fond et panneau XFCE), retiré par erreur au passage à Hyprland. La tuile « Bureau » du lanceur y mène pour cette session (`aibox-tv-mode --once bureau`), Super+L revient au lanceur sous Hyprland. Un ancien `~/.config/aibox/tv-apps.json` portait encore `command_labwc` : sous Hyprland, la tuile Steam lançait alors `steam -gamepadui` sans gamescope (écran qui clignote). Ce fichier utilisateur doit porter `command_hyprland`.
 
 Le 11/11/2026 : Hyprland de la session TV lancé par `start-hyprland` (surveillance, mode sans échec après un plantage). Lancé seul, Hyprland 0.57 affichait un avertissement à l'écran (« launched without start-hyprland »).
+
+Le 11/11/2026 : le lanceur TV ferme sa fenêtre pendant que l'appli lancée tourne, et la rouvre quand elle se termine. Sa fenêtre plein écran, restée ouverte, reprenait le focus à Moonlight, et l'écran clignotait entre les deux.

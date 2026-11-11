@@ -132,13 +132,6 @@ class Launcher:
     def __init__(self):
         pygame.init()
         controller.init()
-        pygame.mouse.set_visible(True)
-        # Fenêtre sans bordure, plein écran par Hyprland (règle de /etc/aibox/hypr-tv) ;
-        # Sous gamescope, toute fenêtre occupe l'écran.
-        size = pygame.display.get_desktop_sizes()[0]
-        self.screen = pygame.display.set_mode(size, pygame.NOFRAME | pygame.RESIZABLE)
-        pygame.display.set_caption("aibox")
-        self.w, self.h = self.screen.get_size()
         self.apps = load_apps()
         self.sel = 0
         self.pads = {}
@@ -151,7 +144,26 @@ class Launcher:
         self.wp_index = -1
         self.wp_since = 0.0
         threading.Thread(target=self.fetch_wallpaper, daemon=True).start()
+        self.open_window()
+
+    def open_window(self):
+        # Fenêtre sans bordure, plein écran par Hyprland (règle de /etc/aibox/hypr-tv) ;
+        # Sous gamescope, toute fenêtre occupe l'écran.
+        pygame.display.init()
+        pygame.mouse.set_visible(True)
+        size = pygame.display.get_desktop_sizes()[0]
+        self.screen = pygame.display.set_mode(size, pygame.NOFRAME | pygame.RESIZABLE)
+        pygame.display.set_caption("aibox")
+        self.w, self.h = self.screen.get_size()
+        self.canvas = None
         self.layout()
+
+    def close_window(self):
+        # Pendant que l'appli tourne, le lanceur n'a plus de fenêtre : l'appli est
+        # seule à l'écran. Sa fenêtre plein écran, restée ouverte, reprenait le
+        # focus à l'appli (Moonlight), et l'écran clignotait entre les deux (11/11/2026).
+        pygame.display.quit()
+        self.screen = None
 
     def fetch_wallpaper(self):
         # Liste refaite chaque jour ; réessaie tant que le réseau n'est pas prêt.
@@ -263,6 +275,7 @@ class Launcher:
         try:
             command = app.get(f"command_{TV_MODE}", app["command"])
             self.running_app = subprocess.Popen(command, start_new_session=True, env=APP_ENV)
+            self.close_window()
         except OSError as e:
             self.draw(f"Impossible de lancer {app['name']} : {e}")
             time.sleep(3)
@@ -313,18 +326,23 @@ class Launcher:
         self.open_pads()
         clock = pygame.time.Clock()
         while True:
+            if self.running_app:
+                # Pas de fenêtre ni d'événements tant que l'appli tourne.
+                if self.running_app.poll() is None:
+                    clock.tick(5)
+                    continue
+                self.running_app = None
+                self.apps = load_apps()
+                self.open_window()
+                self.pads.clear()
+                self.open_pads()
             for ev in pygame.event.get():
                 if not self.handle(ev):
                     return
-            if self.running_app and self.running_app.poll() is not None:
-                self.running_app = None
-                self.apps = load_apps()
-                self.layout()
-            self.rotate_wallpaper()
             if self.running_app:
-                self.draw(f"{self.apps[self.sel]['name']} est lancé")
-            else:
-                self.draw()
+                continue  # appli lancée à l'instant : fenêtre déjà fermée
+            self.rotate_wallpaper()
+            self.draw()
             clock.tick(30)
 
 
