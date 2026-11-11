@@ -1,0 +1,6 @@
+singleton Theme 1.0 Theme.qml
+Card 1.0 Card.qml
+ClockWidget 1.0 ClockWidget.qml
+WeatherWidget 1.0 WeatherWidget.qml
+NewsWidget 1.0 NewsWidget.qml
+SystemWidget 1.0 SystemWidget.qml

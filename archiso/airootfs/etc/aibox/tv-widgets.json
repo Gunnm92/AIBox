@@ -1,0 +1,9 @@
+{
+  "city": "Paris",
+  "latitude": 48.8566,
+  "longitude": 2.3522,
+  "feeds": [
+    {"name": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml"},
+    {"name": "Numerama", "url": "https://www.numerama.com/feed/"}
+  ]
+}

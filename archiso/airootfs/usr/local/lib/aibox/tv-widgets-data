@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""Données des widgets de la TV (bandeau quickshell, /etc/aibox/quickshell-tv).
+
+Écrit un JSON sur stdout : météo, titres de presse, état de la machine. La météo
+et les titres viennent du réseau ; ils sont gardés dans ~/.cache/aibox pendant
+15 minutes, et l'état de la machine est lu à chaque appel. En cas d'échec réseau,
+le cache périmé reste affiché. Configuration : ~/.config/aibox/tv-widgets.json,
+remplacé par /etc/aibox/tv-widgets.json.
+"""
+import glob
+import json
+import os
+import subprocess
+import time
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+from datetime import datetime
+
+CONFIGS = [os.path.expanduser("~/.config/aibox/tv-widgets.json"), "/etc/aibox/tv-widgets.json"]
+CACHE = os.path.expanduser("~/.cache/aibox/tv-widgets.json")
+TTL = 15 * 60
+UA = "aibox-tv/1.0"
+
+
+def load_config():
+    for path in CONFIGS:
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+    return {"latitude": 0, "longitude": 0, "city": "", "feeds": []}
+
+
+def wmo(code):
+    """Libellé et icône d'un code météo WMO (Open-Meteo)."""
+    if code == 0:
+        return "Dégagé", "sun"
+    if code in (1, 2):
+        return "Peu nuageux", "partly"
+    if code == 3:
+        return "Couvert", "cloud"
+    if code in (45, 48):
+        return "Brouillard", "fog"
+    if 51 <= code <= 67 or 80 <= code <= 82:
+        return "Pluie", "rain"
+    if 71 <= code <= 77 or code in (85, 86):
+        return "Neige", "snow"
+    if code >= 95:
+        return "Orage", "storm"
+    return "Variable", "cloud"
+
+
+def fetch_weather(cfg):
+    query = urllib.parse.urlencode({
+        "latitude": cfg["latitude"],
+        "longitude": cfg["longitude"],
+        "current": "temperature_2m,weather_code",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min",
+        "timezone": "auto",
+        "forecast_days": 4,
+    })
+    req = urllib.request.Request("https://api.open-meteo.com/v1/forecast?" + query, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        data = json.load(r)
+    now_label, now_icon = wmo(data["current"]["weather_code"])
+    days = []
+    for i, day in enumerate(data["daily"]["time"][1:4], start=1):
+        label, icon = wmo(data["daily"]["weather_code"][i])
+        days.append({
+            "day": datetime.fromisoformat(day).strftime("%a"),
+            "min": round(data["daily"]["temperature_2m_min"][i]),
+            "max": round(data["daily"]["temperature_2m_max"][i]),
+            "icon": icon,
+        })
+    return {
+        "temp": round(data["current"]["temperature_2m"]),
+        "label": now_label,
+        "icon": now_icon,
+        "days": days,
+    }
+
+
+def fetch_news(feeds):
+    """Titres des flux RSS ou Atom, six par flux, mélangés en alternance."""
+    per_feed = []
+    for feed in feeds:
+        try:
+            req = urllib.request.Request(feed["url"], headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                root = ET.fromstring(r.read())
+        except (OSError, ET.ParseError, ValueError):
+            continue
+        titles = []
+        for node in list(root.iter("item")) + list(root.iter("{http://www.w3.org/2005/Atom}entry")):
+            t = node.find("title") if node.find("title") is not None else node.find("{http://www.w3.org/2005/Atom}title")
+            if t is not None and t.text:
+                titles.append({"source": feed["name"], "title": " ".join(t.text.split())})
+            if len(titles) == 6:
+                break
+        per_feed.append(titles)
+    out = []
+    for i in range(6):
+        for titles in per_feed:
+            if i < len(titles):
+                out.append(titles[i])
+    return out
+
+
+def cached_or_fetch(cfg):
+    """Météo et titres : cache frais, sinon réseau, sinon cache périmé."""
+    stale = None
+    try:
+        with open(CACHE) as f:
+            stale = json.load(f)
+        if time.time() - stale["ts"] < TTL and stale.get("city") == cfg.get("city"):
+            return stale, []
+    except (OSError, ValueError, KeyError):
+        pass
+    errors = []
+    fresh = {"ts": time.time(), "city": cfg.get("city")}
+    try:
+        fresh["weather"] = fetch_weather(cfg)
+    except (OSError, ValueError, KeyError, IndexError):
+        errors.append("météo indisponible")
+        fresh["weather"] = stale.get("weather") if stale else None
+    fresh["news"] = fetch_news(cfg.get("feeds", []))
+    if not fresh["news"]:
+        errors.append("titres indisponibles")
+        fresh["news"] = stale.get("news", []) if stale else []
+    if errors and stale and not fresh["weather"]:
+        return stale, errors
+    os.makedirs(os.path.dirname(CACHE), exist_ok=True)
+    with open(CACHE, "w") as f:
+        json.dump(fresh, f)
+    return fresh, errors
+
+
+def system_state():
+    mem = {}
+    with open("/proc/meminfo") as f:
+        for line in f:
+            key, _, rest = line.partition(":")
+            mem[key] = int(rest.split()[0])
+    ram_used = round(100 * (1 - mem["MemAvailable"] / mem["MemTotal"]))
+    gpu_temp = None
+    for name in glob.glob("/sys/class/hwmon/hwmon*/name"):
+        with open(name) as f:
+            if f.read().strip() == "amdgpu":
+                try:
+                    with open(os.path.join(os.path.dirname(name), "temp1_input")) as t:
+                        gpu_temp = round(int(t.read()) / 1000)
+                except OSError:
+                    pass
+                break
+    containers = []
+    try:
+        out = subprocess.run(["podman", "ps", "--format", "{{.Names}}"],
+                             capture_output=True, text=True, timeout=5).stdout
+        containers = [n for n in out.split() if n]
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return {
+        "ram": ram_used,
+        "gpu_temp": gpu_temp,
+        "containers": len(containers),
+        "container_names": containers,
+    }
+
+
+def main():
+    cfg = load_config()
+    data, errors = cached_or_fetch(cfg)
+    print(json.dumps({
+        "updated": datetime.now().strftime("%H:%M"),
+        "city": cfg.get("city", ""),
+        "weather": data.get("weather"),
+        "news": data.get("news", []),
+        "system": system_state(),
+        "errors": errors,
+    }, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

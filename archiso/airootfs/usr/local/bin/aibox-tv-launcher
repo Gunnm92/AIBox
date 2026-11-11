@@ -9,6 +9,10 @@ Applications : /etc/aibox/tv-apps.json, remplacé par ~/.config/aibox/tv-apps.js
 s'il existe. Chaque entrée : {"name": ..., "command": [...], "icon": [chemins...]},
 et "command_<mode>": [...] facultatif, pris à la place de "command" quand la
 session TV est dans ce mode (AIBOX_TV_MODE, voir tv-session).
+Sans icône, la tuile affiche "glyph": "moon" ou "monitor" si présent, sinon
+l'initiale du nom dans un disque coloré.
+
+Souris (pavé tactile de la DualSense compris) : survol pour choisir, clic pour lancer.
 
 Fond d'écran : les images de Bing des 8 derniers jours, téléchargées en
 arrière-plan une fois par jour dans ~/.cache/aibox, une nouvelle toutes les 30
@@ -23,11 +27,11 @@ import threading
 import time
 import urllib.request
 
-TV_MODE = os.environ.get("AIBOX_TV_MODE", "labwc")
+TV_MODE = os.environ.get("AIBOX_TV_MODE", "hyprland")
 # Environnement des applis lancées : celui de la session, sans le pilote vidéo
 # SDL choisi ici pour le lanceur.
 APP_ENV = dict(os.environ)
-# gamescope n'affiche que les fenêtres X11 (son Xwayland), labwc les Wayland.
+# gamescope n'affiche que les fenêtres X11 (son Xwayland), Hyprland les Wayland.
 os.environ.setdefault("SDL_VIDEODRIVER", "x11" if TV_MODE == "gamescope" else "wayland")
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame  # noqa: E402
@@ -89,6 +93,28 @@ def load_apps():
     return []
 
 
+PALETTE = [(52, 120, 246), (226, 92, 72), (46, 166, 108), (201, 139, 36), (146, 92, 218)]
+
+
+def draw_fallback(s, app, cx, cy, r, bg, font):
+    """Pictogramme pour une appli sans icône : croissant, écran (glyph dans
+    tv-apps.json), ou initiale dans un disque coloré."""
+    glyph = app.get("glyph")
+    if glyph == "moon":
+        pygame.draw.circle(s, (240, 225, 170), (cx, cy), r)
+        pygame.draw.circle(s, bg, (cx + int(r * 0.45), cy - int(r * 0.25)), int(r * 0.85))
+    elif glyph == "monitor":
+        w, h = int(r * 2.0), int(r * 1.3)
+        top = cy - h // 2 - r // 6
+        pygame.draw.rect(s, TEXT, (cx - w // 2, top, w, h), width=max(4, r // 8), border_radius=r // 6)
+        pygame.draw.rect(s, TEXT, (cx - r // 8, top + h, r // 4, r // 5))
+        pygame.draw.rect(s, TEXT, (cx - r // 2, top + h + r // 5, r, max(4, r // 8)), border_radius=r // 16)
+    else:
+        pygame.draw.circle(s, PALETTE[sum(map(ord, app["name"])) % len(PALETTE)], (cx, cy), r)
+        letter = font.render(app["name"][:1].upper(), True, TEXT)
+        s.blit(letter, (cx - letter.get_width() // 2, cy - letter.get_height() // 2))
+
+
 def load_icon(paths, size):
     for p in paths:
         p = os.path.expanduser(p)
@@ -101,13 +127,13 @@ def load_icon(paths, size):
     return None
 
 
+
 class Launcher:
     def __init__(self):
         pygame.init()
         controller.init()
-        pygame.mouse.set_visible(False)
-        # Fenêtre sans bordure, agrandie par labwc (règle de /etc/aibox/labwc-tv) ;
-        # pas de plein écran : labwc garderait le lanceur au-dessus des applis lancées.
+        pygame.mouse.set_visible(True)
+        # Fenêtre sans bordure, plein écran par Hyprland (règle de /etc/aibox/hypr-tv) ;
         # Sous gamescope, toute fenêtre occupe l'écran.
         size = pygame.display.get_desktop_sizes()[0]
         self.screen = pygame.display.set_mode(size, pygame.NOFRAME | pygame.RESIZABLE)
@@ -165,9 +191,9 @@ class Launcher:
         self.tile = int(min(self.h * 0.42, (self.w * 0.8) / n - self.w * 0.03))
         self.icon_size = int(self.tile * 0.55)
         self.font = pygame.font.Font(FONT, max(24, self.tile // 7))
-        self.title_font = pygame.font.Font(FONT, max(36, self.h // 12))
         self.small = pygame.font.Font(FONT, max(20, self.h // 32))
         self.tiny = pygame.font.Font(FONT, max(14, self.h // 60))
+        self.glyph_font = pygame.font.Font(FONT, max(20, int(self.icon_size * 0.5)))
         self.wallpaper = None  # recalculé à la bonne taille
         self.icons = [load_icon(a.get("icon", []), self.icon_size) for a in self.apps]
 
@@ -175,6 +201,15 @@ class Launcher:
         for i in range(controller.get_count()):
             if i not in self.pads and controller.is_controller(i):
                 self.pads[i] = controller.Controller(i)
+
+    def tile_rects(self):
+        """Rectangles des tuiles, centrées à l'écran (dessin et souris)."""
+        n = len(self.apps)
+        gap = int(self.w * 0.03)
+        total = n * self.tile + (n - 1) * gap
+        x0 = (self.w - total) // 2
+        y = (self.h - self.tile) // 2
+        return [pygame.Rect(x0 + i * (self.tile + gap), y, self.tile, self.tile) for i in range(n)]
 
     def draw(self, message=None):
         # Dessin sur une surface opaque, copiée ensuite dans la fenêtre : le
@@ -192,20 +227,17 @@ class Launcher:
             s.blit(self.wallpaper, (0, 0))
         else:
             s.fill(BG)
-        title = self.title_font.render("aibox", True, TEXT)
-        s.blit(title, ((self.w - title.get_width()) // 2, int(self.h * 0.12)))
-        n = len(self.apps)
-        gap = int(self.w * 0.03)
-        total = n * self.tile + (n - 1) * gap
-        x0 = (self.w - total) // 2
-        y = (self.h - self.tile) // 2
-        for i, app in enumerate(self.apps):
-            x = x0 + i * (self.tile + gap)
-            rect = pygame.Rect(x, y, self.tile, self.tile)
+        for i, (app, rect) in enumerate(zip(self.apps, self.tile_rects())):
+            x, y = rect.x, rect.y
             pygame.draw.rect(s, TILE_SEL if i == self.sel else TILE, rect, border_radius=self.tile // 10)
             icon = self.icons[i]
+            cx = x + self.tile // 2
+            cy = y + int(self.tile * 0.12) + self.icon_size // 2
             if icon:
-                s.blit(icon, (x + (self.tile - self.icon_size) // 2, y + int(self.tile * 0.12)))
+                s.blit(icon, (cx - self.icon_size // 2, cy - self.icon_size // 2))
+            else:
+                bg = TILE_SEL if i == self.sel else TILE
+                draw_fallback(s, app, cx, cy, self.icon_size // 2, bg, self.glyph_font)
             label = self.font.render(app["name"], True, TEXT)
             s.blit(label, (x + (self.tile - label.get_width()) // 2, y + int(self.tile * 0.78)))
         hint = message or "◀ ▶  choisir      Croix / A / Entrée  lancer"
@@ -257,6 +289,15 @@ class Launcher:
             if abs(v) > 0.6 and abs(self.last_axis) <= 0.6:
                 self.move(1 if v > 0 else -1)
             self.last_axis = v
+        elif ev.type == pygame.MOUSEMOTION:
+            for i, rect in enumerate(self.tile_rects()):
+                if rect.collidepoint(ev.pos):
+                    self.sel = i
+        elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            for i, rect in enumerate(self.tile_rects()):
+                if rect.collidepoint(ev.pos):
+                    self.sel = i
+                    self.launch()
         elif ev.type == pygame.VIDEORESIZE:
             self.screen = pygame.display.set_mode(ev.size, pygame.NOFRAME | pygame.RESIZABLE)
             self.w, self.h = ev.size

@@ -32,7 +32,7 @@ Disque (btrfs, étiquette AIBOXDATA) ──► /home (config, Steam, ~/Applicati
                                      /var/lib/flatpak, /srv/models (LLM), swap de secours,
                                      /var/tmp, cache pacman, journaux, coredumps,
                                      /var/lib/bluetooth, réseau, SSH, machine-id
-DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope (HDR, FSR) + Steam Big Picture (ou labwc + lanceur)
+DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope (HDR, FSR) + Steam Big Picture (ou Hyprland + lanceur)
 DualSense éteinte > 2 min ─────────┘ session arrêtée, écran éteint, PC allumé
 LLM : llm.service (llm.slice) ─► serveur installé sur le disque, modèles dans /srv/models
 Admin : labwc headless + XFCE (admin.slice) ─► wayvnc (127.0.0.1:5900) ─► websocat (127.0.0.1:5901) ─► nginx HTTPS + mot de passe :6080 (noVNC)  + SSH
@@ -124,7 +124,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 - **Lemonade** : serveur LLM sur le port 13305, modèles et backends sur le disque.
 
-- **Session TV** : gamescope pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS ; « Passer au bureau » dans Steam mène, pour cette session, à labwc et à un lanceur (Steam, Moonlight) à la manette ou au clavier, sur les images de Bing ; sa tuile Steam ramène à Steam sous gamescope. `aibox-tv-mode labwc` rend labwc durable.
+- **Session TV** : par défaut, Hyprland avec des cartes de widgets (heure, météo, titres, état d'aibox) et un lanceur (Steam, Moonlight) à la manette ou au clavier, sur les images de Bing ; sa tuile Steam lance gamescope, qui pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS. « Passer au bureau » dans Steam mène, pour cette session, au lanceur. `aibox-tv-mode gamescope` rend gamescope durable.
 
 Pas encore : assistant vocal.
 
@@ -298,10 +298,10 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 `aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis `tv-session` lance le mode choisi par `aibox-tv-mode` (gardé dans `~/.config/aibox/tv-mode`) :
 
-- **gamescope** (par défaut) : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode labwc (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
-- **labwc** : labwc sur la TV (`/etc/aibox/labwc-tv`) et le lanceur `aibox-tv-launcher` (Steam `-gamepadui` ; autres applis dans `tv-apps.json`, dont « Terminal » pour lancer un jeu à la main et voir sa sortie), sans HDR.
+- **gamescope** : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode labwc (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
+- **hyprland** (par défaut, sans choix enregistré) : Hyprland sur la TV (`/etc/aibox/hypr-tv/hyprland.lua`), avec les cartes de widgets quickshell (heure, météo, titres, état d'aibox ; réglages dans `~/.config/aibox/tv-widgets.json`, modèle : `/etc/aibox/tv-widgets.json`) et le lanceur `aibox-tv-launcher` (Steam est une tuile qui lance gamescope ; autres applis dans `tv-apps.json`), sans HDR. Les logos des tuiles sont dans `/usr/local/share/aibox/tv-icons/`.
 
-`aibox-tv-mode gamescope` ou `aibox-tv-mode labwc` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement.
+`aibox-tv-mode gamescope` ou `aibox-tv-mode hyprland` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement.
 
 - **Jeux non-Steam** (`.wsquashfs`…) : pas de `gamescope` dans les options de lancement, la session est déjà dans gamescope ; si un jeu ne propose pas le HDR, `DXVK_HDR=1 %command% …`. Un chemin contenant des espaces se met entre guillemets.
 

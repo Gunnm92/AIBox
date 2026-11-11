@@ -32,6 +32,7 @@ file_permissions=(
   ["/usr/local/bin/xfdesktop-settings"]="0:0:755"
   ["/usr/local/bin/aibox-keyboard"]="0:0:755"
   ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
+  ["/usr/local/lib/aibox/tv-widgets-data"]="0:0:755"
   ["/usr/local/bin/aibox-diag"]="0:0:755"
   ["/usr/local/bin/aibox-run-exe"]="0:0:755"
   ["/usr/local/bin/wsquashfs-launcher"]="0:0:755"

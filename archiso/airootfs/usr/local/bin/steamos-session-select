@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Appelé par Steam en mode SteamOS (session TV gamescope) : « Passer au bureau »
-# (desktop, plasma…) bascule la session TV sur labwc et son lanceur (voir
+# (desktop, plasma…) bascule la session TV sur Hyprland et son lanceur (voir
 # aibox-tv-mode) ; Steam se ferme et aibox-tv relance la session dans le mode
 # choisi (sans ce fichier, Steam fermé termine la session TV).
 # Bascule pour une session seulement (aibox-tv-mode --once, en RAM) : le mode
 # gardé sur le disque n'est pas touché, la session suivante et le démarrage
 # reviennent à Steam sous gamescope. Avant le 17/10/2026, la bascule était
-# gardée : un appel de Steam suffisait à laisser la TV sur labwc pour de bon.
+# gardée : un appel de Steam suffisait à laisser la TV sur le lanceur pour de bon.
 # Trace dans le journal (journalctl -t steamos-session-select) : Steam l'appelle
 # aussi hors de « Passer au bureau », selon les cas.
 logger -t steamos-session-select "appelé par Steam : ${*:-(sans argument)}"
 case "${1:-}" in
     gamescope) mode=gamescope ;;
     "") mode="" ;;
-    *) mode=labwc ;;
+    *) mode=hyprland ;;
 esac
 run="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 [[ -n "$mode" ]] && echo "$mode" > "$run/aibox-tv-mode-once"

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Session TV sur l'écran réel (GPU), selon ~/.config/aibox/tv-mode (aibox-tv-mode) :
-#   gamescope (défaut) : gamescope pilote la TV (HDR, FSR, VRR) avec Steam en mode
-#                        SteamOS, comme gamescope-session ;
-#   labwc              : labwc, configuration /etc/aibox/labwc-tv, et le lanceur
-#                        (applis de tv-apps.json) ; « Passer au bureau » dans Steam y mène ;
-#   bureau             : labwc, configuration /etc/aibox/labwc-bureau, avec le bureau XFCE
-#                        (fond et panneau), sans le lanceur ; Super+L revient au lanceur.
-# Le bureau d'administration (labwc headless) doit déjà avoir pris wayland-0 et
+#   hyprland (défaut)  : Hyprland, configuration /etc/aibox/hypr-tv, les cartes de widgets
+#                        (quickshell-tv) et le lanceur (applis de tv-apps.json) ; Steam y
+#                        est une tuile, et « Passer au bureau » dans Steam y mène ;
+#   gamescope          : gamescope pilote la TV (HDR, FSR, VRR) avec Steam en mode
+#                        SteamOS, comme gamescope-session.
+# Le bureau d'administration (labwc headless, noVNC) doit déjà avoir pris wayland-0 et
 # :0 : sinon ce compositeur les lui volerait (cf. SteamBox).
 set -euo pipefail
 for _ in $(seq 1 60); do
@@ -25,19 +24,19 @@ if [[ -s "$once" ]]; then
 else
     mode="$(cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || true)"
 fi
+# Sans choix enregistré, la session démarre sur le lanceur (Hyprland).
+mode="${mode:-hyprland}"
 # La session (PAM/systemd) arrive avec CAP_WAKE_ALARM en capacité ambiante,
 # héritée par toutes les applis : le bac à sable de Steam (bwrap) refuse alors
 # de démarrer (« Unexpected capabilities but not setuid »), et Steam conclut à
 # tort que les espaces de noms utilisateur sont désactivés. On les retire.
 nocaps=(setpriv --inh-caps=-all --ambient-caps=-all)
 
-if [[ "$mode" == labwc ]]; then
-    export AIBOX_TV_MODE=labwc
-    exec "${nocaps[@]}" labwc -C /etc/aibox/labwc-tv
-fi
-if [[ "$mode" == bureau ]]; then
-    export AIBOX_TV_MODE=bureau
-    exec "${nocaps[@]}" labwc -C /etc/aibox/labwc-bureau
+if [[ "$mode" == hyprland ]]; then
+    export AIBOX_TV_MODE=hyprland
+    # Seat du système (logind), pas le backend « noop » hérité de l'administration.
+    export LIBSEAT_BACKEND=logind
+    exec "${nocaps[@]}" Hyprland -c /etc/aibox/hypr-tv/hyprland.lua
 fi
 
 # Réglages de gamescope-session (Steam en mode SteamOS) : menu rapide avec

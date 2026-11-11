@@ -118,6 +118,11 @@ pipewire-alsa
 wireplumber
 rtkit
 python-pygame
+# Bandeau de widgets de la TV (heure, météo, titres, état d'aibox), voir quickshell-tv
+quickshell
+# Session TV et bureau d'administration sous Hyprland
+hyprland
+qt6-multimedia
 # Jeux : gamemode (gamemoderun %command% dans Steam), son des jeux 32 bits
 gamemode
 lib32-gamemode
