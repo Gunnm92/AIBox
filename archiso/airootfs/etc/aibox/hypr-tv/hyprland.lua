@@ -20,6 +20,12 @@ hl.config({
     },
     decoration = {
         rounding = 0,
+        -- Verre dépoli des cartes : flou de 28 px de maquette (56 px en 4K),
+        -- approché par le flou de Kawase (taille × 2^passes).
+        blur = {
+            size = 7,
+            passes = 3,
+        },
     },
     animations = {
         enabled = false,

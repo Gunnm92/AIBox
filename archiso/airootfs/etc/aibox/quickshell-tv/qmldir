@@ -1,8 +1,10 @@
 singleton Theme 1.0 Theme.qml
 Card 1.0 Card.qml
+FlashText 1.0 FlashText.qml
+Track 1.0 Track.qml
 ClockWidget 1.0 ClockWidget.qml
 WeatherWidget 1.0 WeatherWidget.qml
-NewsWidget 1.0 NewsWidget.qml
-SystemWidget 1.0 SystemWidget.qml
-LemonadeWidget 1.0 LemonadeWidget.qml
+NewsHeroWidget 1.0 NewsHeroWidget.qml
+NewsListWidget 1.0 NewsListWidget.qml
+MachineWidget 1.0 MachineWidget.qml
 PaletteProbe 1.0 PaletteProbe.qml

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Lanceur plein écran de la session TV d'aibox.
 
-Grandes tuiles, à la manette (croix directionnelle ou stick, Croix/A pour
-lancer) ou au clavier (flèches, Entrée). L'appli lancée passe au premier plan ;
+Barre d'icônes en bas de l'écran (maquette « Direction 2 v3 », 1920×1080 mis à
+l'échelle), à la manette (croix directionnelle ou stick, Croix/A pour lancer)
+ou au clavier (flèches, Entrée). Les cartes de widgets (quickshell-tv) occupent
+le reste de l'écran. L'appli lancée passe au premier plan ;
 quand elle se termine, on revient au lanceur.
 
 Applications : /etc/aibox/tv-apps.json, remplacé par ~/.config/aibox/tv-apps.json
@@ -20,6 +22,7 @@ minutes (fond uni sans réseau).
 """
 import datetime
 import json
+import math
 import os
 import subprocess
 import sys
@@ -40,10 +43,7 @@ from pygame._sdl2 import controller  # noqa: E402
 CONFIGS = [os.path.expanduser("~/.config/aibox/tv-apps.json"), "/etc/aibox/tv-apps.json"]
 
 BG = (16, 18, 24)
-TILE = (34, 38, 50)
-TILE_SEL = (52, 120, 246)
 TEXT = (235, 238, 245)
-DIM = (140, 146, 160)
 FONT = "/usr/share/fonts/TTF/DejaVuSans.ttf"
 CACHE = os.path.expanduser("~/.cache/aibox")
 BING = "https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=fr-FR"
@@ -115,22 +115,51 @@ def draw_fallback(s, app, cx, cy, r, bg, font):
         s.blit(letter, (cx - letter.get_width() // 2, cy - letter.get_height() // 2))
 
 
-def load_icon(paths, size):
-    for p in paths:
-        p = os.path.expanduser(p)
-        if os.path.exists(p):
-            try:
-                img = pygame.image.load(p).convert_alpha()
-                return pygame.transform.smoothscale(img, (size, size))
-            except pygame.error:
-                continue
-    return None
 
+# Mise en page en pixels de maquette (écran 1920×1080), multipliés par U à l'écran.
+BAR = (96, 880, 1728, 140)        # barre du lanceur, en bas
+BAR_RADIUS = 32
+ICON_BOX = 88                     # icône dans son anneau
+ICON_GAP = 44
+ICON_X0 = 96 + 52                 # bord gauche de la première icône
+RING_W = 4
+SEL_SCALE = 1.10
+DIM_ALPHA = 153                   # icônes non sélectionnées : 60 %
+VEIL = 120                        # voile noir sur le fond : 47 %
+ACCENT = (168, 199, 250)          # #A8C7FA
+ACCENT_TEXT = (11, 14, 19)        # #0B0E13
+CARD = (22, 26, 34, 128)          # rgba(22,26,34,.50), comme les cartes QML
+MUTED = (147, 143, 153)           # #938F99
+TEXT_C = (241, 240, 245)          # #F1F0F5
+FONT_BOLD = "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"
+RING_MS = 200                     # glissement de l'anneau de sélection
+LAUNCH_MS = 600                   # arc de lancement
+FADE_MS = 300                     # fondu avant que l'appli prenne l'écran
+
+
+def ease_out(t):
+    t = max(0.0, min(1.0, t))
+    return 1 - (1 - t) ** 3
+
+
+def fit_icon(img, size):
+    """Icône réduite pour tenir dans le cercle de l'anneau, sans la déformer : une
+    icône ronde garde toute la place, un logo carré (XFCE) est réduit."""
+    w, h = img.get_size()
+    probe = pygame.transform.smoothscale(img, (64, 64))
+    reach = max((math.hypot(x - 31.5, y - 31.5) for x in range(64) for y in range(64)
+                 if probe.get_at((x, y)).a > 40), default=32)
+    k = size / max(w, h) * min(1.0, 32 / reach)
+    return pygame.transform.smoothscale(img, (max(1, round(w * k)), max(1, round(h * k))))
 
 
 class Launcher:
     def __init__(self):
-        pygame.init()
+        # Pas de pygame.init() : il ouvre aussi le son, dont la fermeture
+        # (Mix_CloseAudio) restait bloquée sur PipeWire à la sortie. Le
+        # processus ne finissait pas et la boucle ne relançait pas le lanceur,
+        # signalé « ne répond plus » par Hyprland (11/11/2026).
+        pygame.font.init()
         controller.init()
         self.apps = load_apps()
         self.sel = 0
@@ -138,11 +167,13 @@ class Launcher:
         self.running_app = None
         self.last_axis = 0.0
         self.wallpaper_path = None
-        self.wallpaper = None
         self.caption = ""
         self.wallpapers = []
         self.wp_index = -1
         self.wp_since = 0.0
+        self.bg = None
+        self.message = None
+        self.message_until = 0.0
         threading.Thread(target=self.fetch_wallpaper, daemon=True).start()
         self.open_window()
 
@@ -183,102 +214,227 @@ class Launcher:
         self.wp_index = (self.wp_index + 1) % len(self.wallpapers)
         self.wp_since = time.monotonic()
         self.wallpaper_path, self.caption = self.wallpapers[self.wp_index]
-        self.wallpaper = None
+        self.bg = None
 
-    def scaled_wallpaper(self):
-        """Image du jour en plein écran (recadrée), assombrie pour la lisibilité."""
-        img = pygame.image.load(self.wallpaper_path).convert()
-        iw, ih = img.get_size()
-        scale = max(self.w / iw, self.h / ih)
-        img = pygame.transform.smoothscale(img, (int(iw * scale) + 1, int(ih * scale) + 1))
-        out = pygame.Surface((self.w, self.h))
-        out.blit(img, ((self.w - img.get_width()) // 2, (self.h - img.get_height()) // 2))
-        shade = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
-        shade.fill((0, 0, 0, 120))
-        out.blit(shade, (0, 0))
-        return out
+    # --- mise en page -------------------------------------------------------
+
+    def px(self, v):
+        return round(v * self.u)
 
     def layout(self):
-        n = max(len(self.apps), 1)
-        self.tile = int(min(self.h * 0.34, (self.w * 0.7) / n - self.w * 0.03))
-        self.icon_size = int(self.tile * 0.44)
-        self.font = pygame.font.Font(FONT, max(24, self.tile // 7))
-        self.small = pygame.font.Font(FONT, max(20, self.h // 32))
-        self.tiny = pygame.font.Font(FONT, max(14, self.h // 60))
-        self.glyph_font = pygame.font.Font(FONT, max(20, int(self.icon_size * 0.5)))
-        self.wallpaper = None  # recalculé à la bonne taille
-        self.icons = [load_icon(a.get("icon", []), self.icon_size) for a in self.apps]
+        self.u = self.h / 1080
+        # Maquette 16:9 centrée si l'écran a un autre format.
+        self.ox = round((self.w - 1920 * self.u) / 2)
+        self.font_hint = pygame.font.Font(FONT, self.px(22))
+        self.font_key = pygame.font.Font(FONT_BOLD, self.px(22))
+        self.font_credit = pygame.font.Font(FONT, self.px(20))
+        self.font_glyph = pygame.font.Font(FONT_BOLD, self.px(36))
+        inner = ICON_BOX - 2 * RING_W
+        self.icons = []
+        for app in self.apps:
+            img = self.load_app_icon(app, inner)
+            sel = self.load_app_icon(app, round(inner * SEL_SCALE))
+            dim = img.copy()
+            dim.fill((255, 255, 255, DIM_ALPHA), special_flags=pygame.BLEND_RGBA_MULT)
+            self.icons.append((img, dim, sel))
+        self.ring_x = self.icon_center(self.sel)[0]
+        self.ring_from = self.ring_to = self.ring_x
+        self.ring_t0 = 0.0
+        self.hints = self.render_hints(press=False)
+        self.hints_press = self.render_hints(press=True)
+        self.bg = None
 
-    def open_pads(self):
-        for i in range(controller.get_count()):
-            if i not in self.pads and controller.is_controller(i):
-                self.pads[i] = controller.Controller(i)
+    def load_app_icon(self, app, size):
+        """Icône PNG de l'appli, sinon pictogramme (draw_fallback), sur fond transparent."""
+        size = self.px(size)
+        for p in app.get("icon", []):
+            p = os.path.expanduser(p)
+            if os.path.exists(p):
+                try:
+                    return fit_icon(pygame.image.load(p).convert_alpha(), size)
+                except pygame.error:
+                    continue
+        s = pygame.Surface((size, size), pygame.SRCALPHA)
+        draw_fallback(s, app, size // 2, size // 2, size // 2, BG, self.font_glyph)
+        return s
+
+    def icon_center(self, i):
+        x = ICON_X0 + ICON_BOX / 2 + i * (ICON_BOX + ICON_GAP)
+        return self.ox + self.px(x), self.px(BAR[1] + BAR[3] / 2)
 
     def tile_rects(self):
-        """Rectangles des tuiles, centrées à l'écran (dessin et souris)."""
-        # Les icônes se rangent à droite, l'espace de gauche est laissé aux actualités.
-        n = len(self.apps)
-        pitch = int(self.w * 0.165)
-        cx0 = int(self.w * 0.62) - pitch * (n - 1) // 2
-        y = (self.h - self.tile) // 2
-        return [pygame.Rect(cx0 + i * pitch - self.tile // 2, y, self.tile, self.tile) for i in range(n)]
+        """Zones cliquables des icônes (pavé tactile de la manette)."""
+        r = self.px(ICON_BOX * SEL_SCALE / 2)
+        return [pygame.Rect(cx - r, cy - r, 2 * r, 2 * r)
+                for cx, cy in (self.icon_center(i) for i in range(len(self.apps)))]
 
-    def draw(self, message=None):
-        # Dessin sur une surface opaque, copiée ensuite dans la fenêtre : le
-        # texte anticrénelé mélangé directement dans la fenêtre Wayland (qui a un
-        # canal alpha) donnait des rectangles pleins sur l'image de fond.
+    def render_hints(self, press):
+        """Aide aux touches, à droite de la barre : ◀ ▶ choisir   A lancer."""
+        key_h = self.px(42)
+        parts = []  # (surface, écart avant)
+
+        def key(label, on=False):
+            t = self.font_key.render(label, True, ACCENT_TEXT if on else TEXT_C)
+            w = max(key_h, t.get_width() + self.px(24))
+            s = pygame.Surface((w, key_h), pygame.SRCALPHA)
+            rect = s.get_rect()
+            if on:
+                pygame.draw.rect(s, ACCENT, rect, border_radius=self.px(12))
+            else:
+                pygame.draw.rect(s, (255, 255, 255, 26), rect, border_radius=self.px(12))
+                pygame.draw.rect(s, (255, 255, 255, 36), rect, width=max(1, self.px(1)), border_radius=self.px(12))
+            s.blit(t, ((w - t.get_width()) // 2, (key_h - t.get_height()) // 2))
+            return s
+
+        def label(text):
+            return self.font_hint.render(text, True, MUTED)
+
+        gap, group = self.px(8), self.px(30)
+        parts = [(key("◀"), 0), (key("▶"), gap), (label("choisir"), gap),
+                 (key("A", on=press), group), (label("lancer"), gap)]
+        w = sum(s.get_width() + g for s, g in parts)
+        out = pygame.Surface((w, key_h), pygame.SRCALPHA)
+        x = 0
+        for s, g in parts:
+            x += g
+            out.blit(s, (x, (key_h - s.get_height()) // 2))
+            x += s.get_width()
+        return out
+
+    # --- fond (calculé une fois par image du jour) ---------------------------
+
+    def build_background(self):
+        """Fond d'écran assombri, barre du lanceur en verre dépoli, crédit de la photo."""
+        bg = pygame.Surface((self.w, self.h)).convert()
+        bg.fill(BG)
+        if self.wallpaper_path:
+            try:
+                img = pygame.image.load(self.wallpaper_path).convert()
+                iw, ih = img.get_size()
+                k = max(self.w / iw, self.h / ih)
+                img = pygame.transform.smoothscale(img, (int(iw * k) + 1, int(ih * k) + 1))
+                bg.blit(img, ((self.w - img.get_width()) // 2, (self.h - img.get_height()) // 2))
+            except (pygame.error, OSError):
+                self.wallpaper_path = None
+        veil = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        veil.fill((0, 0, 0, VEIL))
+        bg.blit(veil, (0, 0))
+
+        x, y, w, h = BAR
+        rect = pygame.Rect(self.ox + self.px(x), self.px(y), self.px(w), self.px(h))
+        radius = self.px(BAR_RADIUS)
+        # Verre dépoli : le fond sous la barre (pris avant l'ombre, qui l'assombrissait),
+        # flouté (réduit puis agrandi), puis la carte.
+        crop = bg.subsurface(rect).copy()
+        # Ombre portée (0 20 50 rgba(0,0,0,.35)) : rectangle flou, petit puis agrandi.
+        k = 16
+        pad = self.px(60)
+        sh = pygame.Surface(((rect.w + 2 * pad) // k, (rect.h + 2 * pad) // k), pygame.SRCALPHA)
+        pygame.draw.rect(sh, (0, 0, 0, 90), (pad // k, pad // k, rect.w // k, rect.h // k), border_radius=max(1, radius // k))
+        sh = pygame.transform.smoothscale(sh, (rect.w + 2 * pad, rect.h + 2 * pad))
+        bg.blit(sh, (rect.x - pad, rect.y - pad + self.px(20)))
+        small = pygame.transform.smoothscale(crop, (max(1, rect.w // 28), max(1, rect.h // 28)))
+        glass = pygame.transform.smoothscale(small, rect.size).convert_alpha()
+        tint = pygame.Surface(rect.size, pygame.SRCALPHA)
+        tint.fill(CARD)
+        glass.blit(tint, (0, 0))
+        mask = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=radius)
+        glass.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+        bg.blit(glass, rect.topleft)
+        edge = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(edge, (255, 255, 255, 20), edge.get_rect(), width=max(1, self.px(1)), border_radius=radius)
+        pygame.draw.line(edge, (255, 255, 255, 15), (radius, self.px(1)), (rect.w - radius, self.px(1)), max(1, self.px(1)))
+        bg.blit(edge, rect.topleft)
+
+        # Crédit de la photo du jour, sous la barre à droite.
+        if self.wallpaper_path and self.caption:
+            c = self.font_credit.render(self.caption, True, MUTED)
+            bg.blit(c, (rect.right - c.get_width(), rect.bottom + self.px(8)))
+        self.bar = rect
+        self.bg = bg
+
+    # --- dessin ---------------------------------------------------------------
+
+    def draw(self, launch=None, fade=0.0):
+        """launch : avancement de l'arc de lancement (0 à 1) ; fade : fondu au noir (0 à 1)."""
+        if self.bg is None or self.bg.get_size() != (self.w, self.h):
+            self.build_background()
+        # Dessin sur une surface opaque, copiée ensuite dans la fenêtre : les images
+        # transparentes mélangées directement dans la fenêtre Wayland (qui a un
+        # canal alpha) donnaient des carrés noirs ou blancs.
         if getattr(self, "canvas", None) is None or self.canvas.get_size() != (self.w, self.h):
             self.canvas = pygame.Surface((self.w, self.h)).convert()
         s = self.canvas
-        if self.wallpaper_path and self.wallpaper is None:
-            try:
-                self.wallpaper = self.scaled_wallpaper()
-            except (pygame.error, OSError):
-                self.wallpaper_path = None
-        if self.wallpaper:
-            s.blit(self.wallpaper, (0, 0))
-        else:
-            s.fill(BG)
-        for i, (app, rect) in enumerate(zip(self.apps, self.tile_rects())):
-            x, y = rect.x, rect.y
-            # Pas de fond carré : seules les icônes. La sélection se voit au nom
-            # (blanc, avec un trait cyan dessous) ; le reste est atténué.
-            icon = self.icons[i]
-            cx = x + self.tile // 2
-            cy = y + int(self.tile * 0.12) + self.icon_size // 2
-            if icon:
-                s.blit(icon, (cx - self.icon_size // 2, cy - self.icon_size // 2))
+        s.blit(self.bg, (0, 0))
+        t = (time.monotonic() - self.ring_t0) * 1000 / RING_MS
+        self.ring_x = self.ring_from + (self.ring_to - self.ring_from) * ease_out(t)
+        for i, (img, dim, sel) in enumerate(self.icons):
+            cx, cy = self.icon_center(i)
+            icon = sel if i == self.sel else dim
+            s.blit(icon, (cx - icon.get_width() // 2, cy - icon.get_height() // 2))
+        if self.icons:
+            cy = self.icon_center(self.sel)[1]
+            r = self.px(ICON_BOX * SEL_SCALE / 2)
+            ring = pygame.Rect(0, 0, 2 * r, 2 * r)
+            ring.center = (round(self.ring_x), cy)
+            if launch is None:
+                pygame.draw.circle(s, ACCENT, ring.center, r, self.px(RING_W))
             else:
-                draw_fallback(s, app, cx, cy, self.icon_size // 2, BG, self.glyph_font)
-            # Pas de nom : le trait cyan sous l'icône marque la sélection.
-            if i == self.sel:
-                bar_w = int(self.icon_size * 0.7)
-                pygame.draw.rect(s, (0, 229, 255), (cx - bar_w // 2, cy + self.icon_size // 2 + 18, bar_w, max(4, self.h // 200)), border_radius=3)
-        hint = message or "◀ ▶  choisir      Croix / A / Entrée  lancer"
-        h = self.small.render(hint, True, TEXT if self.wallpaper else DIM)
-        s.blit(h, (int(self.w * 0.62) - h.get_width() // 2, int(self.h * 0.71)))
-        if self.wallpaper and self.caption:
-            c = self.tiny.render(self.caption, True, DIM)
-            s.blit(c, (self.w - c.get_width() - 20, self.h - c.get_height() - 14))
+                # Arc de progression qui fait le tour de l'icône, depuis le haut.
+                pygame.draw.circle(s, (64, 70, 84), ring.center, r, self.px(RING_W))  # piste de l'arc
+                a = 2 * math.pi * ease_out(launch)
+                if a > 0.01:
+                    pygame.draw.arc(s, ACCENT, ring, math.pi / 2 - a, math.pi / 2, self.px(RING_W))
+        if self.message and time.monotonic() < self.message_until:
+            m = self.font_hint.render(self.message, True, TEXT_C)
+            s.blit(m, (self.bar.right - self.px(40) - m.get_width(), self.bar.centery - m.get_height() // 2))
+        else:
+            self.message = None
+            hints = self.hints_press if launch is not None else self.hints
+            s.blit(hints, (self.bar.right - self.px(40) - hints.get_width(), self.bar.centery - hints.get_height() // 2))
+        if fade > 0:
+            black = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+            black.fill((0, 0, 0, round(255 * min(1.0, fade))))
+            s.blit(black, (0, 0))
         self.screen.blit(s, (0, 0))
         pygame.display.flip()
 
     def move(self, d):
         if self.apps:
-            self.sel = (self.sel + d) % len(self.apps)
+            self.select((self.sel + d) % len(self.apps))
+
+    def select(self, i):
+        if i == self.sel:
+            return
+        self.sel = i
+        self.ring_from = self.ring_x
+        self.ring_to = self.icon_center(i)[0]
+        self.ring_t0 = time.monotonic()
 
     def launch(self):
         if not self.apps or self.running_app:
             return
         app = self.apps[self.sel]
-        self.draw(f"Lancement de {app['name']}…")
+        self.ring_x = self.ring_from = self.ring_to = self.icon_center(self.sel)[0]
         try:
             command = app.get(f"command_{TV_MODE}", app["command"])
             self.running_app = subprocess.Popen(command, start_new_session=True, env=APP_ENV)
-            self.close_window()
         except OSError as e:
-            self.draw(f"Impossible de lancer {app['name']} : {e}")
-            time.sleep(3)
+            self.message = f"Impossible de lancer {app['name']} : {e}"
+            self.message_until = time.monotonic() + 4
+            return
+        # Arc de lancement pendant que l'appli démarre, puis fondu, puis l'écran lui revient.
+        clock = pygame.time.Clock()
+        t0 = time.monotonic()
+        while True:
+            ms = (time.monotonic() - t0) * 1000
+            if ms >= LAUNCH_MS + FADE_MS:
+                break
+            self.draw(launch=min(1.0, ms / LAUNCH_MS), fade=max(0.0, (ms - LAUNCH_MS) / FADE_MS))
+            pygame.event.pump()
+            clock.tick(60)
+        self.close_window()
 
     def handle(self, ev):
         if ev.type == pygame.QUIT:
@@ -307,11 +463,11 @@ class Launcher:
         elif ev.type == pygame.MOUSEMOTION:
             for i, rect in enumerate(self.tile_rects()):
                 if rect.collidepoint(ev.pos):
-                    self.sel = i
+                    self.select(i)
         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
             for i, rect in enumerate(self.tile_rects()):
                 if rect.collidepoint(ev.pos):
-                    self.sel = i
+                    self.select(i)
                     self.launch()
         elif ev.type == pygame.VIDEORESIZE:
             self.screen = pygame.display.set_mode(ev.size, pygame.NOFRAME | pygame.RESIZABLE)
@@ -321,6 +477,11 @@ class Launcher:
             self.pads.clear()
             self.open_pads()
         return True
+
+    def open_pads(self):
+        for i in range(controller.get_count()):
+            if i not in self.pads and controller.is_controller(i):
+                self.pads[i] = controller.Controller(i)
 
     def run(self):
         self.open_pads()
@@ -333,6 +494,7 @@ class Launcher:
                     continue
                 self.running_app = None
                 self.apps = load_apps()
+                self.sel = min(self.sel, max(0, len(self.apps) - 1))
                 self.open_window()
                 self.pads.clear()
                 self.open_pads()

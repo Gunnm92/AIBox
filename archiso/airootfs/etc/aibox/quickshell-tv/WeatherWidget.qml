@@ -1,55 +1,53 @@
-// Météo : température du moment, puis les trois jours suivants avec leur amplitude.
+// Météo : icône et température du moment (80 px), libellé et ville, puis les trois
+// jours suivants (22 px) avec leur amplitude sur l'échelle des trois jours.
+// Carte 660×200 de maquette.
 import QtQuick
 
 Card {
     id: card
     property var weather: null
     property string city: ""
-    width: 680 * u
-    height: 240 * u
+    width: 660 * u
+    height: 200 * u
 
-    // Icône de ligne néon (tv-icons/weather), repli sur les nuages.
+    // Icône de ligne (tv-icons/weather), repli sur les nuages.
     function iconSource(icon) {
         var known = ["clear", "partly", "cloud", "fog", "rain", "snow", "storm"];
         return "file:///usr/local/share/aibox/tv-icons/weather/" + (known.indexOf(icon) >= 0 ? icon : "cloud") + ".svg";
     }
 
-    // Plage de températures sur les trois jours, pour dimensionner les barres.
-    readonly property real lo: weather ? Math.min(...weather.days.map(d => d.min)) : 0
-    readonly property real hi: weather ? Math.max(...weather.days.map(d => d.max)) : 1
+    readonly property var days: weather && weather.days ? weather.days : []
+    readonly property real lo: days.length ? Math.min(...days.map(d => d.min)) : 0
+    readonly property real hi: days.length ? Math.max(...days.map(d => d.max)) : 1
 
     Row {
-        anchors.fill: parent
-        spacing: 26 * card.u
+        id: now
+        spacing: 18 * card.u
+        height: 80 * card.u
 
+        Image {
+            source: card.iconSource(card.weather ? card.weather.icon : "cloud")
+            width: 56 * card.u
+            height: width
+            sourceSize.width: width
+            sourceSize.height: height
+            smooth: true
+            anchors.verticalCenter: parent.verticalCenter
+        }
+        FlashText {
+            y: 74 * card.u - baselineOffset
+            text: card.weather ? card.weather.temp + "°" : "--°"
+            font.pixelSize: 80 * card.u
+            font.bold: true
+        }
         Column {
-            width: 210 * card.u
-            spacing: 2 * card.u
-            Row {
-                spacing: 16 * card.u
-                Image {
-                    source: card.iconSource(card.weather ? card.weather.icon : "cloud")
-                    width: 66 * card.u
-                    height: width
-                    sourceSize.width: width
-                    sourceSize.height: height
-                    smooth: true
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                    text: card.weather ? card.weather.temp + "°" : "--°"
-                    color: Theme.text
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: 72 * card.u
-                    font.weight: Font.DemiBold
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-            }
+            anchors.verticalCenter: parent.verticalCenter
+            leftPadding: 10 * card.u
             Text {
                 text: card.weather ? card.weather.label : "météo indisponible"
-                color: Theme.text2
+                color: Theme.text
                 font.family: "DejaVu Sans"
-                font.pixelSize: 24 * card.u
+                font.pixelSize: 26 * card.u
             }
             Text {
                 text: card.city
@@ -58,61 +56,39 @@ Card {
                 font.pixelSize: 22 * card.u
             }
         }
+    }
 
-        Row {
-            width: parent.width - 210 * card.u - parent.spacing
-            height: parent.height
-            spacing: 14 * card.u
+    Row {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        spacing: 24 * card.u
 
-            Repeater {
-                model: card.weather ? card.weather.days : []
-                Column {
-                    width: (parent.width - 2 * parent.spacing) / 3
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 6 * card.u
-
+        Repeater {
+            model: card.days
+            Column {
+                width: (parent.width - 2 * parent.spacing) / 3
+                spacing: 6 * card.u
+                Row {
+                    spacing: 10 * card.u
                     Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
                         text: modelData.day
                         color: Theme.dim
                         font.family: "DejaVu Sans"
                         font.pixelSize: 22 * card.u
                     }
-                    Image {
-                        source: card.iconSource(modelData.icon)
-                        width: 34 * card.u
-                        height: width
-                        sourceSize.width: width
-                        sourceSize.height: height
-                        smooth: true
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                    // Barre de l'amplitude du jour, sur l'échelle de la semaine.
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        height: 8 * card.u
-                        radius: height / 2
-                        color: Theme.track
-                        Rectangle {
-                            x: parent.width * (modelData.min - card.lo) / Math.max(1, card.hi - card.lo)
-                            width: parent.width * (modelData.max - modelData.min) / Math.max(1, card.hi - card.lo)
-                            height: parent.height
-                            radius: height / 2
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: Theme.accent }
-                                GradientStop { position: 1.0; color: Theme.accent2 }
-                            }
-                        }
-                    }
                     Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
                         text: modelData.max + "° / " + modelData.min + "°"
-                        color: Theme.text2
+                        color: Theme.text
                         font.family: "DejaVu Sans"
                         font.pixelSize: 22 * card.u
                     }
+                }
+                Track {
+                    u: card.u
+                    width: parent.width
+                    from: (modelData.min - card.lo) / Math.max(1, card.hi - card.lo)
+                    to: (modelData.max - card.lo) / Math.max(1, card.hi - card.lo)
                 }
             }
         }

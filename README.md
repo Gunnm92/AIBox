@@ -124,7 +124,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 - **Lemonade** : serveur LLM sur le port 13305, modèles et backends sur le disque.
 
-- **Session TV** : par défaut, Hyprland avec des cartes de widgets (heure, météo, titres, état d'aibox) et un lanceur (Steam, Moonlight, Bureau) à la manette ou au clavier, sur les images de Bing ; sa tuile Steam lance gamescope, qui pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS. « Passer au bureau » dans Steam mène, pour cette session, au lanceur. `aibox-tv-mode gamescope` rend gamescope durable.
+- **Session TV** : par défaut, Hyprland avec des cartes de widgets en verre dépoli (actualités avec photo, heure, météo, machine : Lemonade, RAM, GPU, services) et une barre d'icônes en bas (Steam, Moonlight, Bureau) à la manette ou au clavier, sur les images de Bing ; sa tuile Steam lance gamescope, qui pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS. « Passer au bureau » dans Steam mène, pour cette session, au lanceur. `aibox-tv-mode gamescope` rend gamescope durable.
 
 Pas encore : assistant vocal.
 
@@ -299,7 +299,7 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 `aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis `tv-session` lance le mode choisi par `aibox-tv-mode` (gardé dans `~/.config/aibox/tv-mode`) :
 
 - **gamescope** : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode hyprland (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
-- **hyprland** (par défaut, sans choix enregistré) : Hyprland sur la TV (`/etc/aibox/hypr-tv/hyprland.lua`), avec les cartes de widgets quickshell (heure, météo, titres, état d'aibox ; réglages dans `~/.config/aibox/tv-widgets.json`, modèle : `/etc/aibox/tv-widgets.json`) et le lanceur `aibox-tv-launcher` (Steam est une tuile qui lance gamescope ; autres applis dans `tv-apps.json`), sans HDR. Les logos des tuiles sont dans `/usr/local/share/aibox/tv-icons/`.
+- **hyprland** (par défaut, sans choix enregistré) : Hyprland sur la TV (`/etc/aibox/hypr-tv/hyprland.lua`), avec les cartes de widgets quickshell (titre principal et liste des actualités, heure, météo, machine ; maquette « Direction 2 v3 » en 1920×1080 mise à l'échelle ; réglages dans `~/.config/aibox/tv-widgets.json`, modèle : `/etc/aibox/tv-widgets.json`) et le lanceur `aibox-tv-launcher` (Steam est une tuile qui lance gamescope ; autres applis dans `tv-apps.json`), sans HDR. Les logos des tuiles sont dans `/usr/local/share/aibox/tv-icons/`.
 - **bureau** : labwc sur la TV (`/etc/aibox/labwc-bureau`) avec le fond et le panneau XFCE, sans le lanceur ni HDR. La tuile « Bureau » du lanceur y mène pour cette session ; Super+L revient au lanceur.
 
 `aibox-tv-mode gamescope`, `aibox-tv-mode hyprland` ou `aibox-tv-mode bureau` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement.

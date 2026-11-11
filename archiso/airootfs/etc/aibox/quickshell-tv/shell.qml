@@ -1,8 +1,9 @@
-// Widgets de la session TV : quatre cartes flottantes dans les coins de l'écran,
-// au-dessus du lanceur (sans zone exclusive : le lanceur garde tout l'écran),
-// masquées quand sa fenêtre est fermée (une appli lancée tourne).
+// Widgets de la session TV (maquette « Direction 2 v3 ») : actualités à gauche
+// (titre principal et liste), horloge, météo et machine à droite, au-dessus du
+// lanceur (sans zone exclusive), qui garde la barre d'icônes en bas. Masquées
+// quand la fenêtre du lanceur est fermée (une appli lancée tourne).
 // Données : /usr/local/lib/aibox/tv-widgets-data (JSON), rafraîchies chaque minute.
-// Tailles en « u » : 1 u = 1 pixel sur un écran 1080 p, mis à l'échelle sur l'écran réel.
+// Cotes en pixels de maquette (1920×1080), « u » les met à l'échelle de l'écran.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -33,7 +34,6 @@ ShellRoot {
     // qu'une appli tourne (Moonlight…), et les cartes resteraient par-dessus.
     readonly property bool launcherShown: ToplevelManager.toplevels.values.some(t => t.appId === "aibox-tv-launcher")
     readonly property real u: (Quickshell.screens.length ? Quickshell.screens[0].height : 1080) / 1080
-    readonly property real margin: 50 * u
 
     Process {
         id: fetch
@@ -57,24 +57,47 @@ ShellRoot {
         onTriggered: fetch.running = true
     }
 
+    // Titre suivant toutes les 8 s (barre de NewsHeroWidget).
     Timer {
-        interval: 9000
+        interval: 8000
         running: root.news.length > 1
         repeat: true
         onTriggered: root.newsIndex = (root.newsIndex + 1) % root.news.length
     }
 
-    PanelWindow {
+    // Cartes placées à leurs cotes de maquette (x, y), sur l'écran 16:9 centré.
+    readonly property real ox: ((Quickshell.screens.length ? Quickshell.screens[0].width : 1920) - 1920 * u) / 2
+
+    component Place: PanelWindow {
+        property real px: 0
+        property real py: 0
         anchors { top: true; left: true }
-        margins { top: root.margin; left: root.margin }
-        implicitWidth: clockCard.width
-        implicitHeight: clockCard.height
+        margins { top: Math.round(py * root.u); left: Math.round(root.ox + px * root.u) }
         exclusiveZone: 0
         color: "transparent"
         visible: root.launcherShown
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "aibox-tv-widgets"
+    }
 
+    Place {
+        px: 96; py: 54
+        implicitWidth: hero.width
+        implicitHeight: hero.height
+        NewsHeroWidget { id: hero; u: root.u; news: root.news; index: root.newsIndex }
+    }
+
+    Place {
+        px: 96; py: 594
+        implicitWidth: list.width
+        implicitHeight: list.height
+        NewsListWidget { id: list; u: root.u; news: root.news; index: root.newsIndex }
+    }
+
+    Place {
+        px: 1164; py: 54
+        implicitWidth: clockCard.width
+        implicitHeight: clockCard.height
         ClockWidget { id: clockCard; u: root.u }
 
         PaletteProbe {
@@ -83,17 +106,10 @@ ShellRoot {
         }
     }
 
-    PanelWindow {
-        anchors { top: true; right: true }
-        margins { top: root.margin; right: root.margin }
+    Place {
+        px: 1164; py: 274
         implicitWidth: weatherCard.width
         implicitHeight: weatherCard.height
-        exclusiveZone: 0
-        color: "transparent"
-        visible: root.launcherShown
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "aibox-tv-widgets"
-
         WeatherWidget {
             id: weatherCard
             u: root.u
@@ -102,60 +118,15 @@ ShellRoot {
         }
     }
 
-    PanelWindow {
-        anchors { bottom: true; left: true }
-        margins { bottom: root.margin; left: root.margin }
-        implicitWidth: newsCard.width
-        implicitHeight: newsCard.height
-        exclusiveZone: 0
-        color: "transparent"
-        visible: root.launcherShown
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "aibox-tv-widgets"
-
-        NewsWidget {
-            id: newsCard
-            u: root.u
-            news: root.news
-            index: root.newsIndex
-        }
-    }
-
-    PanelWindow {
-        anchors { bottom: true; right: true }
-        margins { bottom: root.margin; right: root.margin }
-        implicitWidth: systemCard.width
-        implicitHeight: systemCard.height
-        exclusiveZone: 0
-        color: "transparent"
-        visible: root.launcherShown
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "aibox-tv-widgets"
-
-        SystemWidget {
-            id: systemCard
-            u: root.u
-            sys: root.data.system || ({})
-            updated: root.data.updated || ""
-        }
-    }
-
-    PanelWindow {
-        id: lemonadeWindow
-        anchors { top: true; left: true }
-        margins { top: root.margin; left: Math.round(((Quickshell.screens.length ? Quickshell.screens[0].width : 1920) - lemonadeCard.width) / 2) }
-        implicitWidth: lemonadeCard.width
-        implicitHeight: lemonadeCard.height
-        exclusiveZone: 0
-        color: "transparent"
-        visible: root.launcherShown
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "aibox-tv-widgets"
-
-        LemonadeWidget {
-            id: lemonadeCard
+    Place {
+        px: 1164; py: 494
+        implicitWidth: machineCard.width
+        implicitHeight: machineCard.height
+        MachineWidget {
+            id: machineCard
             u: root.u
             lemonade: root.data.lemonade !== undefined ? root.data.lemonade : null
+            sys: root.data.system || ({})
         }
     }
 }

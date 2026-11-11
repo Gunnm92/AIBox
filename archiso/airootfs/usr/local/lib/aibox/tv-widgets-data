@@ -23,6 +23,8 @@ CONFIGS = [os.path.expanduser("~/.config/aibox/tv-widgets.json"), "/etc/aibox/tv
 CACHE = os.path.expanduser("~/.cache/aibox/tv-widgets.json")
 TTL = 15 * 60
 UA = "aibox-tv/1.0"
+# Jours de la météo, en français (lundi = 0), sans dépendre de la locale.
+JOURS = ["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."]
 
 
 def load_config():
@@ -69,7 +71,7 @@ def fetch_weather(cfg):
     for i, day in enumerate(data["daily"]["time"][1:4], start=1):
         label, icon = wmo(data["daily"]["weather_code"][i])
         days.append({
-            "day": datetime.fromisoformat(day).strftime("%a"),
+            "day": JOURS[datetime.fromisoformat(day).weekday()],
             "min": round(data["daily"]["temperature_2m_min"][i]),
             "max": round(data["daily"]["temperature_2m_max"][i]),
             "icon": icon,
