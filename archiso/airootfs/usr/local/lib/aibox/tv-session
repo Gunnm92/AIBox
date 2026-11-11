@@ -39,7 +39,9 @@ if [[ "$mode" == hyprland ]]; then
     export AIBOX_TV_MODE=hyprland
     # Seat du système (logind), pas le backend « noop » hérité de l'administration.
     export LIBSEAT_BACKEND=logind
-    exec "${nocaps[@]}" Hyprland -c /etc/aibox/hypr-tv/hyprland.lua
+    # Par start-hyprland (surveillance, mode sans échec après un plantage) :
+    # Hyprland lancé seul l'affiche en avertissement à l'écran (0.53 et suivantes).
+    exec "${nocaps[@]}" start-hyprland -- -c /etc/aibox/hypr-tv/hyprland.lua
 fi
 if [[ "$mode" == bureau ]]; then
     export AIBOX_TV_MODE=bureau
