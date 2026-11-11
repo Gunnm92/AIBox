@@ -105,10 +105,30 @@ def item_image_url(node):
     return ""
 
 
+# Largeur voulue : celle du titre principal sur une TV 4K (1032 px de maquette × 2).
+IMG_WIDTH = 2064
+
+
+def large_image_url(url):
+    """Version grande de l'image quand le site redimensionne à la volée : les flux
+    donnent des vignettes (644×322 chez Le Monde, 1200×675 chez Numerama), floues
+    une fois agrandies sur la carte du titre principal."""
+    # Le Monde : …/x/y/largeur/hauteur(recadrage)/sortieL/sortieH/qualité/0/nom.jpg
+    m = re.match(r"(https://img\.lemde\.fr/\d+/\d+/\d+/\d+/\d+/(\d+)/(\d+)/)\d+/\d+/\d+/(0/.+)$", url)
+    if m:
+        w, h = int(m.group(2)), int(m.group(3))
+        return f"{m.group(1)}{IMG_WIDTH}/{round(IMG_WIDTH * h / max(w, 1))}/80/{m.group(4)}"
+    # Numerama (WordPress) : sans « ?resize=… », l'image d'origine.
+    if url.startswith("https://img.numerama.com/") and "?resize=" in url:
+        return url.split("?", 1)[0]
+    return url
+
+
 def local_image(url, budget):
     """Chemin local de l'image (téléchargée une fois, puis gardée), ou "" ; budget = [restant]."""
     if not url:
         return ""
+    url = large_image_url(url)
     key = hashlib.sha1(url.encode()).hexdigest()[:20]
     path = os.path.join(IMG_CACHE, key + ".img")
     if os.path.exists(path) and os.path.getsize(path) > 0:

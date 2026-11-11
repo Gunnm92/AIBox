@@ -14,7 +14,8 @@ session TV est dans ce mode (AIBOX_TV_MODE, voir tv-session).
 Sans icône, la tuile affiche "glyph": "moon" ou "monitor" si présent, sinon
 l'initiale du nom dans un disque coloré.
 
-Souris (pavé tactile de la DualSense compris) : survol pour choisir, clic pour lancer.
+Souris (pavé tactile de la DualSense compris) : le survol éclaire l'icône (×1,03,
+92 %, sans curseur affiché), le clic la choisit et la lance.
 
 Fond d'écran : les images de Bing des 8 derniers jours, téléchargées en
 arrière-plan une fois par jour dans ~/.cache/aibox, une nouvelle toutes les 30
@@ -133,6 +134,9 @@ MUTED = (147, 143, 153)           # #938F99
 TEXT_C = (241, 240, 245)          # #F1F0F5
 FONT_BOLD = "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"
 RING_MS = 200                     # glissement de l'anneau de sélection
+HOVER_MS = 160                    # survol au pavé tactile : icône à 1,03 et 92 %
+HOVER_SCALE = 1.03
+HOVER_ALPHA = 235
 LAUNCH_MS = 600                   # arc de lancement
 FADE_MS = 300                     # fondu avant que l'appli prenne l'écran
 
@@ -174,6 +178,8 @@ class Launcher:
         self.bg = None
         self.message = None
         self.message_until = 0.0
+        self.hover = None
+        self.hover_t0 = 0.0
         threading.Thread(target=self.fetch_wallpaper, daemon=True).start()
         self.open_window()
 
@@ -181,7 +187,8 @@ class Launcher:
         # Fenêtre sans bordure, plein écran par Hyprland (règle de /etc/aibox/hypr-tv) ;
         # Sous gamescope, toute fenêtre occupe l'écran.
         pygame.display.init()
-        pygame.mouse.set_visible(True)
+        # Pavé tactile de la manette : pas de curseur, l'icône survolée le montre.
+        pygame.mouse.set_visible(False)
         size = pygame.display.get_desktop_sizes()[0]
         self.screen = pygame.display.set_mode(size, pygame.NOFRAME | pygame.RESIZABLE)
         pygame.display.set_caption("aibox")
@@ -372,6 +379,12 @@ class Launcher:
         for i, (img, dim, sel) in enumerate(self.icons):
             cx, cy = self.icon_center(i)
             icon = sel if i == self.sel else dim
+            if i == self.hover and i != self.sel:
+                p = ease_out((time.monotonic() - self.hover_t0) * 1000 / HOVER_MS)
+                k = 1 + (HOVER_SCALE - 1) * p
+                icon = pygame.transform.smoothscale(img, (round(img.get_width() * k), round(img.get_height() * k)))
+                a = round(DIM_ALPHA + (HOVER_ALPHA - DIM_ALPHA) * p)
+                icon.fill((255, 255, 255, a), special_flags=pygame.BLEND_RGBA_MULT)
             s.blit(icon, (cx - icon.get_width() // 2, cy - icon.get_height() // 2))
         if self.icons:
             cy = self.icon_center(self.sel)[1]
@@ -461,9 +474,11 @@ class Launcher:
                 self.move(1 if v > 0 else -1)
             self.last_axis = v
         elif ev.type == pygame.MOUSEMOTION:
-            for i, rect in enumerate(self.tile_rects()):
-                if rect.collidepoint(ev.pos):
-                    self.select(i)
+            # Le survol ne déplace pas la sélection : il éclaire l'icône (planche « États »).
+            over = next((i for i, rect in enumerate(self.tile_rects()) if rect.collidepoint(ev.pos)), None)
+            if over != self.hover:
+                self.hover = over
+                self.hover_t0 = time.monotonic()
         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
             for i, rect in enumerate(self.tile_rects()):
                 if rect.collidepoint(ev.pos):

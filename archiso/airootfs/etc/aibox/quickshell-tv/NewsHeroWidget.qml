@@ -40,6 +40,9 @@ Card {
             anchors.fill: parent
             source: slide.item && slide.item.image ? "file://" + slide.item.image : ""
             fillMode: Image.PreserveAspectCrop
+            // Décodée à la taille de la carte : une photo d'origine peut être très grande.
+            sourceSize.width: width
+            sourceSize.height: height
             asynchronous: true
             smooth: true
         }
