@@ -1,5 +1,6 @@
 // Widgets de la session TV : quatre cartes flottantes dans les coins de l'écran,
-// au-dessus du lanceur (sans zone exclusive : le lanceur garde tout l'écran).
+// au-dessus du lanceur (sans zone exclusive : le lanceur garde tout l'écran),
+// masquées quand sa fenêtre est fermée (une appli lancée tourne).
 // Données : /usr/local/lib/aibox/tv-widgets-data (JSON), rafraîchies chaque minute.
 // Tailles en « u » : 1 u = 1 pixel sur un écran 1080 p, mis à l'échelle sur l'écran réel.
 import Quickshell
@@ -28,6 +29,9 @@ ShellRoot {
         Theme.dim = p.dim;
     }
     readonly property var news: data.news || []
+    // Cartes affichées seulement avec le lanceur : il ferme sa fenêtre pendant
+    // qu'une appli tourne (Moonlight…), et les cartes resteraient par-dessus.
+    readonly property bool launcherShown: ToplevelManager.toplevels.values.some(t => t.appId === "aibox-tv-launcher")
     readonly property real u: (Quickshell.screens.length ? Quickshell.screens[0].height : 1080) / 1080
     readonly property real margin: 50 * u
 
@@ -67,6 +71,7 @@ ShellRoot {
         implicitHeight: clockCard.height
         exclusiveZone: 0
         color: "transparent"
+        visible: root.launcherShown
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "aibox-tv-widgets"
 
@@ -85,6 +90,7 @@ ShellRoot {
         implicitHeight: weatherCard.height
         exclusiveZone: 0
         color: "transparent"
+        visible: root.launcherShown
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "aibox-tv-widgets"
 
@@ -103,6 +109,7 @@ ShellRoot {
         implicitHeight: newsCard.height
         exclusiveZone: 0
         color: "transparent"
+        visible: root.launcherShown
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "aibox-tv-widgets"
 
@@ -121,6 +128,7 @@ ShellRoot {
         implicitHeight: systemCard.height
         exclusiveZone: 0
         color: "transparent"
+        visible: root.launcherShown
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "aibox-tv-widgets"
 
@@ -140,6 +148,7 @@ ShellRoot {
         implicitHeight: lemonadeCard.height
         exclusiveZone: 0
         color: "transparent"
+        visible: root.launcherShown
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "aibox-tv-widgets"
 

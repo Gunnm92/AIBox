@@ -244,4 +244,4 @@ Le 11/11/2026 : retour du mode bureau de la session TV (labwc, fond et panneau X
 
 Le 11/11/2026 : Hyprland de la session TV lancé par `start-hyprland` (surveillance, mode sans échec après un plantage). Lancé seul, Hyprland 0.57 affichait un avertissement à l'écran (« launched without start-hyprland »).
 
-Le 11/11/2026 : le lanceur TV ferme sa fenêtre pendant que l'appli lancée tourne, et la rouvre quand elle se termine. Sa fenêtre plein écran, restée ouverte, reprenait le focus à Moonlight, et l'écran clignotait entre les deux.
+Le 11/11/2026 : le lanceur TV ferme sa fenêtre pendant que l'appli lancée tourne, et la rouvre quand elle se termine. Sa fenêtre plein écran, restée ouverte, reprenait le focus à Moonlight, et l'écran clignotait entre les deux. Les cartes de widgets ne s'affichent qu'avec la fenêtre du lanceur : sinon, elles restaient par-dessus l'appli.
