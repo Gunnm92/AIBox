@@ -23,5 +23,16 @@
     "icon": [
       "/usr/local/share/aibox/tv-icons/moonlight.png"
     ]
+  },
+  {
+    "name": "Bureau",
+    "command": [
+      "aibox-tv-mode",
+      "--once",
+      "bureau"
+    ],
+    "icon": [
+      "/usr/local/share/aibox/tv-icons/bureau.png"
+    ]
   }
 ]

@@ -239,3 +239,5 @@ Le 11/11/2026, après un audit du dépôt :
 - build.sh : fichiers dérivés du mot de passe (work/novnc.htpasswd, work/wayvnc-rdp.conf) et ISO en 0600. aibox-update-boot et aibox-setup-disk comparent aussi le noyau et l'initramfs copiés à ceux de l'ISO.
 - Widgets TV : icône du ciel dégagé (« clear ») ; images d'articles non affichées supprimées après un jour.
 - Choix assumés, à ne pas « corriger » : pas de pare-feu (serveur du réseau local, non exposé), VNC local sans mot de passe, pas de contrôle de l'origine du WebSocket noVNC.
+
+Le 11/11/2026 : retour du mode bureau de la session TV (labwc, fond et panneau XFCE), retiré par erreur au passage à Hyprland. La tuile « Bureau » du lanceur y mène pour cette session (`aibox-tv-mode --once bureau`), Super+L revient au lanceur sous Hyprland. Un ancien `~/.config/aibox/tv-apps.json` portait encore `command_labwc` : sous Hyprland, la tuile Steam lançait alors `steam -gamepadui` sans gamescope (écran qui clignote). Ce fichier utilisateur doit porter `command_hyprland`.

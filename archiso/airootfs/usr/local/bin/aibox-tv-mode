@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# aibox-tv-mode [--once] [gamescope|hyprland] : mode de la session TV, gardé dans
+# aibox-tv-mode [--once] [gamescope|hyprland|bureau] : mode de la session TV, gardé dans
 # ~/.config/aibox/tv-mode, puis session TV relancée. Sans argument : mode actuel.
 #   gamescope : Steam Big Picture sous gamescope (HDR, FSR) ;
-#   hyprland  : Hyprland, cartes de widgets et lanceur à tuiles (applis de tv-apps.json) — par défaut.
+#   hyprland  : Hyprland, cartes de widgets et lanceur à tuiles (applis de tv-apps.json) — par défaut ;
+#   bureau    : labwc et le bureau XFCE (fond, panneau), sans le lanceur ; Super+L revient au lanceur.
 #   --once    : pour la prochaine session seulement (en RAM, oublié ensuite) ;
 #               « Passer au bureau » de Steam et la tuile Steam du lanceur.
 set -euo pipefail
@@ -11,8 +12,8 @@ once="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aibox-tv-mode-once"
 [[ "${1:-}" == --once ]] && { conf="$once"; shift; }
 case "${1:-}" in
     "") cat "$once" 2>/dev/null || cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || echo hyprland; exit 0 ;;
-    gamescope|hyprland) ;;
-    *) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    gamescope|hyprland|bureau) ;;
+    *) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
 mkdir -p "${conf%/*}"
 echo "$1" > "$conf"

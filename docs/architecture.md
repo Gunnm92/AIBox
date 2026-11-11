@@ -56,7 +56,7 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 
 ## Session TV
 
-`aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `$XDG_RUNTIME_DIR/aibox-tv-mode-once` s'il existe (mode pour cette session seulement, effacé aussitôt lu, perdu au redémarrage), sinon d'après `~/.config/aibox/tv-mode` (mode durable ; labwc s'il n'existe pas). `aibox-tv-mode` écrit le second, `aibox-tv-mode --once` le premier.
+`aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `$XDG_RUNTIME_DIR/aibox-tv-mode-once` s'il existe (mode pour cette session seulement, effacé aussitôt lu, perdu au redémarrage), sinon d'après `~/.config/aibox/tv-mode` (mode durable ; hyprland s'il n'existe pas). `aibox-tv-mode` écrit le second, `aibox-tv-mode --once` le premier.
 
 **Cycle de vie** :
 - **Démarrage et arrêt** : `aibox-tv-watch.service` (`/usr/local/lib/aibox/tv-watch`) mesure toutes les 2 secondes, sur une demi-seconde, les rapports envoyés par le dongle DualSense sur son hidraw. Au moins deux rapports différents signifient une manette connectée (compteur, gyroscope, environ 640 rapports par seconde). Le service réagit aux changements d'état : manette allumée, il démarre la session et annule l'arrêt programmé ; manette éteinte, il programme l'arrêt. La présence du dongle et ses événements udev ne suffisent pas : il s'annonce aussi manette éteinte, à la mise sous tension du PC, et ne se reconnecte pas toujours à l'allumage de la manette.
@@ -69,6 +69,7 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 
 - **gamescope** : `gamescope --steam -e --hdr-enabled -- steam -gamepadui -steamos3 -steampal -steamdeck`. gamescope pilote directement la TV, en 4K à 60 Hz, avec HDR et VRR. Le HDR, le FSR et la limite d'images se règlent dans Steam.
 - **hyprland** (par défaut) : Hyprland avec la configuration `/etc/aibox/hypr-tv/hyprland.lua`, les cartes de widgets quickshell (`/etc/aibox/quickshell-tv/`, données de `/usr/local/lib/aibox/tv-widgets-data`, réglages dans `~/.config/aibox/tv-widgets.json`), et le lanceur à tuiles `aibox-tv-launcher`. Les logos des tuiles viennent de `/usr/local/share/aibox/tv-icons/`. Ses applis sont dans `/etc/aibox/tv-apps.json`, ou dans `~/.config/aibox/tv-apps.json` s'il existe. Le fond d'écran vient de Bing et change toutes les 30 minutes. Ce mode n'a pas de HDR.
+- **bureau** : labwc avec la configuration `/etc/aibox/labwc-bureau`, le fond et le panneau XFCE (sur un bus D-Bus à part, sinon ils s'ouvriraient sur le bureau d'administration), sans le lanceur. On y entre par la tuile « Bureau » du lanceur (`aibox-tv-mode --once bureau`) ; Super+L revient au lanceur (`aibox-tv-mode --once hyprland`).
 
 « Passer au bureau » dans Steam appelle `steamos-session-select`, qui bascule en mode hyprland **pour cette session seulement**. Dans le lanceur, la tuile Steam (`command_hyprland`) ramène à Steam sous gamescope, de la même façon (`aibox-tv-mode --once gamescope`). Au démarrage suivant, c'est le mode durable, hyprland par défaut. Avant le 17/10/2026, la bascule était durable : un appel de Steam suffisait à laisser la TV sur labwc, sans retour possible à la manette.
 
