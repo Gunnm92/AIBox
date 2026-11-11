@@ -105,7 +105,7 @@ imagemagick
 
 # Session TV : Steam natif (bibliothèques 32 bits), son (PipeWire), lanceur
 # (pygame). vulkan-virtio : GPU partagé dans une VM (Venus), pour les tests.
-# gamescope : jeux en FSR et en HDR, dans labwc (options de lancement de Steam).
+# gamescope : Steam en mode SteamOS sur la TV (HDR, FSR, VRR), mode gamescope de la session TV.
 steam
 gamescope
 lib32-mesa

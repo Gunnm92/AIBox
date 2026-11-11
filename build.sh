@@ -63,6 +63,9 @@ if [[ ! -s "$keys_dir/vnc-password" ]]; then
     chmod 600 "$keys_dir/vnc-password"
     echo "Mot de passe noVNC généré dans keys/vnc-password : $(cat "$keys_dir/vnc-password")" >&2
 fi
+# Fichiers dérivés du mot de passe : lisibles par leur propriétaire seulement.
+( umask 077; : > "$work_dir/novnc.htpasswd"; : > "$work_dir/wayvnc-rdp.conf" )
+chmod 600 "$work_dir/novnc.htpasswd" "$work_dir/wayvnc-rdp.conf"
 printf 'default:%s\n' "$(openssl passwd -6 -stdin < <(head -n 1 "$keys_dir/vnc-password"))" > "$work_dir/novnc.htpasswd"
 # wayvnc local pour xrdp : authentification VNC classique (8 caractères max).
 printf 'enable_auth=true\nallow_broken_crypto=true\nrelax_encryption=true\npassword=%s\n' "$(head -n 1 "$keys_dir/vnc-password" | cut -c1-8)" > "$work_dir/wayvnc-rdp.conf"
@@ -115,10 +118,26 @@ ws_tar="$("$root/tools/whitesur.sh")"
 # --- Paquets AUR (xrdp), compilés une fois, servis à mkarchiso par un dépôt local ---
 # --nocheck : 4 tests de la suite de xrdp (configuration du codec graphique)
 # échouent dans le conteneur de build.
+# Le paquet en cache est recompilé quand l'AUR publie une autre version
+# (correctifs de sécurité : xrdp écoute sur le réseau), et au bout de 30 jours
+# (bibliothèques de l'image mises à jour entre-temps : un paquet compilé contre
+# les anciennes peut ne plus démarrer). AUR injoignable : le cache est gardé.
 aur_pkgs=(xrdp)
 mkdir -p "$work_dir/aur/repo"
 for pkg in "${aur_pkgs[@]}"; do
-    ls "$work_dir/aur/repo/$pkg"-[0-9]*.pkg.tar.zst >/dev/null 2>&1 && continue
+    cached="$(find "$work_dir/aur/repo" -maxdepth 1 -name "$pkg-[0-9]*.pkg.tar.zst" -print -quit)"
+    if [[ -n "$cached" ]]; then
+        aur_ver="$(curl -fsS -m 20 "https://aur.archlinux.org/rpc/v5/info?arg[]=$pkg" 2>/dev/null \
+            | grep -oP '"Version":"\K[^"]+' | head -n 1 || true)"
+        if [[ -z "$aur_ver" ]]; then
+            echo "AUR injoignable : $pkg gardé tel quel (${cached##*/})." >&2
+            continue
+        elif [[ "${cached##*/}" == "$pkg-$aur_ver-"* && -z "$(find "$cached" -mtime +30)" ]]; then
+            continue
+        fi
+        echo "AUR : $pkg à refaire (${cached##*/} en cache, version $aur_ver dans l'AUR)." >&2
+        rm -f "$work_dir/aur/repo/$pkg"-[0-9]*.pkg.tar.zst
+    fi
     echo "Compilation AUR : $pkg" >&2
     engine run --rm -v "$root:$root" -v "$work_dir/pkgcache:/var/cache/pacman/pkg" \
         -v "$work_dir:$work_dir" -e WORK="$work_dir" \
@@ -180,6 +199,8 @@ engine run --rm --privileged \
         install -m 0644 "$KEYS/aibox-ca.crt" "$air/usr/share/novnc/aibox-ca.crt"
 
         mkarchiso -v -r -w /tmp/work -o "$OUT" /tmp/profile
+        # L ISO contient des secrets (clé TLS, mot de passe haché, identifiants NAS).
+        chmod 600 "$OUT/aibox-$AIBOX_VERSION-x86_64.iso"
         chown -R "$HOST_UID:$HOST_GID" "$OUT" "$WORK/pkgcache"
     '
 

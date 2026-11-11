@@ -67,6 +67,8 @@ add)
     need_root "$@"
     src="${2:?usage : aibox-nas add //hôte/partage /mnt/X}" tgt="${3:?usage : aibox-nas add //hôte/partage /mnt/X}"
     [[ "$src" == //*/* ]] || { echo "Source attendue : //hôte/partage" >&2; exit 1; }
+    # Une ligne du fichier = « SOURCE CIBLE » séparées par un espace.
+    [[ "$src$tgt" != *[[:space:]]* ]] || { echo "Pas d'espace dans la source ni dans la cible." >&2; exit 1; }
     mountpoint -q /var/lib/aibox/state || { echo "Pas de disque de données (mode éphémère) : impossible de garder ce réglage." >&2; exit 1; }
     host="$(cut -d/ -f3 <<<"$src")"
     cred="$state/$host.cred"
@@ -77,7 +79,7 @@ add)
         ( umask 077; printf 'username=%s\npassword=%s\n' "$u" "$p" > "$cred" )
     fi
     touch "$user_conf"
-    grep -v "^[^#]*[[:space:]]$tgt\([[:space:]]\|$\)" "$user_conf" > "$user_conf.new" || true
+    awk -v t="$tgt" '$2 != t' "$user_conf" > "$user_conf.new"
     echo "$src $tgt" >> "$user_conf.new"
     mv "$user_conf.new" "$user_conf"
     mount_one "$src" "$tgt" "$cred"
@@ -85,8 +87,8 @@ add)
 remove)
     need_root "$@"
     tgt="${2:?usage : aibox-nas remove /mnt/X}"
-    if [[ -r "$user_conf" ]] && grep -q "[[:space:]]$tgt\([[:space:]]\|$\)" "$user_conf"; then
-        grep -v "[[:space:]]$tgt\([[:space:]]\|$\)" "$user_conf" > "$user_conf.new" || true
+    if [[ -r "$user_conf" ]] && awk -v t="$tgt" '$2 == t {found = 1} END {exit !found}' "$user_conf"; then
+        awk -v t="$tgt" '$2 != t' "$user_conf" > "$user_conf.new"
         mv "$user_conf.new" "$user_conf"
         systemd-mount --umount "$tgt" >/dev/null 2>&1 || true
         echo "Partage retiré : $tgt"

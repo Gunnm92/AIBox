@@ -15,7 +15,6 @@ if [[ ! -e "$dev" ]]; then
     echo "Pas de disque AIBOXDATA : mode éphémère (/home en RAM, 16 Go max)."
     exit 0
 fi
-touch /run/aibox/data-present
 
 top=/run/aibox/data-top
 mkdir -p "$top"
@@ -31,5 +30,15 @@ fi
 # Points de montage (créés au besoin), puis montages dans l'ordre du fichier
 awk '!/^\s*(#|$)/ {print $2}' /etc/aibox/fstab.data | xargs -r mkdir -p
 mount -a -T /etc/aibox/fstab.data
+# Disque présent mais /home non monté (btrfs abîmé, sous-volume manquant…) :
+# comme en mode éphémère, /home en RAM plutôt que dans l'overlay de 1 Go, et le
+# service échoue pour que la panne se voie (data-check l'annonce).
+if ! findmnt -n -S LABEL=AIBOXDATA -M /home >/dev/null; then
+    echo "AIBOXDATA présent mais /home n'est pas monté : /home en RAM (16 Go max)." >&2
+    touch /run/aibox/data-error
+    mount -t tmpfs -o mode=0755,size=16G,nosuid,nodev tmpfs /home
+    exit 1
+fi
+touch /run/aibox/data-present
 swapon /var/lib/aibox/swap/swapfile 2>/dev/null || true
 findmnt -n -o TARGET,SOURCE /home

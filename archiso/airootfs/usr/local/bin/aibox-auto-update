@@ -9,14 +9,15 @@
 #      n'est pas réinstallée) aux versions des dépôts du build (archiso/pacman.conf
 #      d'origin/main, dans la copie du dépôt d'aibox-build) ;
 #   2. décide : de nouveaux commits sur GitHub (origin/main) sont toujours
-#      construits ; sinon, Lemonade dit si les paquets valent une mise à jour
+#      construits ; sinon, le LLM local (passerelle LiteLLM, alias « auto » :
+#      Lemonade sur GPU ou NPU) dit si les paquets valent une mise à jour
 #      (réponse JSON ; le LLM ne fait que décider, il n'exécute rien) ;
 #   3. si oui : sudo aibox-build (construit origin/main, hors du dossier de
 #      travail), vérification de l'image (version, droits des fichiers de
 #      profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
 #   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
 #
-# Garde-fous : pas de build si un jeu tourne ou si Lemonade ne répond pas ; la
+# Garde-fous : pas de build si un jeu tourne ou si LiteLLM ne répond pas ; la
 # place libre et les secrets sont vérifiés par aibox-build.
 #   --dry-run     comparaison et avis du LLM seulement
 #   --no-install  construit et vérifie l'image, sans l'installer
@@ -46,13 +47,15 @@ done
 # Réglages par défaut
 BUILD_DIR="/var/lib/aibox/state/build"
 BUILD_REF="main"
-LEMONADE_URL="http://127.0.0.1:2099/v1"
+LLM_URL="" LEMONADE_URL=""
 MODEL="auto"
 NOTIFY_TO="discord"
 for conf in /etc/aibox/auto-update.conf "${HOME}/.config/aibox/auto-update.conf"; do
     # shellcheck source=/dev/null
     [[ -r "$conf" ]] && . "$conf"
 done
+# LEMONADE_URL : ancien nom du réglage (avant le 11/11/2026), encore accepté.
+LLM_URL="${LLM_URL:-${LEMONADE_URL:-http://127.0.0.1:4000/v1}}"
 
 state="${HOME}/.local/state/aibox/auto-update"
 mkdir -p "$state"
@@ -94,7 +97,9 @@ flock -n 9 || { log "Déjà en cours."; exit 0; }
 # --- Garde-fous ---
 boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
 [[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }
-if pgrep -f '[S]teamLaunch AppId=' >/dev/null; then
+# Jeu Steam, ou jeu Windows hors Steam (aibox-run-exe, wsquashfs-launcher : umu
+# lance Proton avec « waitforexitandrun », comme Steam).
+if pgrep -f '[S]teamLaunch AppId=|[p]roton waitforexitandrun' >/dev/null; then
     log "Un jeu tourne : mise à jour reportée à la prochaine fois."
     exit 0
 fi
@@ -180,13 +185,13 @@ Réponds UNIQUEMENT par un objet JSON, sans texte autour :
 {\"mettre_a_jour\": true|false, \"raison\": \"une ou deux phrases en français\", \"paquets_importants\": [\"nom ancienne → nouvelle\", …]}"
     body="$(jq -n --arg m "$MODEL" --arg p "$prompt" \
         '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000, chat_template_kwargs: {enable_thinking: false}}')"
-    # Clé d'API (Manifest exige « Authorization: Bearer mnfst_… ») : facultative
-    # avec Lemonade seul ; elle vient de ~/.config/aibox/auto-update.conf, jamais du dépôt.
+    # Clé d'API (LiteLLM exige « Authorization: Bearer sk-… ») : elle vient de
+    # ~/.config/aibox/auto-update.conf, jamais du dépôt. Facultative avec Lemonade seul.
     auth=()
     [[ -n "${LLM_API_KEY:-}" ]] && auth=(-H "Authorization: Bearer $LLM_API_KEY")
     response="$(curl -sf -m 1200 -H 'Content-Type: application/json' "${auth[@]}" \
-        -d "$body" "$LEMONADE_URL/chat/completions")" \
-        || fail "Lemonade ne répond pas ($LEMONADE_URL, modèle $MODEL) : pas de décision, pas de build."
+        -d "$body" "$LLM_URL/chat/completions")" \
+        || fail "le LLM ne répond pas ($LLM_URL, modèle $MODEL) : pas de décision, pas de build."
     # Le modèle peut réfléchir avant de répondre : on garde le dernier objet JSON
     # qui contient mettre_a_jour (booléen).
     decision="$(jq -r '.choices[0].message.content // ""' <<<"$response" | python3 -I -c '

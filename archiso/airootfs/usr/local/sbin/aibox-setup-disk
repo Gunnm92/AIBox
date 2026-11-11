@@ -148,6 +148,9 @@ echo "Copie de l'image sur $boot_part…"
 cp -rT "$src/$basedir" "$esp/$name"
 (cd "$esp/$name/x86_64" && sha512sum -c --quiet airootfs.sha512) \
     || { echo "Copie de l'image corrompue (somme SHA-512 fausse)." >&2; exit 1; }
+# Noyau et initramfs : pas de somme dans l'ISO, comparés à la source.
+diff -rq "$src/$basedir/boot" "$esp/$name/boot" >/dev/null \
+    || { echo "Copie du noyau ou de l'initramfs corrompue." >&2; exit 1; }
 
 boot_uuid="$(blkid -s UUID -o value "$boot_part")"
 opts="$(sed -E 's/(^| )(archisobasedir|archisosearchuuid|archisolabel|archisodevice)=\S+//g; s/^ +//' <<<"$opts")"

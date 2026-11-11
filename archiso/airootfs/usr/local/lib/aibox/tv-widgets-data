@@ -36,7 +36,7 @@ def load_config():
 def wmo(code):
     """Libellé et icône d'un code météo WMO (Open-Meteo)."""
     if code == 0:
-        return "Dégagé", "sun"
+        return "Dégagé", "clear"
     if code in (1, 2):
         return "Peu nuageux", "partly"
     if code == 3:
@@ -130,6 +130,17 @@ def local_image(url, budget):
         return ""
 
 
+def purge_images(keep):
+    """Supprime les images d'articles qui ne sont plus affichées, après un jour."""
+    limit = time.time() - 86400
+    for path in glob.glob(os.path.join(IMG_CACHE, "*")):
+        try:
+            if path not in keep and os.path.getmtime(path) < limit:
+                os.remove(path)
+        except OSError:
+            pass
+
+
 def fetch_news(feeds):
     """Titres des flux RSS ou Atom avec leur image locale, six par flux, en alternance."""
     per_feed = []
@@ -187,6 +198,7 @@ def cached_or_fetch(cfg):
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
     with open(CACHE, "w") as f:
         json.dump(fresh, f)
+    purge_images({n.get("image") for n in fresh["news"]})
     return fresh, errors
 
 

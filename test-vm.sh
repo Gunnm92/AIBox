@@ -111,6 +111,6 @@ novnc)
             chown $(id -u):$(id -g) '$vm/novnc.png'
         "
     ;;
-stop)   docker rm -f "$name" >/dev/null && echo "VM arrêtée." ;;
+stop)   engine rm -f "$name" >/dev/null && echo "VM arrêtée." ;;
 *)      sed -n '2,10p' "$0"; exit 1 ;;
 esac

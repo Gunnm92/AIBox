@@ -72,6 +72,9 @@ rm -rf "$esp/$name.new"
 cp -rT "$src/$basedir" "$esp/$name.new"
 (cd "$esp/$name.new/x86_64" && sha512sum -c --quiet airootfs.sha512) \
     || { rm -rf "$esp/$name.new"; echo "Copie de l'image corrompue (somme SHA-512 fausse)." >&2; exit 1; }
+# Noyau et initramfs : pas de somme dans l'ISO, comparés à la source.
+diff -rq "$src/$basedir/boot" "$esp/$name.new/boot" >/dev/null \
+    || { rm -rf "$esp/$name.new"; echo "Copie du noyau ou de l'initramfs corrompue." >&2; exit 1; }
 if [[ -d "$esp/$name" ]]; then
     [[ "$name" == "$running" ]] && echo "Remplace la version en cours ($name) : elle reste en RAM jusqu'au redémarrage."
     rm -rf "$esp/$name"

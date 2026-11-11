@@ -38,7 +38,11 @@ if [[ -e /run/aibox/data-present ]]; then
     rm -f /run/motd.d/aibox-data
 else
     install -d -m 0700 -o default -g default /home/default
-    msg="aibox : MODE ÉPHÉMÈRE, aucun disque AIBOXDATA. Rien n'est conservé au redémarrage. Préparer le disque (démarrage + données) : sudo aibox-setup-disk /dev/nvme0n1"
+    if [[ -e /run/aibox/data-error ]]; then
+        msg="aibox : DISQUE AIBOXDATA PRÉSENT MAIS NON MONTÉ, /home est en RAM et rien n'est conservé. Voir : journalctl -b -u aibox-data-mount ; sudo btrfs check --readonly /dev/disk/by-label/AIBOXDATA"
+    else
+        msg="aibox : MODE ÉPHÉMÈRE, aucun disque AIBOXDATA. Rien n'est conservé au redémarrage. Préparer le disque (démarrage + données) : sudo aibox-setup-disk /dev/nvme0n1"
+    fi
     echo "$msg"
     echo "$msg" > /run/motd.d/aibox-data
 fi

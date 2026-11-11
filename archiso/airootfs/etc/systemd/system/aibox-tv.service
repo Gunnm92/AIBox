@@ -2,7 +2,7 @@
 Description=Session TV (gamescope et Steam ; Hyprland et lanceur, aibox-tv-mode)
 After=systemd-user-sessions.service user@1000.service aibox-data.service
 Wants=user@1000.service
-# Démarrée par la manette (71-aibox-tv.rules), arrêtée 2 minutes après son
+# Démarrée par la manette (aibox-tv-watch.service), arrêtée 2 minutes après son
 # extinction (aibox-tv-idle.timer) ; pas au démarrage de la machine.
 # La session prend l'écran et tty1 (plus de console en connexion automatique).
 Conflicts=getty@tty1.service
@@ -33,7 +33,8 @@ ExecStartPre=+/bin/sh -c 'echo 0 > /sys/class/graphics/fb0/blank || true'
 # /etc/aibox/llm.conf) ; « - » : un échec ne bloque pas la session.
 ExecStartPre=-/usr/local/lib/aibox/llm-unload --tv
 ExecStart=/usr/local/lib/aibox/tv-session
-# À l'arrêt, labwc efface l'environnement d'activation : on le remet sur l'administration.
+# Le compositeur de la TV pousse son affichage dans l'environnement d'activation :
+# à l'arrêt, on le remet sur l'administration.
 ExecStopPost=/usr/local/lib/aibox/activation-env-admin
 ExecStopPost=+/bin/sh -c 'echo 4 > /sys/class/graphics/fb0/blank || true'
 Restart=always
