@@ -16,10 +16,16 @@
 #      travail), vérification de l'image (version, droits des fichiers de
 #      profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
 #   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
+# Avant tout cela, les conteneurs Podman (Quadlet avec AutoUpdate=registry, dans
+# ~/.config/containers/systemd) : podman auto-update tire la dernière image de
+# leur étiquette (latest, main…), redémarre le service, et revient à l'image
+# précédente s'il ne repart pas. Message Discord si un conteneur a changé ou échoué.
 #
-# Garde-fous : pas de build si un jeu tourne ou si LiteLLM ne répond pas ; la
-# place libre et les secrets sont vérifiés par aibox-build.
-#   --dry-run     comparaison et avis du LLM seulement
+# Garde-fous : pas de build ni de conteneur mis à jour si un jeu tourne ; pas de
+# build si LiteLLM ne répond pas ; la place libre et les secrets sont vérifiés
+# par aibox-build.
+#   --dry-run     comparaison et avis du LLM seulement (conteneurs : liste des
+#                 mises à jour en attente, sans les faire)
 #   --no-install  construit et vérifie l'image, sans l'installer
 #   --force       sans l'avis du LLM (mise à jour même sans paquet nouveau)
 #   --pkglist F   liste « nom version » de référence à la place de l'image
@@ -95,14 +101,52 @@ exec 9>"$state/verrou"
 flock -n 9 || { log "Déjà en cours."; exit 0; }
 
 # --- Garde-fous ---
-boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
-[[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }
 # Jeu Steam, ou jeu Windows hors Steam (aibox-run-exe, wsquashfs-launcher : umu
 # lance Proton avec « waitforexitandrun », comme Steam).
 if pgrep -f '[S]teamLaunch AppId=|[p]roton waitforexitandrun' >/dev/null; then
     log "Un jeu tourne : mise à jour reportée à la prochaine fois."
     exit 0
 fi
+
+# --- 0. Conteneurs Podman ---
+# Lignes « unité<TAB>image<TAB>état » ; état : true (mis à jour), false (à jour),
+# pending (--dry-run), failed, rolled back.
+containers_update() {
+    local out status fmt=$'{{.Unit}}\t{{.Image}}\t{{.Updated}}'
+    if (( dry_run )); then
+        out="$(podman auto-update --dry-run --format "$fmt" 2>&1)"
+        log "Conteneurs (--dry-run) :
+$out"
+        return
+    fi
+    out="$(podman auto-update --format "$fmt" 2>&1)"; status=$?
+    log "Conteneurs :
+$out"
+    local updated failed
+    updated="$(awk -F'\t' '$3 == "true" {print "• " $2 " (" $1 ")"}' <<<"$out")"
+    failed="$(awk -F'\t' '$3 == "failed" || $3 == "rolled back" {print "• " $2 " (" $1 ") : " $3}' <<<"$out")"
+    # Erreur hors tableau (réseau, limite de Docker Hub…) : signalée, sans bloquer l'image.
+    (( status != 0 )) && [[ -z "$failed" ]] && failed="$(grep -m2 '^Error' <<<"$out")"
+    # Images remplacées : l'ancienne ne sert plus (place sur le disque).
+    [[ -n "$updated" ]] && podman image prune -f >/dev/null 2>&1
+    if [[ -n "$updated" || -n "$failed" ]]; then
+        notify "Conteneurs Podman${updated:+, mis à jour :
+$updated}${failed:+
+Problème :
+$failed}"
+    fi
+    # LiteLLM redémarré : attendre qu'il réponde avant de lui demander l'avis du LLM.
+    if grep -q "litellm" <<<"$updated"; then
+        for _ in $(seq 1 60); do
+            curl -sf -m 5 "${LLM_URL%/v1}/health/liveliness" >/dev/null && break
+            sleep 5
+        done
+    fi
+}
+containers_update
+
+boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
+[[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }
 
 # Copie du dépôt d'aibox-build, remise à origin/<ref> (GitHub)
 src="$BUILD_DIR/src"
@@ -184,7 +228,10 @@ Mets à jour (true) si au moins un de ces cas : correctif de sécurité probable
 Réponds UNIQUEMENT par un objet JSON, sans texte autour :
 {\"mettre_a_jour\": true|false, \"raison\": \"une ou deux phrases en français\", \"paquets_importants\": [\"nom ancienne → nouvelle\", …]}"
     body="$(jq -n --arg m "$MODEL" --arg p "$prompt" \
-        '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000, chat_template_kwargs: {enable_thinking: false}}')"
+        '{model: $m, messages: [{role: "user", content: $p}], temperature: 0.2, max_tokens: 6000, extra_body: {chat_template_kwargs: {enable_thinking: false}}}')"
+    # chat_template_kwargs dans extra_body : LiteLLM refuse ce paramètre au premier
+    # niveau (« unexpected keyword argument », erreur 500) et le transmet tel quel
+    # depuis extra_body. Panne du 11/11 au 12/11/2026, après la bascule sur LiteLLM.
     # Clé d'API (LiteLLM exige « Authorization: Bearer sk-… ») : elle vient de
     # ~/.config/aibox/auto-update.conf, jamais du dépôt. Facultative avec Lemonade seul.
     auth=()
