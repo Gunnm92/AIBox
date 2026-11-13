@@ -60,6 +60,11 @@ var commandes = []commande{
 		usages: []string{"aibox tv-mode [--once] [gamescope|hyprland|bureau]"},
 	},
 	{
+		nom: "tv-run", fonction: cmdTvRun, groupe: "Usage courant",
+		resume: "Lance une commande sur l'écran de la TV (la session Hyprland doit tourner)",
+		usages: []string{`aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"`},
+	},
+	{
 		nom: "run-exe", exe: "aibox-run-exe", groupe: "Usage courant",
 		resume: "Lance un programme Windows (.exe, .msi) avec un Proton installé",
 		usages: []string{"aibox run-exe prog.exe [args]"},
