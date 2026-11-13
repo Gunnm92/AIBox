@@ -15,7 +15,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$root/tools/engine.sh"
 # Emplacements des secrets, des caches et de l'ISO : dans le dépôt par défaut
-# (build à la main) ; aibox-build les met sur le disque de données
+# (build à la main) ; aibox build les met sur le disque de données
 # (/var/lib/aibox/state/build), hors du dépôt.
 keys_dir="${AIBOX_KEYS:-$root/keys}"
 work_dir="${AIBOX_WORK:-$root/work}"

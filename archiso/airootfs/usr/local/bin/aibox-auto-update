@@ -11,12 +11,12 @@
 #   1. compare les paquets de l'image par défaut sur AIBOXBOOT (pkglist.x86_64.txt,
 #      et non l'image qui tourne : une image installée en attente de redémarrage
 #      n'est pas réinstallée) aux versions des dépôts du build (archiso/pacman.conf
-#      d'origin/main, dans la copie du dépôt d'aibox-build) ;
+#      d'origin/main, dans la copie du dépôt d'aibox build) ;
 #   2. décide : de nouveaux commits sur GitHub (origin/main) sont toujours
 #      construits ; sinon, le LLM local (passerelle LiteLLM, alias « auto » :
 #      Lemonade sur GPU ou NPU) dit si les paquets valent une mise à jour
 #      (réponse JSON ; le LLM ne fait que décider, il n'exécute rien) ;
-#   3. si oui : sudo aibox-build (construit origin/main, hors du dossier de
+#   3. si oui : sudo aibox build (construit origin/main, hors du dossier de
 #      travail), vérification de l'image (version, droits des fichiers de
 #      profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
 #   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
@@ -27,7 +27,7 @@
 #
 # Garde-fous : pas de build ni de conteneur mis à jour si un jeu tourne ; pas de
 # build si LiteLLM ne répond pas ; la place libre et les secrets sont vérifiés
-# par aibox-build.
+# par aibox build.
 #   --podman      conteneurs Podman seulement ; le système n'est pas touché
 #   --dry-run     comparaison et avis du LLM seulement (conteneurs : liste des
 #                 mises à jour en attente, sans les faire)
@@ -161,9 +161,9 @@ fi
 boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
 [[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }
 
-# Copie du dépôt d'aibox-build, remise à origin/<ref> (GitHub)
+# Copie du dépôt d'aibox build, remise à origin/<ref> (GitHub)
 src="$BUILD_DIR/src"
-src_commit="$(sudo aibox-build --fetch-only --ref "$BUILD_REF" 2>>"$journal")" \
+src_commit="$(sudo aibox build --fetch-only --ref "$BUILD_REF" 2>>"$journal")" \
     || fail "mise à jour de la copie du dépôt impossible (réseau ? GitHub ?) : voir $journal."
 log "Dépôt : origin/$BUILD_REF à $src_commit"
 
@@ -288,9 +288,9 @@ if (( dry_run )); then
     exit 0
 fi
 
-# --- 3. Build (aibox-build : origin/<ref>, caches et secrets sur le disque) ---
+# --- 3. Build (aibox build : origin/<ref>, caches et secrets sur le disque) ---
 log "Construction de l'image…"
-if ! sudo aibox-build --ref "$BUILD_REF" > "$state/build.log" 2>&1; then
+if ! sudo aibox build --ref "$BUILD_REF" > "$state/build.log" 2>&1; then
     fail "le build a échoué : voir $state/build.log
 $(grep -m3 -i -E 'error|erreur|cannot|place|secrets|authorized_keys' "$state/build.log")"
 fi

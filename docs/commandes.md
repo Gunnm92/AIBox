@@ -27,7 +27,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 |---|---|---|---|
 | `aibox-update-boot` | Installer une nouvelle image sur AIBOXBOOT, sans toucher aux données ; garde la précédente pour revenir en arrière | `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso [--keep 2]` | [iso.md](iso.md) |
 | `aibox-setup-disk` | **Efface un disque** et le prépare (AIBOXBOOT + AIBOXDATA). Une seule fois | `sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G] [--iso F]` | [iso.md](iso.md) |
-| `aibox-build` | Construire l'image depuis GitHub (`origin/main`), avec ses caches et ses secrets dans `/var/lib/aibox/state/build/` ; jamais `-dirty` | `sudo aibox-build [--ref <branche ou commit>]`, `--fetch-only`, `--import ~/Workspace/AIBox` (une fois) ; ou `sudo systemctl start aibox-build` | [iso.md](iso.md#5-construire) |
+| `aibox build` | Construire l'image depuis GitHub (`origin/main`), avec ses caches et ses secrets dans `/var/lib/aibox/state/build/` ; jamais `-dirty` | `sudo aibox build [--ref <branche ou commit>]`, `--fetch-only`, `--import ~/Workspace/AIBox` (une fois) ; ou `sudo systemctl start aibox build` | [iso.md](iso.md#5-construire) |
 | `./build.sh` (dépôt) | Build à la main dans le dépôt (`keys/`, `work/`, `out/`), pour un essai en VM ; pas pour une image installée | `./build.sh [--test-key]` | [iso.md](iso.md#5-construire) |
 
 ## Outils internes appelables à la main
@@ -46,7 +46,7 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 
 | Minuteur | Quand | Ce qu'il fait |
 |---|---|---|
-| `aibox-auto-update.timer` (utilisateur) | Chaque nuit à 4 h, rattrapé au démarrage | `aibox-auto-update --podman` (conteneurs, `podman auto-update`), puis `aibox-auto-update` : nouveaux commits poussés ou avis du LLM sur les paquets, build par `aibox-build`, installation, message Discord. Jamais de redémarrage |
+| `aibox-auto-update.timer` (utilisateur) | Chaque nuit à 4 h, rattrapé au démarrage | `aibox-auto-update --podman` (conteneurs, `podman auto-update`), puis `aibox-auto-update` : nouveaux commits poussés ou avis du LLM sur les paquets, build par `aibox build`, installation, message Discord. Jamais de redémarrage |
 | `aibox-llm-idle.timer` (utilisateur) | Toutes les 5 min | `llm-unload --idle` : décharge les modèles GPU inutilisés depuis 30 min |
 | `aibox-diag.timer` | 2 min après le démarrage | `aibox diag` |
 | `aibox-tv-idle.timer` | 2 min après l'extinction de la manette | Arrête la session TV |
@@ -55,7 +55,7 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 
 | Service | Déclencheur | Ce qu'il fait | Détails |
 |---|---|---|---|
-| `aibox-build` | `aibox-auto-update`, ou à la main (`systemctl start`) | Build de l'ISO (`aibox-build`) | [iso.md](iso.md#5-construire) |
+| `aibox build` | `aibox-auto-update`, ou à la main (`systemctl start`) | Build de l'ISO (`aibox build`) | [iso.md](iso.md#5-construire) |
 | `aibox-tv-watch` | Manette allumée ou éteinte (scrute le dongle toutes les 2 s) | Démarre la session TV, ou programme son arrêt | [architecture.md](architecture.md) |
 | `aibox-tv` | `aibox-tv-watch`, `aibox tv-mode` | Session TV sur l'écran réel (`tv-session`). À son démarrage : `llm-unload --tv` | [exploitation.md](exploitation.md#session-tv) |
 | `ds5-haptics-loopback` (utilisateur) | Branchement du dongle (udev) | Envoie le son du PC au dongle pour les auto-haptiques | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |

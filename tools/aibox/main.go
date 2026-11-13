@@ -45,7 +45,7 @@ var commandes = []commande{
 		},
 	},
 	{
-		nom: "build", exe: "aibox-build", groupe: "Mise à jour",
+		nom: "build", fonction: cmdBuild, groupe: "Mise à jour",
 		resume: "Construit l'image depuis GitHub (origin/main), sans l'installer",
 		usages: []string{"sudo aibox build [--ref BRANCHE] [--fetch-only]"},
 	},

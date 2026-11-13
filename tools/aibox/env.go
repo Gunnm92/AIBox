@@ -24,6 +24,8 @@ type env struct {
 	lancer   func(vars []string, nom string, args ...string) (string, error)
 	combine  func(vars []string, nom string, args ...string) string
 	executer func(vars []string, nom string, args ...string) int
+	// flux lance une commande dont la sortie (stdout et stderr) va dans sortie.
+	flux func(vars []string, sortie io.Writer, nom string, args ...string) int
 }
 
 // envReel : le vrai système.
@@ -47,6 +49,18 @@ func envReel() env {
 			cmd.Env = append(os.Environ(), vars...)
 			out, _ := cmd.CombinedOutput()
 			return string(out)
+		},
+		flux: func(vars []string, sortie io.Writer, nom string, args ...string) int {
+			cmd := exec.Command(nom, args...)
+			cmd.Env = append(os.Environ(), vars...)
+			cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, sortie, sortie
+			if err := cmd.Run(); err != nil {
+				if e, ok := err.(*exec.ExitError); ok {
+					return e.ExitCode()
+				}
+				return 127
+			}
+			return 0
 		},
 		executer: func(vars []string, nom string, args ...string) int {
 			cmd := exec.Command(nom, args...)

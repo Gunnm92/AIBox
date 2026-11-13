@@ -5,13 +5,13 @@ Ce guide s'adresse à l'agent (LLM local) comme à l'utilisateur. Suis les étap
 ## 0. Principe
 
 - Le système qui tourne est une **image en lecture seule chargée en RAM**. Toute modification de `/etc` ou de `/usr`, et tout `pacman -S`, est **perdu au redémarrage**.
-- Pour un changement durable, on **modifie le dépôt**, on le **pousse sur GitHub**, on **reconstruit l'image** (`sudo aibox-build`, qui construit `origin/main`), puis on **l'installe** sur la partition `AIBOXBOOT` (`aibox-update-boot`). Elle sert ensuite au démarrage suivant.
+- Pour un changement durable, on **modifie le dépôt**, on le **pousse sur GitHub**, on **reconstruit l'image** (`sudo aibox build`, qui construit `origin/main`), puis on **l'installe** sur la partition `AIBOXBOOT` (`aibox-update-boot`). Elle sert ensuite au démarrage suivant.
 - Les données (`/home`, Flatpak, modèles…) ne sont jamais touchées par ces opérations.
 
 Cycle complet :
 
 ```
-modifier le dépôt → tester en RAM → commit → push (avec accord) → sudo aibox-build → vérifier l'image → aibox-update-boot → arrêt + rallumage → vérifier
+modifier le dépôt → tester en RAM → commit → push (avec accord) → sudo aibox build → vérifier l'image → aibox-update-boot → arrêt + rallumage → vérifier
 ```
 
 ## 1. Avant de commencer
@@ -94,23 +94,23 @@ Co-Authored-By: …
 EOF
 ```
 
-Ne pousse pas (`git push`) sans l'accord de l'utilisateur. Mais `aibox-build` ne construit **que ce qui est poussé** sur `Gunnm92/AIBox` : sans push, pas d'image.
+Ne pousse pas (`git push`) sans l'accord de l'utilisateur. Mais `aibox build` ne construit **que ce qui est poussé** sur `Gunnm92/AIBox` : sans push, pas d'image.
 
 ## 5. Construire
 
 ```sh
-sudo aibox-build                           # ou : sudo systemctl start aibox-build
+sudo aibox build                           # ou : sudo systemctl start aibox build
 cat /var/lib/aibox/state/build/dernier-build.json                 # statut, version, commit, chemin de l'ISO, durée
 ```
 
-- `aibox-build` remet sa propre copie du dépôt (`/var/lib/aibox/state/build/src`) à `origin/main`, puis lance `build.sh` avec les secrets de `/var/lib/aibox/state/build/keys` et les caches de `/var/lib/aibox/state/build/work`. Le dossier de travail `~/Workspace/AIBox` n'intervient pas : il peut avoir des changements en cours.
+- `aibox build` remet sa propre copie du dépôt (`/var/lib/aibox/state/build/src`) à `origin/main`, puis lance `build.sh` avec les secrets de `/var/lib/aibox/state/build/keys` et les caches de `/var/lib/aibox/state/build/work`. Le dossier de travail `~/Workspace/AIBox` n'intervient pas : il peut avoir des changements en cours.
 - La durée est d'environ 1 à 2 minutes avec les caches (paquets, xrdp, noVNC, WhiteSur), et de 3 à 6 minutes sans. xrdp (AUR) est recompilé quand l'AUR publie une autre version, et au moins tous les 30 jours. Lance-le en arrière-plan si ton outil le permet.
-- Il faut au moins 12 Go libres sur le disque de données. `aibox-build` refuse de construire sinon, et aussi en mode éphémère.
+- Il faut au moins 12 Go libres sur le disque de données. `aibox build` refuse de construire sinon, et aussi en mode éphémère.
 - Un échec affiche son erreur à la fin de `/var/lib/aibox/state/build/build.log`. Cherche la première ligne `error` ou `cannot`.
-- **Version** : `AAAA.MM.JJ.HHMM-<commit>`, par exemple `2026.10.10.2145-cf122c2`, avec la date et l'heure du build et le commit construit. Une image d'`aibox-build` n'est jamais `-dirty`. `--ref <branche ou commit>` construit autre chose que `main`.
+- **Version** : `AAAA.MM.JJ.HHMM-<commit>`, par exemple `2026.10.10.2145-cf122c2`, avec la date et l'heure du build et le commit construit. Une image d'`aibox build` n'est jamais `-dirty`. `--ref <branche ou commit>` construit autre chose que `main`.
 - `/var/lib/aibox/state/build/out/` garde les 3 ISO les plus récentes ; `aibox-latest.iso` pointe sur la dernière.
-- **Première fois** : `sudo aibox-build --import ~/Workspace/AIBox` reprend `keys/` et les caches de `work/`.
-- **Essai d'un commit non poussé** : `sudo AIBOX_BUILD_REMOTE=$HOME/Workspace/AIBox aibox-build` (l'adresse de GitHub revient au build suivant).
+- **Première fois** : `sudo aibox build --import ~/Workspace/AIBox` reprend `keys/` et les caches de `work/`.
+- **Essai d'un commit non poussé** : `sudo AIBOX_BUILD_REMOTE=$HOME/Workspace/AIBox aibox build` (l'adresse de GitHub revient au build suivant).
 - **Build à la main dans le dépôt**, pour un essai en VM : `./build.sh` utilise `keys/`, `work/` et `out/` du dépôt, et l'image peut être `-dirty`. Ne l'installe pas.
 
 ## 6. Vérifier l'image
@@ -162,7 +162,7 @@ Puis vérifie précisément ce qui a changé : le service, le fichier, le compor
 2. **Reconstruire une version précédente** depuis git :
    ```sh
    git log --oneline                       # repérer le bon commit (poussé sur GitHub)
-   sudo aibox-build --ref <commit> && sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
+   sudo aibox build --ref <commit> && sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
    ```
    L'ISO porte la date du jour et le commit choisi.
 3. **Clé Ventoy** : démarre dessus (menu du BIOS), sur une ISO aibox qu'elle contient, puis réinstalle depuis là : `sudo aibox-update-boot` sans `--iso`.
@@ -173,7 +173,7 @@ Pour un problème limité à la session TV, il y a plus simple : `aibox tv-mode 
 
 | Action | Commande |
 |---|---|
-| Construire | `sudo aibox-build` (ce qui est poussé sur GitHub) |
+| Construire | `sudo aibox build` (ce qui est poussé sur GitHub) |
 | Installer | `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` |
 | Versions installées | `sudo mount -o ro /dev/disk/by-label/AIBOXBOOT /mnt && ls /mnt; sudo umount /mnt` |
 | Version qui tourne | `grep -o 'archisobasedir=[^ ]*' /proc/cmdline` |
