@@ -180,7 +180,7 @@ engine run --rm --privileged \
         install -D -m 0755 /tmp/evdev-bridge/evdev-bridge-native "$air/usr/local/bin/evdev-bridge-native"
         # WhiteSur : usr/share/themes et usr/share/icons (tools/whitesur.sh)
         tar --zstd -C "$air" -xf "$WS_TAR"
-        # Partages NAS par défaut (aibox-nas) : keys/nas-mounts et keys/nas.cred
+        # Partages NAS par défaut (aibox nas) : keys/nas-mounts et keys/nas.cred
         if [[ -s "$KEYS/nas-mounts" && -s "$KEYS/nas.cred" ]]; then
             install -m 0644 "$KEYS/nas-mounts" "$air/etc/aibox/nas-mounts"
             install -m 0600 "$KEYS/nas.cred" "$air/etc/aibox/nas.cred"

@@ -60,6 +60,11 @@ var commandes = []commande{
 		usages: []string{"aibox tv-mode [--once] [gamescope|hyprland|bureau]"},
 	},
 	{
+		nom: "nas", fonction: cmdNas, groupe: "Usage courant",
+		resume: "Partages réseau (SMB) montés à la demande",
+		usages: []string{"aibox nas list", "sudo aibox nas add //hôte/partage /mnt/X", "sudo aibox nas remove /mnt/X"},
+	},
+	{
 		nom: "tv-run", fonction: cmdTvRun, groupe: "Usage courant",
 		resume: "Lance une commande sur l'écran de la TV (la session Hyprland doit tourner)",
 		usages: []string{`aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"`},
@@ -73,11 +78,6 @@ var commandes = []commande{
 		nom: "wsquashfs", exe: "wsquashfs-launcher", groupe: "Usage courant",
 		resume: "Lance un jeu Windows au format Batocera (.wsquashfs)",
 		usages: []string{`aibox wsquashfs "Jeu.wsquashfs"`, "aibox wsquashfs --info FICHIER"},
-	},
-	{
-		nom: "nas", exe: "aibox-nas", groupe: "Usage courant",
-		resume: "Partages réseau SMB montés à la demande",
-		usages: []string{"aibox nas list", "sudo aibox nas add //hôte/partage /mnt/X"},
 	},
 	{
 		nom: "keyboard", fonction: cmdKeyboard, groupe: "Usage courant",
