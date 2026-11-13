@@ -168,8 +168,8 @@ func ecrireAide(w io.Writer) {
 	fmt.Fprintln(w, "  La commande s'écrit après « aibox » : « aibox update », « aibox mem »… ;")
 	fmt.Fprintln(w, "  les options (--dry-run, --podman…) et les valeurs (FICHIER, BRANCHE…) viennent après.")
 	fmt.Fprintln(w, "  Aide : aibox --help")
-	fmt.Fprintln(w, "  Chaque commande lance un script aibox-* (indiqué sous son nom) ; ces scripts")
-	fmt.Fprintln(w, "  marchent aussi directement, par exemple « aibox-auto-update --podman ».")
+	fmt.Fprintln(w, "  Les anciens noms aibox-* (aibox-auto-update, aibox-mem…) n'existent plus : tout")
+	fmt.Fprintln(w, "  passe par « aibox ». Seule l'installation (setup-disk) reste un script.")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Commandes, par rubrique (la première colonne est le nom à taper) :")
 	for _, g := range groupes {
