@@ -1,5 +1,5 @@
 [Unit]
-Description=Session TV (gamescope et Steam ; Hyprland et lanceur, aibox-tv-mode)
+Description=Session TV (gamescope et Steam ; Hyprland et lanceur, aibox tv-mode)
 After=systemd-user-sessions.service user@1000.service aibox-data.service
 Wants=user@1000.service
 # Démarrée par la manette (aibox-tv-watch.service), arrêtée 2 minutes après son

@@ -167,7 +167,7 @@ Puis vérifie précisément ce qui a changé : le service, le fichier, le compor
    L'ISO porte la date du jour et le commit choisi.
 3. **Clé Ventoy** : démarre dessus (menu du BIOS), sur une ISO aibox qu'elle contient, puis réinstalle depuis là : `sudo aibox-update-boot` sans `--iso`.
 
-Pour un problème limité à la session TV, il y a plus simple : `aibox-tv-mode gamescope` ou `aibox-tv-mode hyprland` change de mode sans changer d'image, et ce choix tient aux redémarrages.
+Pour un problème limité à la session TV, il y a plus simple : `aibox tv-mode gamescope` ou `aibox tv-mode hyprland` change de mode sans changer d'image, et ce choix tient aux redémarrages.
 
 ## Aide-mémoire
 

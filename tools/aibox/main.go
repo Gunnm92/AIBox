@@ -55,7 +55,7 @@ var commandes = []commande{
 		usages: []string{"sudo aibox boot --iso FICHIER"},
 	},
 	{
-		nom: "tv-mode", exe: "aibox-tv-mode", groupe: "Usage courant",
+		nom: "tv-mode", fonction: cmdTvMode, groupe: "Usage courant",
 		resume: "Mode de la session TV : lanceur (par défaut), gamescope ou bureau",
 		usages: []string{"aibox tv-mode [--once] [gamescope|hyprland|bureau]"},
 	},

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Session TV sur l'écran réel (GPU), selon ~/.config/aibox/tv-mode (aibox-tv-mode) :
+# Session TV sur l'écran réel (GPU), selon ~/.config/aibox/tv-mode (aibox tv-mode) :
 #   hyprland (défaut)  : Hyprland, configuration /etc/aibox/hypr-tv, les cartes de widgets
 #                        (quickshell-tv) et le lanceur (applis de tv-apps.json) ; Steam y
 #                        est une tuile, et « Passer au bureau » dans Steam y mène ;
@@ -18,7 +18,7 @@ done
 [[ -S "${XDG_RUNTIME_DIR}/wayland-0" ]] || { echo "wayland-0 (administration) absent : refus de démarrer" >&2; exit 1; }
 cd "${HOME}"
 unset WAYLAND_DISPLAY DISPLAY
-# Mode pour cette session seulement (aibox-tv-mode --once : « Passer au bureau »,
+# Mode pour cette session seulement (aibox tv-mode --once : « Passer au bureau »,
 # tuile Steam du lanceur), utilisé une fois ; sinon le mode gardé sur le disque.
 once="${XDG_RUNTIME_DIR}/aibox-tv-mode-once"
 if [[ -s "$once" ]]; then

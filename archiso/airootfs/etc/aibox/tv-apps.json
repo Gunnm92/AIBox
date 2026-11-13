@@ -6,7 +6,8 @@
       "-gamepadui"
     ],
     "command_hyprland": [
-      "aibox-tv-mode",
+      "aibox",
+      "tv-mode",
       "--once",
       "gamescope"
     ],
@@ -27,7 +28,8 @@
   {
     "name": "Bureau",
     "command": [
-      "aibox-tv-mode",
+      "aibox",
+      "tv-mode",
       "--once",
       "bureau"
     ],

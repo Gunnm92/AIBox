@@ -7,7 +7,7 @@
   </core>
   <keyboard>
     <keybind key="W-l">
-      <action name="Execute" command="aibox-tv-mode --once hyprland"/>
+      <action name="Execute" command="aibox tv-mode --once hyprland"/>
     </keybind>
   </keyboard>
 </labwc_config>
