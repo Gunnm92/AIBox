@@ -89,6 +89,6 @@ Le bureau d'administration doit avoir pris `wayland-0` et `:0` avant la session 
 - `airootfs/` : les fichiers copiés dans l'image ;
 - `grub/` : le menu de l'ISO.
 
-Le build ajoute aussi `wsquashfs-launcher`, téléchargé depuis GitHub à un commit figé, ainsi que noVNC, xrdp (compilé depuis l'AUR) et les secrets de `keys/`.
+Le build ajoute aussi noVNC, xrdp (compilé depuis l'AUR) et les secrets de `keys/`.
 
 Détails pratiques : [iso.md](iso.md).

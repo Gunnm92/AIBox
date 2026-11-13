@@ -39,7 +39,6 @@ cat /proc/cmdline | grep -o 'archisobasedir=[^ ]*'                # version qui 
 | Ajouter un service système | `archiso/airootfs/etc/systemd/system/x.service` | l'activer avec un lien : `ln -s ../x.service archiso/airootfs/etc/systemd/system/multi-user.target.wants/x.service` |
 | Ajouter un service utilisateur | `archiso/airootfs/etc/systemd/user/x.service` | lien dans `…/etc/systemd/user/default.target.wants/` |
 | Changer les options du noyau | `kernel_params_x86_64` dans `archiso/profiledef.sh` ; `copytoram` dans `archiso/grub/grub.cfg` | `aibox boot` reprend les options de l'ISO |
-| Mettre à jour wsquashfs-launcher | `wsq_ref=` dans `build.sh` | le commit doit être **poussé sur GitHub**, le build le télécharge depuis `raw.githubusercontent.com` |
 | Ajouter un sous-volume de données | `archiso/airootfs/usr/local/lib/aibox/subvolumes` et `…/etc/aibox/fstab.data` | il est créé tout seul au démarrage suivant |
 
 **Les droits des fichiers.** mkarchiso remet **tous** les fichiers de `airootfs/` en `0644 root:root`, sauf ceux listés dans `file_permissions` de `profiledef.sh`. Un `chmod +x` dans le dépôt ne suffit pas. Ce piège a déjà frappé deux fois : `wsquashfs-launcher` non exécutable, et `nas.cred` lisible par tous.

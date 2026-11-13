@@ -135,9 +135,9 @@ xrdp
 # Moonlight (VAAPI) ; lancé à la main, pas au démarrage
 sunshine
 
-# Jeux Windows au format Batocera (.wsquashfs) : wsquashfs-launcher (script
-# ajouté au build) et ses outils ; les runners (proton-cachyos, UMU-Proton…)
-# vont sur le disque, pas de wine système (590 Mo)
+# Jeux Windows au format Batocera (.wsquashfs) : wsquashfs-launcher n'est plus
+# dans l'image (binaire installé à part, dans ~/.local/bin) ; les runners
+# (proton-cachyos, UMU-Proton…) vont sur le disque, pas de wine système (590 Mo)
 squashfuse
 fuse-overlayfs
 squashfs-tools

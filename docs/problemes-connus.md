@@ -109,6 +109,6 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Solution** : le lanceur ferme sa fenêtre pendant que l'appli tourne, et la rouvre quand elle se termine. Les cartes de widgets (couche « top ») ne s'affichent qu'avec la fenêtre du lanceur, sinon elles restent par-dessus l'appli. Pour Steam, vérifie aussi qu'un `~/.config/aibox/tv-apps.json` ancien ne porte pas `command_labwc` au lieu de `command_hyprland` : la tuile lancerait Steam sous Hyprland, sans gamescope.
 
 ### Un chemin en `/run/user/1000/doc/…` au lieu du vrai fichier (11/10/2026)
-- **Exemple** : Steam ROM Manager (Flatpak), exécutable `/usr/local/bin/wsquashfs-launcher` choisi par la fenêtre de sélection.
+- **Exemple** : Steam ROM Manager (Flatpak), exécutable `~/.local/bin/wsquashfs-launcher` choisi par la fenêtre de sélection (l'ancien chemin `/usr/local/bin/…` n'existe plus depuis que l'image ne le fournit plus).
 - **Cause** : une appli Flatpak ne voit jamais le `/usr` de la machine, même avec l'accès `host`. Le portail lui passe alors le fichier par le portail de documents, avec un chemin temporaire.
 - **Solution** : taper le chemin à la main (`/usr/local/bin/…`). Le raccourci est lancé par Steam, qui n'est pas en Flatpak. Sinon, prendre la version AppImage de l'appli.

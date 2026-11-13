@@ -106,12 +106,6 @@ novnc_tar="$work_dir/dl/noVNC-$novnc_version.tar.gz"
 [[ -f "$novnc_tar" ]] || curl -fsSL -o "$novnc_tar" "https://github.com/novnc/noVNC/archive/refs/tags/v$novnc_version.tar.gz"
 echo "$novnc_sha256  $novnc_tar" | sha256sum -c --quiet
 
-# --- wsquashfs-launcher (jeux Windows au format Batocera), version figée ---
-wsq_ref="${WSQUASHFS_REF:-a1d64ca329325dc3ea1e4834d1283f49b4e10e13}"
-wsq="$work_dir/dl/wsquashfs-launcher-$wsq_ref"
-[[ -s "$wsq" ]] || curl -fsSL -o "$wsq" "https://raw.githubusercontent.com/Gunnm92/wsquashfs-launcher/$wsq_ref/wsquashfs-launcher"
-bash -n "$wsq"
-
 # --- Thème WhiteSur (thème GTK, icônes, curseurs), compilé une fois puis en cache ---
 ws_tar="$("$root/tools/whitesur.sh")"
 
@@ -161,7 +155,7 @@ engine run --rm --privileged \
     -v "$root:$root" -v "$keys_dir:$keys_dir" -v "$work_dir:$work_dir" -v "$out_dir:$out_dir" \
     -v "$work_dir/pkgcache:/var/cache/pacman/pkg" \
     -e KEYS="$keys_dir" -e WORK="$work_dir" -e OUT="$out_dir" \
-    -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e WSQ="$wsq" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+    -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
     -e AIBOX_VERSION="$AIBOX_VERSION" -e WS_TAR="$ws_tar" \
     "$image" bash -euo pipefail -c '
         pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools \
@@ -176,7 +170,6 @@ engine run --rm --privileged \
         install -D -m 0644 "$WORK/authorized_keys" "$air/etc/ssh/authorized_keys/default"
         install -m 0600 "$WORK/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
         install -m 0600 "$WORK/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
-        install -D -m 0755 "$WSQ" "$air/usr/local/bin/wsquashfs-launcher"
         install -D -m 0755 /tmp/evdev-bridge/evdev-bridge-native "$air/usr/local/bin/evdev-bridge-native"
         # WhiteSur : usr/share/themes et usr/share/icons (tools/whitesur.sh)
         tar --zstd -C "$air" -xf "$WS_TAR"

@@ -31,7 +31,6 @@ file_permissions=(
   ["/usr/local/bin/xfdesktop-settings"]="0:0:755"
   ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
   ["/usr/local/lib/aibox/tv-widgets-data"]="0:0:755"
-  ["/usr/local/bin/wsquashfs-launcher"]="0:0:755"
   ["/usr/local/bin/evdev-bridge-native"]="0:0:755"
   ["/usr/local/bin/steamos-session-select"]="0:0:755"
   ["/usr/local/bin/aibox"]="0:0:755"

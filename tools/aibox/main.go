@@ -75,11 +75,6 @@ var commandes = []commande{
 		usages: []string{"aibox run-exe prog.exe [args]"},
 	},
 	{
-		nom: "wsquashfs", exe: "wsquashfs-launcher", groupe: "Usage courant",
-		resume: "Lance un jeu Windows au format Batocera (.wsquashfs)",
-		usages: []string{`aibox wsquashfs "Jeu.wsquashfs"`, "aibox wsquashfs --info FICHIER"},
-	},
-	{
 		nom: "keyboard", fonction: cmdKeyboard, groupe: "Usage courant",
 		resume: "Disposition du clavier du bureau d'administration (noVNC)",
 		usages: []string{"aibox keyboard [mac|pc|<xkb> [variante]]"},

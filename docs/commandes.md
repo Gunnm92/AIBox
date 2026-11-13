@@ -7,7 +7,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 | Commande | À quoi ça sert | Usage | Détails |
 |---|---|---|---|
 | `aibox run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
-| `wsquashfs-launcher` | Lancer un jeu Windows au format Batocera (`.wsquashfs`) | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
+| `wsquashfs-launcher` (hors image) | Lancer un jeu Windows au format Batocera (`.wsquashfs`) ; binaire installé à part, dans `~/.local/bin` | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
 | `aibox tv-mode` | Mode de la session TV : Hyprland avec le lanceur (par défaut), Steam sous gamescope, ou le bureau XFCE sous labwc | `aibox tv-mode [--once] [gamescope\|hyprland\|bureau]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
 | `aibox tv-run` | Lancer une commande sur l'écran de la TV (la session Hyprland doit tourner), depuis le bureau d'administration | `aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"` | [exploitation.md](exploitation.md#session-tv) |
 | `aibox` | Point d'entrée unique : aide (`--help`), et aiguillage vers les `aibox-*` (`aibox update --podman` lance `aibox update --podman`). Binaire Go, compilé par `tools/aibox/build.sh` | `aibox --help`, `aibox <commande> [arguments]` | [commandes.md](commandes.md) |
