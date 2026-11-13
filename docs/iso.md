@@ -5,13 +5,13 @@ Ce guide s'adresse à l'agent (LLM local) comme à l'utilisateur. Suis les étap
 ## 0. Principe
 
 - Le système qui tourne est une **image en lecture seule chargée en RAM**. Toute modification de `/etc` ou de `/usr`, et tout `pacman -S`, est **perdu au redémarrage**.
-- Pour un changement durable, on **modifie le dépôt**, on le **pousse sur GitHub**, on **reconstruit l'image** (`sudo aibox build`, qui construit `origin/main`), puis on **l'installe** sur la partition `AIBOXBOOT` (`aibox-update-boot`). Elle sert ensuite au démarrage suivant.
+- Pour un changement durable, on **modifie le dépôt**, on le **pousse sur GitHub**, on **reconstruit l'image** (`sudo aibox build`, qui construit `origin/main`), puis on **l'installe** sur la partition `AIBOXBOOT` (`aibox boot`). Elle sert ensuite au démarrage suivant.
 - Les données (`/home`, Flatpak, modèles…) ne sont jamais touchées par ces opérations.
 
 Cycle complet :
 
 ```
-modifier le dépôt → tester en RAM → commit → push (avec accord) → sudo aibox build → vérifier l'image → aibox-update-boot → arrêt + rallumage → vérifier
+modifier le dépôt → tester en RAM → commit → push (avec accord) → sudo aibox build → vérifier l'image → aibox boot → arrêt + rallumage → vérifier
 ```
 
 ## 1. Avant de commencer
@@ -38,7 +38,7 @@ cat /proc/cmdline | grep -o 'archisobasedir=[^ ]*'                # version qui 
 | Ajouter un fichier secret | `/var/lib/aibox/state/build/keys/` (root, 600) + une ligne `install -m 0600 "$KEYS/…"` dans `build.sh` | et une entrée `"0:0:600"` dans `profiledef.sh` |
 | Ajouter un service système | `archiso/airootfs/etc/systemd/system/x.service` | l'activer avec un lien : `ln -s ../x.service archiso/airootfs/etc/systemd/system/multi-user.target.wants/x.service` |
 | Ajouter un service utilisateur | `archiso/airootfs/etc/systemd/user/x.service` | lien dans `…/etc/systemd/user/default.target.wants/` |
-| Changer les options du noyau | `kernel_params_x86_64` dans `archiso/profiledef.sh` ; `copytoram` dans `archiso/grub/grub.cfg` | `aibox-update-boot` reprend les options de l'ISO |
+| Changer les options du noyau | `kernel_params_x86_64` dans `archiso/profiledef.sh` ; `copytoram` dans `archiso/grub/grub.cfg` | `aibox boot` reprend les options de l'ISO |
 | Mettre à jour wsquashfs-launcher | `wsq_ref=` dans `build.sh` | le commit doit être **poussé sur GitHub**, le build le télécharge depuis `raw.githubusercontent.com` |
 | Ajouter un sous-volume de données | `archiso/airootfs/usr/local/lib/aibox/subvolumes` et `…/etc/aibox/fstab.data` | il est créé tout seul au démarrage suivant |
 
@@ -134,7 +134,7 @@ Lance `mount` et `umount` dans le **même** `sudo sh -c "…"` si ton shell tour
 
 ```sh
 sudo blkid -L AIBOXBOOT                                   # la partition existe
-sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
+sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
 ```
 
 Le script copie l'image dans `AIBOXBOOT/aibox-<version>/`, vérifie sa somme SHA-512, écrit les entrées de systemd-boot et la met par défaut. Il garde les **2** versions les plus récentes (`--keep 2`).
@@ -158,14 +158,14 @@ Puis vérifie précisément ce qui a changé : le service, le fichier, le compor
 
 ## 10. Revenir en arrière
 
-1. **Au menu de démarrage** (systemd-boot, 3 secondes) : choisis la version précédente. Pour qu'elle redevienne la version par défaut, réinstalle son ISO avec `aibox-update-boot --iso` : `/var/lib/aibox/state/build/out/` garde les 3 dernières.
+1. **Au menu de démarrage** (systemd-boot, 3 secondes) : choisis la version précédente. Pour qu'elle redevienne la version par défaut, réinstalle son ISO avec `aibox boot --iso` : `/var/lib/aibox/state/build/out/` garde les 3 dernières.
 2. **Reconstruire une version précédente** depuis git :
    ```sh
    git log --oneline                       # repérer le bon commit (poussé sur GitHub)
-   sudo aibox build --ref <commit> && sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
+   sudo aibox build --ref <commit> && sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso
    ```
    L'ISO porte la date du jour et le commit choisi.
-3. **Clé Ventoy** : démarre dessus (menu du BIOS), sur une ISO aibox qu'elle contient, puis réinstalle depuis là : `sudo aibox-update-boot` sans `--iso`.
+3. **Clé Ventoy** : démarre dessus (menu du BIOS), sur une ISO aibox qu'elle contient, puis réinstalle depuis là : `sudo aibox boot` sans `--iso`.
 
 Pour un problème limité à la session TV, il y a plus simple : `aibox tv-mode gamescope` ou `aibox tv-mode hyprland` change de mode sans changer d'image, et ce choix tient aux redémarrages.
 
@@ -174,7 +174,7 @@ Pour un problème limité à la session TV, il y a plus simple : `aibox tv-mode 
 | Action | Commande |
 |---|---|
 | Construire | `sudo aibox build` (ce qui est poussé sur GitHub) |
-| Installer | `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` |
+| Installer | `sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` |
 | Versions installées | `sudo mount -o ro /dev/disk/by-label/AIBOXBOOT /mnt && ls /mnt; sudo umount /mnt` |
 | Version qui tourne | `grep -o 'archisobasedir=[^ ]*' /proc/cmdline` |
 | Paquets de l'image | `pkglist.x86_64.txt` dans l'ISO montée |

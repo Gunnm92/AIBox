@@ -18,7 +18,7 @@
 #      (réponse JSON ; le LLM ne fait que décider, il n'exécute rien) ;
 #   3. si oui : sudo aibox build (construit origin/main, hors du dossier de
 #      travail), vérification de l'image (version, droits des fichiers de
-#      profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
+#      profiledef.sh, versions des paquets), puis aibox boot --iso ;
 #   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
 # --podman : les conteneurs Podman (Quadlet avec AutoUpdate=registry, dans
 # ~/.config/containers/systemd) : podman auto-update tire la dernière image de
@@ -337,8 +337,8 @@ if (( no_install )); then
 fi
 
 # --- 4. Installation (la version précédente reste au menu de démarrage) ---
-sudo aibox-update-boot --iso "$iso" > "$state/installation.log" 2>&1 \
-    || fail "aibox-update-boot a échoué : voir $state/installation.log"
+sudo aibox boot --iso "$iso" > "$state/installation.log" 2>&1 \
+    || fail "aibox boot a échoué : voir $state/installation.log"
 
 notify "Nouvelle image installée : $new_version (remplace $image_version, $count paquets mis à jour).
 Raison : $reason

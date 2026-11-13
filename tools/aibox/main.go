@@ -50,7 +50,7 @@ var commandes = []commande{
 		usages: []string{"sudo aibox build [--ref BRANCHE] [--fetch-only]"},
 	},
 	{
-		nom: "boot", exe: "aibox-update-boot", groupe: "Mise à jour",
+		nom: "boot", fonction: cmdBoot, groupe: "Mise à jour",
 		resume: "Installe une image sur AIBOXBOOT, sans toucher aux données",
 		usages: []string{"sudo aibox boot --iso FICHIER"},
 	},

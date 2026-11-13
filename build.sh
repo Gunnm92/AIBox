@@ -8,7 +8,7 @@
 # Sortie : out/aibox-<version>-x86_64.iso, et le lien out/aibox-latest.iso.
 # Version : AAAA.MM.JJ.HHMM-<commit>[-dirty] (heure locale du build, commit du
 # dépôt ; -dirty : archiso/ ou build.sh modifiés sans commit). AIBOX_VERSION
-# l'impose. Unique à chaque build : aibox-update-boot ne remplace plus la
+# l'impose. Unique à chaque build : aibox boot ne remplace plus la
 # version précédente, qui reste au menu de démarrage pour revenir en arrière.
 set -euo pipefail
 

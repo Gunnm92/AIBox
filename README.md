@@ -240,7 +240,7 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 
 | Quoi | Comment |
 |---|---|
-| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | commit poussé sur GitHub, nouvelle ISO (`sudo aibox build`), puis `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
+| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | commit poussé sur GitHub, nouvelle ISO (`sudo aibox build`), puis `sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
 | Applis Flatpak (Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
 | AppImage (Moonlight…) | Gear Lever, ou à la main (fichier remplacé dans `~/AppImages`) |
 | Steam, jeux, Proton | Steam se met à jour seul (dans le home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher |
@@ -259,7 +259,7 @@ Un `pacman -Syu` sur la machine ne sert à rien : il ne modifie que la RAM et di
 ```sh
 sudo aibox build --import ~/Workspace/AIBox            # une fois : keys/ et caches de work/
 sudo aibox build                                        # build de origin/main (Podman en root)
-sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso   # puis arrêt complet et rallumage
+sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso   # puis arrêt complet et rallumage
 ```
 
 Les secrets sont sauvegardés sur le NAS (`Workspace/AIBox/keys/`) : pour une machine neuve, `rsync -a /mnt/Workspace/AIBox/ ~/Workspace/AIBox/`, puis `--import`.

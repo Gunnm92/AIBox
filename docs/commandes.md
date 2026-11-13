@@ -25,7 +25,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 
 | Commande | À quoi ça sert | Usage | Détails |
 |---|---|---|---|
-| `aibox-update-boot` | Installer une nouvelle image sur AIBOXBOOT, sans toucher aux données ; garde la précédente pour revenir en arrière | `sudo aibox-update-boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso [--keep 2]` | [iso.md](iso.md) |
+| `aibox boot` | Installer une nouvelle image sur AIBOXBOOT, sans toucher aux données ; garde la précédente pour revenir en arrière | `sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso [--keep 2]` | [iso.md](iso.md) |
 | `aibox-setup-disk` | **Efface un disque** et le prépare (AIBOXBOOT + AIBOXDATA). Une seule fois | `sudo aibox-setup-disk /dev/nvmeXnY [--swap 16G] [--iso F]` | [iso.md](iso.md) |
 | `aibox build` | Construire l'image depuis GitHub (`origin/main`), avec ses caches et ses secrets dans `/var/lib/aibox/state/build/` ; jamais `-dirty` | `sudo aibox build [--ref <branche ou commit>]`, `--fetch-only`, `--import ~/Workspace/AIBox` (une fois) ; ou `sudo systemctl start aibox build` | [iso.md](iso.md#5-construire) |
 | `./build.sh` (dépôt) | Build à la main dans le dépôt (`keys/`, `work/`, `out/`), pour un essai en VM ; pas pour une image installée | `./build.sh [--test-key]` | [iso.md](iso.md#5-construire) |
