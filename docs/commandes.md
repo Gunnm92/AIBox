@@ -17,7 +17,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 | `aibox keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
 | `aibox resolution` | Taille de l'écran virtuel du bureau d'administration | `aibox resolution [1920x1080[@60]\|client]` | [exploitation.md](exploitation.md#sunshine-diffusion-vers-moonlight) |
 | `aibox mem` | État de la mémoire : mémoire bloquée, GPU, image en RAM, clé, zram | `aibox mem` | [exploitation.md](exploitation.md#état-général) |
-| `aibox-diag` | Rapport de diagnostic complet, enregistré sur la clé Ventoy ou sur AIBOXBOOT | `sudo aibox-diag` | [exploitation.md](exploitation.md#état-général) |
+| `aibox diag` | Rapport de diagnostic complet, enregistré sur la clé Ventoy ou sur AIBOXBOOT | `sudo aibox diag` | [exploitation.md](exploitation.md#état-général) |
 
 ## Commandes d'administration (destructrices ou sur le démarrage)
 
@@ -48,7 +48,7 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 |---|---|---|
 | `aibox-auto-update.timer` (utilisateur) | Chaque nuit à 4 h, rattrapé au démarrage | `aibox-auto-update --podman` (conteneurs, `podman auto-update`), puis `aibox-auto-update` : nouveaux commits poussés ou avis du LLM sur les paquets, build par `aibox-build`, installation, message Discord. Jamais de redémarrage |
 | `aibox-llm-idle.timer` (utilisateur) | Toutes les 5 min | `llm-unload --idle` : décharge les modèles GPU inutilisés depuis 30 min |
-| `aibox-diag.timer` | 2 min après le démarrage | `aibox-diag` |
+| `aibox-diag.timer` | 2 min après le démarrage | `aibox diag` |
 | `aibox-tv-idle.timer` | 2 min après l'extinction de la manette | Arrête la session TV |
 
 ### Services déclenchés par un événement

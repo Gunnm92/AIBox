@@ -95,7 +95,7 @@ var commandes = []commande{
 		usages: []string{"aibox mem"},
 	},
 	{
-		nom: "diag", exe: "aibox-diag", groupe: "Usage courant",
+		nom: "diag", fonction: cmdDiag, groupe: "Usage courant",
 		resume: "Rapport de diagnostic complet, enregistré sur la clé ou AIBOXBOOT",
 		usages: []string{"sudo aibox diag"},
 	},

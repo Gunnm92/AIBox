@@ -22,6 +22,7 @@ type env struct {
 	runtime  string
 	home     string
 	lancer   func(vars []string, nom string, args ...string) (string, error)
+	combine  func(vars []string, nom string, args ...string) string
 	executer func(vars []string, nom string, args ...string) int
 }
 
@@ -40,6 +41,12 @@ func envReel() env {
 			cmd.Env = append(os.Environ(), vars...)
 			out, err := cmd.Output()
 			return string(out), err
+		},
+		combine: func(vars []string, nom string, args ...string) string {
+			cmd := exec.Command(nom, args...)
+			cmd.Env = append(os.Environ(), vars...)
+			out, _ := cmd.CombinedOutput()
+			return string(out)
 		},
 		executer: func(vars []string, nom string, args ...string) int {
 			cmd := exec.Command(nom, args...)
