@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # wayvnc du bureau d'administration, avec la disposition de clavier choisie
-# (aibox-keyboard). C'est wayvnc qui traduit les touches reçues de noVNC :
+# (aibox keyboard). C'est wayvnc qui traduit les touches reçues de noVNC :
 # setxkbmap n'agit que sur Xwayland, pas ici.
 set -a
 . /etc/aibox/keyboard.env

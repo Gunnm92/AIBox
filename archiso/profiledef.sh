@@ -29,7 +29,6 @@ file_permissions=(
   ["/etc/sudoers.d"]="0:0:750"
   ["/etc/sudoers.d/10-wheel"]="0:0:440"
   ["/usr/local/bin/xfdesktop-settings"]="0:0:755"
-  ["/usr/local/bin/aibox-keyboard"]="0:0:755"
   ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
   ["/usr/local/lib/aibox/tv-widgets-data"]="0:0:755"
   ["/usr/local/bin/aibox-diag"]="0:0:755"

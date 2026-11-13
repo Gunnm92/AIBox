@@ -14,7 +14,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 | `aibox-auto-update` | Mise à jour du système : image décidée par le LLM local, ou nouveaux commits poussés (lancée chaque nuit) | `--dry-run`, `--no-install`, `--force`, `--pkglist` | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox-auto-update --podman` | Mise à jour des conteneurs Podman seulement (`podman auto-update`, lancée chaque nuit avant le système) | `--podman`, avec `--dry-run` pour lister les mises à jour en attente | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox-nas` | Partages réseau (SMB) montés à la demande | `aibox-nas list`, `sudo aibox-nas add //hôte/partage /mnt/X`, `sudo aibox-nas remove /mnt/X` | [exploitation.md](exploitation.md#partages-du-nas) |
-| `aibox-keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox-keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
+| `aibox keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
 | `aibox resolution` | Taille de l'écran virtuel du bureau d'administration | `aibox resolution [1920x1080[@60]\|client]` | [exploitation.md](exploitation.md#sunshine-diffusion-vers-moonlight) |
 | `aibox mem` | État de la mémoire : mémoire bloquée, GPU, image en RAM, clé, zram | `aibox mem` | [exploitation.md](exploitation.md#état-général) |
 | `aibox-diag` | Rapport de diagnostic complet, enregistré sur la clé Ventoy ou sur AIBOXBOOT | `sudo aibox-diag` | [exploitation.md](exploitation.md#état-général) |
@@ -85,4 +85,4 @@ Les réglages de l'image sont dans `/etc/aibox/`. Pour en changer un, copie le f
 | `~/.config/aibox/proton.conf` | `aibox run-exe` : Proton imposé (`PROTON=…`) |
 | `~/.config/aibox/tv-mode` | `aibox tv-mode` |
 | `~/.config/aibox/tv-apps.json` | Applis du lanceur de la session TV |
-| `~/.config/aibox/keyboard.env` | `aibox-keyboard` |
+| `~/.config/aibox/keyboard.env` | `aibox keyboard` |

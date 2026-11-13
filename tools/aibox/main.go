@@ -80,7 +80,7 @@ var commandes = []commande{
 		usages: []string{"aibox nas list", "sudo aibox nas add //hôte/partage /mnt/X"},
 	},
 	{
-		nom: "keyboard", exe: "aibox-keyboard", groupe: "Usage courant",
+		nom: "keyboard", fonction: cmdKeyboard, groupe: "Usage courant",
 		resume: "Disposition du clavier du bureau d'administration (noVNC)",
 		usages: []string{"aibox keyboard [mac|pc|<xkb> [variante]]"},
 	},

@@ -31,7 +31,7 @@ done
 
 # Clavier : labwc lit XKB_* dans ~/.config/labwc/environment, pas dans son environnement.
 mkdir -p "${HOME}/.config/labwc"
-# Même disposition que wayvnc (aibox-keyboard).
+# Même disposition que wayvnc (aibox keyboard).
 set -a
 . /etc/aibox/keyboard.env
 [[ -r "${HOME}/.config/aibox/keyboard.env" ]] && . "${HOME}/.config/aibox/keyboard.env"

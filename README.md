@@ -230,7 +230,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 - **Decky Loader** (plugins de Steam en mode Big Picture) : installeur officiel, une fois, depuis le bureau d'administration : `curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh`. Decky s'installe dans `~/homebrew` (sur le disque) ; le service `plugin_loader` est dans l'image (l'unité que l'installeur écrit dans `/etc` disparaît au redémarrage, celle de l'image prend le relais) et reste inerte tant que Decky n'est pas installé. Decky se met à jour lui-même.
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
-- **Clavier** (noVNC) : `aibox-keyboard mac` (Mac français, par défaut), `aibox-keyboard pc` (PC français), ou toute disposition xkb (`aibox-keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
+- **Clavier** (noVNC) : `aibox keyboard mac` (Mac français, par défaut), `aibox keyboard pc` (PC français), ou toute disposition xkb (`aibox keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
 - **`aibox-diag`** : rapport de diagnostic, écrit aussi tout seul 2 minutes après le démarrage, dans `aibox-diag/` sur la clé Ventoy si elle est branchée, sinon sur la partition AIBOXBOOT.
 - **`aibox mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
 
