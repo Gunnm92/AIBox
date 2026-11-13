@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# aibox-auto-update : mise à jour de l'image décidée par un LLM local.
+# aibox-auto-update : mise à jour du système (image décidée par un LLM local),
+# ou des conteneurs Podman avec --podman.
 #
 #   aibox-auto-update [--dry-run] [--no-install] [--force] [--pkglist FICHIER]
+#   aibox-auto-update --podman [--dry-run]
 #
-# Lancé chaque nuit par aibox-auto-update.timer (service utilisateur de default) :
+# Sans --podman, ne touche qu'au système. Lancé chaque nuit par
+# aibox-auto-update.timer (service utilisateur de default), qui fait d'abord
+# --podman, puis le système :
 #   1. compare les paquets de l'image par défaut sur AIBOXBOOT (pkglist.x86_64.txt,
 #      et non l'image qui tourne : une image installée en attente de redémarrage
 #      n'est pas réinstallée) aux versions des dépôts du build (archiso/pacman.conf
@@ -16,7 +20,7 @@
 #      travail), vérification de l'image (version, droits des fichiers de
 #      profiledef.sh, versions des paquets), puis aibox-update-boot --iso ;
 #   4. prévient sur Discord par Hermes (hermes send). Jamais de redémarrage.
-# Avant tout cela, les conteneurs Podman (Quadlet avec AutoUpdate=registry, dans
+# --podman : les conteneurs Podman (Quadlet avec AutoUpdate=registry, dans
 # ~/.config/containers/systemd) : podman auto-update tire la dernière image de
 # leur étiquette (latest, main…), redémarre le service, et revient à l'image
 # précédente s'il ne repart pas. Message Discord si un conteneur a changé ou échoué.
@@ -24,6 +28,7 @@
 # Garde-fous : pas de build ni de conteneur mis à jour si un jeu tourne ; pas de
 # build si LiteLLM ne répond pas ; la place libre et les secrets sont vérifiés
 # par aibox-build.
+#   --podman      conteneurs Podman seulement ; le système n'est pas touché
 #   --dry-run     comparaison et avis du LLM seulement (conteneurs : liste des
 #                 mises à jour en attente, sans les faire)
 #   --no-install  construit et vérifie l'image, sans l'installer
@@ -38,17 +43,22 @@
 set -uo pipefail
 
 args="$*"
-dry_run=0 no_install=0 force=0 pkglist=""
+dry_run=0 no_install=0 force=0 podman=0 pkglist=""
 while (( $# )); do
     case "$1" in
         --dry-run) dry_run=1 ;;
         --no-install) no_install=1 ;;
         --force) force=1 ;;
+        --podman) podman=1 ;;
         --pkglist) pkglist="${2:?--pkglist FICHIER}"; shift ;;
-        *) echo "Usage : aibox-auto-update [--dry-run] [--no-install] [--force] [--pkglist FICHIER]" >&2; exit 2 ;;
+        *) echo "Usage : aibox-auto-update [--podman] [--dry-run] [--no-install] [--force] [--pkglist FICHIER]" >&2; exit 2 ;;
     esac
     shift
 done
+# --podman ne se combine qu'avec --dry-run : les autres options concernent le système.
+if (( podman && (no_install || force || ${#pkglist} > 0) )); then
+    echo "--podman ne se combine qu'avec --dry-run." >&2; exit 2
+fi
 
 # Réglages par défaut
 BUILD_DIR="/var/lib/aibox/state/build"
@@ -143,7 +153,10 @@ $failed}"
         done
     fi
 }
-containers_update
+if (( podman )); then
+    containers_update
+    exit 0
+fi
 
 boot_part="$(blkid -L AIBOXBOOT 2>/dev/null || true)"
 [[ -n "$boot_part" ]] || { log "Pas de partition AIBOXBOOT (démarrage sur clé ?) : rien à faire."; exit 0; }

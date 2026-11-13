@@ -42,6 +42,7 @@ file_permissions=(
   ["/usr/local/bin/aibox-tv-run"]="0:0:755"
   ["/usr/local/bin/steamos-session-select"]="0:0:755"
   ["/usr/local/bin/aibox-auto-update"]="0:0:755"
+  ["/usr/local/bin/aibox"]="0:0:755"
   ["/usr/lib/ds5dongle/ds5dongle-loopback-stop"]="0:0:755"
   ["/usr/local/sbin/aibox-setup-disk"]="0:0:755"
   ["/usr/local/sbin/aibox-update-boot"]="0:0:755"

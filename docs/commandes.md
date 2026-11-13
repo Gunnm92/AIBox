@@ -9,7 +9,9 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 | `aibox-run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox-run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
 | `wsquashfs-launcher` | Lancer un jeu Windows au format Batocera (`.wsquashfs`) | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
 | `aibox-tv-mode` | Mode de la session TV : Hyprland avec le lanceur (par défaut), Steam sous gamescope, ou le bureau XFCE sous labwc | `aibox-tv-mode [--once] [gamescope\|hyprland\|bureau]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
-| `aibox-auto-update` | Mise à jour des conteneurs Podman, puis de l'image décidée par le LLM local (lancée aussi chaque nuit) | `--dry-run`, `--no-install`, `--force` | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
+| `aibox` | Point d'entrée unique : aide (`--help`), et aiguillage vers les `aibox-*` (`aibox update --podman` lance `aibox-auto-update --podman`). Binaire Go, compilé par `tools/aibox/build.sh` | `aibox --help`, `aibox <commande> [arguments]` | [commandes.md](commandes.md) |
+| `aibox-auto-update` | Mise à jour du système : image décidée par le LLM local, ou nouveaux commits poussés (lancée chaque nuit) | `--dry-run`, `--no-install`, `--force`, `--pkglist` | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
+| `aibox-auto-update --podman` | Mise à jour des conteneurs Podman seulement (`podman auto-update`, lancée chaque nuit avant le système) | `--podman`, avec `--dry-run` pour lister les mises à jour en attente | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox-nas` | Partages réseau (SMB) montés à la demande | `aibox-nas list`, `sudo aibox-nas add //hôte/partage /mnt/X`, `sudo aibox-nas remove /mnt/X` | [exploitation.md](exploitation.md#partages-du-nas) |
 | `aibox-keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox-keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
 | `aibox-resolution` | Taille de l'écran virtuel du bureau d'administration | `aibox-resolution [1920x1080[@60]\|client]` | [exploitation.md](exploitation.md#sunshine-diffusion-vers-moonlight) |
@@ -43,7 +45,7 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 
 | Minuteur | Quand | Ce qu'il fait |
 |---|---|---|
-| `aibox-auto-update.timer` (utilisateur) | Chaque nuit à 4 h, rattrapé au démarrage | `aibox-auto-update` : conteneurs Podman (`podman auto-update`), puis nouveaux commits poussés ou avis du LLM sur les paquets, build par `aibox-build`, installation, message Discord. Jamais de redémarrage |
+| `aibox-auto-update.timer` (utilisateur) | Chaque nuit à 4 h, rattrapé au démarrage | `aibox-auto-update --podman` (conteneurs, `podman auto-update`), puis `aibox-auto-update` : nouveaux commits poussés ou avis du LLM sur les paquets, build par `aibox-build`, installation, message Discord. Jamais de redémarrage |
 | `aibox-llm-idle.timer` (utilisateur) | Toutes les 5 min | `llm-unload --idle` : décharge les modèles GPU inutilisés depuis 30 min |
 | `aibox-diag.timer` | 2 min après le démarrage | `aibox-diag` |
 | `aibox-tv-idle.timer` | 2 min après l'extinction de la manette | Arrête la session TV |

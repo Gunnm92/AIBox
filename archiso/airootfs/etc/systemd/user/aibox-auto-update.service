@@ -11,6 +11,8 @@ WorkingDirectory=%h
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
 Nice=10
 IOSchedulingClass=idle
+# Conteneurs d'abord ; un échec ici ne bloque pas la mise à jour du système.
+ExecStart=-/usr/local/bin/aibox-auto-update --podman
 ExecStart=/usr/local/bin/aibox-auto-update
 # Chargement du modèle, réflexion du LLM puis build : large.
 TimeoutStartSec=90min
