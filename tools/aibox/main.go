@@ -18,13 +18,18 @@ import (
 	"syscall"
 )
 
+// fonctionCommande : une commande implémentée dans le binaire. Reçoit les
+// arguments qui suivent le nom, et renvoie le code de sortie.
+type fonctionCommande func(args []string, sortie, erreurs io.Writer) int
+
 // commande : une entrée de l'aide et de l'aiguillage.
 type commande struct {
-	nom    string   // nom tapé après « aibox »
-	exe    string   // script lancé (dans le PATH, ou /usr/local/sbin)
-	groupe string   // rubrique de l'aide
-	resume string   // une ligne
-	usages []string // exemples d'usage, affichés sous la ligne
+	nom      string           // nom tapé après « aibox »
+	exe      string           // script lancé si fonction est nil (PATH, ou /usr/local/sbin)
+	fonction fonctionCommande // logique en Go ; nil tant que la commande reste un script
+	groupe   string           // rubrique de l'aide
+	resume   string           // une ligne
+	usages   []string         // exemples d'usage, affichés sous la ligne
 }
 
 // groupes : ordre d'affichage de l'aide.
@@ -115,6 +120,9 @@ func run(args []string, sortie, erreurs io.Writer) int {
 		fmt.Fprintf(erreurs, "aibox : commande inconnue « %s ». Liste : aibox --help\n", args[0])
 		return 2
 	}
+	if c.fonction != nil {
+		return c.fonction(args[1:], sortie, erreurs)
+	}
 	chemin, err := chercher(c.exe)
 	if err != nil {
 		fmt.Fprintf(erreurs, "aibox : %s introuvable : %v\n", c.exe, err)
@@ -171,7 +179,9 @@ func ecrireAide(w io.Writer) {
 				continue
 			}
 			fmt.Fprintf(w, "  %-12s %s\n", c.nom, c.resume)
-			fmt.Fprintf(w, "  %-12s   script : %s\n", "", c.exe)
+			if c.fonction == nil {
+				fmt.Fprintf(w, "  %-12s   script : %s\n", "", c.exe)
+			}
 			for _, u := range c.usages {
 				fmt.Fprintf(w, "  %-12s   exemple : %s\n", "", u)
 			}

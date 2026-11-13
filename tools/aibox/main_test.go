@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"strings"
 	"testing"
 )
@@ -18,8 +20,8 @@ func TestCommandesCoherentes(t *testing.T) {
 			t.Errorf("nom en double : %s", c.nom)
 		}
 		vues[c.nom] = true
-		if c.exe == "" {
-			t.Errorf("%s : script vide", c.nom)
+		if c.exe == "" && c.fonction == nil {
+			t.Errorf("%s : ni script ni fonction", c.nom)
 		}
 		if !rubriques[c.groupe] {
 			t.Errorf("%s : rubrique inconnue %q", c.nom, c.groupe)
@@ -39,7 +41,7 @@ func TestAideComplete(t *testing.T) {
 		if !strings.Contains(aide, "  "+c.nom+" ") {
 			t.Errorf("l'aide ne cite pas %s", c.nom)
 		}
-		if !strings.Contains(aide, "script : "+c.exe) {
+		if c.fonction == nil && !strings.Contains(aide, "script : "+c.exe) {
 			t.Errorf("l'aide ne cite pas le script %s de %s", c.exe, c.nom)
 		}
 	}
@@ -59,6 +61,35 @@ func TestAideSansArgument(t *testing.T) {
 		if !strings.Contains(sortie.String(), "Mise à jour") {
 			t.Errorf("run(%v) n'affiche pas l'aide", args)
 		}
+	}
+}
+
+// Une commande dotée d'une fonction est appelée avec ses arguments, sans script.
+func TestFonctionPrioritaireSurScript(t *testing.T) {
+	var recus []string
+	fausse := commande{
+		nom: "essai", groupe: "Usage courant", resume: "test", usages: []string{"aibox essai"},
+		fonction: func(args []string, sortie, erreurs io.Writer) int {
+			recus = args
+			fmt.Fprint(sortie, "ok")
+			return 7
+		},
+	}
+	commandes = append(commandes, fausse)
+	t.Cleanup(func() { commandes = commandes[:len(commandes)-1] })
+
+	var sortie, erreurs bytes.Buffer
+	if code := run([]string{"essai", "--x", "y"}, &sortie, &erreurs); code != 7 {
+		t.Errorf("code = %d, attendu 7", code)
+	}
+	if strings.Join(recus, " ") != "--x y" || sortie.String() != "ok" {
+		t.Errorf("args = %v, sortie = %q", recus, sortie.String())
+	}
+	// L'aide ne doit pas afficher de ligne « script : » pour une commande Go.
+	var aide bytes.Buffer
+	ecrireAide(&aide)
+	if strings.Contains(aide.String(), "script : aibox-essai") || strings.Contains(aide.String(), "script : \n") {
+		t.Errorf("l'aide affiche un script pour une commande Go")
 	}
 }
 
