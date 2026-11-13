@@ -13,20 +13,46 @@ import (
 )
 
 // env : accès au système, injectable dans les tests. racine remplace « / »
-// pour les chemins lus (/proc, /sys, /run, /home) ; lancer exécute une
-// commande externe et renvoie sa sortie standard.
+// pour les chemins lus (/proc, /sys, /run, /home) ; runtime et home sont
+// XDG_RUNTIME_DIR et $HOME. lancer capture la sortie d'une commande externe ;
+// executer la lance avec les entrées-sorties du processus et renvoie son code.
+// Les variables d'environnement supplémentaires passent en premier argument.
 type env struct {
-	racine string
-	lancer func(nom string, args ...string) (string, error)
+	racine   string
+	runtime  string
+	home     string
+	lancer   func(vars []string, nom string, args ...string) (string, error)
+	executer func(vars []string, nom string, args ...string) int
 }
 
 // envReel : le vrai système.
 func envReel() env {
+	runtime := os.Getenv("XDG_RUNTIME_DIR")
+	if runtime == "" {
+		runtime = fmt.Sprintf("/run/user/%d", os.Getuid())
+	}
 	return env{
-		racine: "/",
-		lancer: func(nom string, args ...string) (string, error) {
-			out, err := exec.Command(nom, args...).Output()
+		racine:  "/",
+		runtime: runtime,
+		home:    os.Getenv("HOME"),
+		lancer: func(vars []string, nom string, args ...string) (string, error) {
+			cmd := exec.Command(nom, args...)
+			cmd.Env = append(os.Environ(), vars...)
+			out, err := cmd.Output()
 			return string(out), err
+		},
+		executer: func(vars []string, nom string, args ...string) int {
+			cmd := exec.Command(nom, args...)
+			cmd.Env = append(os.Environ(), vars...)
+			cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+			if err := cmd.Run(); err != nil {
+				if sortie, ok := err.(*exec.ExitError); ok {
+					return sortie.ExitCode()
+				}
+				fmt.Fprintf(os.Stderr, "aibox : %s : %v\n", nom, err)
+				return 127
+			}
+			return 0
 		},
 	}
 }

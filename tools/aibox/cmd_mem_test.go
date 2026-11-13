@@ -28,7 +28,7 @@ func arbre(t *testing.T, fichiers map[string]string, dossiers []string) env {
 	}
 	return env{
 		racine: racine,
-		lancer: func(nom string, args ...string) (string, error) {
+		lancer: func(_ []string, nom string, args ...string) (string, error) {
 			switch nom {
 			case "zramctl":
 				if len(args) > 0 {
@@ -95,7 +95,7 @@ func TestMemModeEphemere(t *testing.T) {
 		"proc/self/mountinfo": "",
 	}, []string{"tmp"})
 	// Pas de zram sur ce système : zramctl échoue.
-	e.lancer = func(nom string, args ...string) (string, error) {
+	e.lancer = func(_ []string, nom string, args ...string) (string, error) {
 		return "", os.ErrNotExist
 	}
 	var b bytes.Buffer

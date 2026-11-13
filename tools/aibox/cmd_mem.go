@@ -106,8 +106,8 @@ func afficherMem(e env, w io.Writer) {
 	}
 
 	fmt.Fprintln(w, "\n== zram")
-	if sortie, err := e.lancer("zramctl", "--noheadings"); err == nil && strings.TrimSpace(sortie) != "" {
-		complet, _ := e.lancer("zramctl")
+	if sortie, err := e.lancer(nil, "zramctl", "--noheadings"); err == nil && strings.TrimSpace(sortie) != "" {
+		complet, _ := e.lancer(nil, "zramctl")
 		for _, l := range strings.Split(strings.TrimRight(complet, "\n"), "\n") {
 			fmt.Fprintf(w, "  %s\n", l)
 		}
@@ -116,7 +116,7 @@ func afficherMem(e env, w io.Writer) {
 	}
 
 	fmt.Fprintln(w, "\n== Démarrage")
-	if sortie, err := e.lancer("systemd-analyze"); err == nil {
+	if sortie, err := e.lancer(nil, "systemd-analyze"); err == nil {
 		premiere, _, _ := strings.Cut(sortie, "\n")
 		fmt.Fprintf(w, "  %s\n", premiere)
 	}

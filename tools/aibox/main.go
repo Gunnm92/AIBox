@@ -80,7 +80,7 @@ var commandes = []commande{
 		usages: []string{"aibox keyboard [mac|pc|<xkb> [variante]]"},
 	},
 	{
-		nom: "resolution", exe: "aibox-resolution", groupe: "Usage courant",
+		nom: "resolution", fonction: cmdResolution, groupe: "Usage courant",
 		resume: "Taille de l'écran virtuel du bureau d'administration",
 		usages: []string{"aibox resolution [1920x1080[@60]|client]"},
 	},

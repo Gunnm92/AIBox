@@ -14,7 +14,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 | `aibox-auto-update --podman` | Mise à jour des conteneurs Podman seulement (`podman auto-update`, lancée chaque nuit avant le système) | `--podman`, avec `--dry-run` pour lister les mises à jour en attente | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox-nas` | Partages réseau (SMB) montés à la demande | `aibox-nas list`, `sudo aibox-nas add //hôte/partage /mnt/X`, `sudo aibox-nas remove /mnt/X` | [exploitation.md](exploitation.md#partages-du-nas) |
 | `aibox-keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox-keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
-| `aibox-resolution` | Taille de l'écran virtuel du bureau d'administration | `aibox-resolution [1920x1080[@60]\|client]` | [exploitation.md](exploitation.md#sunshine-diffusion-vers-moonlight) |
+| `aibox resolution` | Taille de l'écran virtuel du bureau d'administration | `aibox resolution [1920x1080[@60]\|client]` | [exploitation.md](exploitation.md#sunshine-diffusion-vers-moonlight) |
 | `aibox mem` | État de la mémoire : mémoire bloquée, GPU, image en RAM, clé, zram | `aibox mem` | [exploitation.md](exploitation.md#état-général) |
 | `aibox-diag` | Rapport de diagnostic complet, enregistré sur la clé Ventoy ou sur AIBOXBOOT | `sudo aibox-diag` | [exploitation.md](exploitation.md#état-général) |
 
