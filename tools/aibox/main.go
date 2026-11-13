@@ -37,7 +37,7 @@ var groupes = []string{"Mise à jour", "Usage courant", "Administration"}
 
 var commandes = []commande{
 	{
-		nom: "update", exe: "aibox-auto-update", groupe: "Mise à jour",
+		nom: "update", fonction: cmdUpdate, groupe: "Mise à jour",
 		resume: "Mise à jour du système : image décidée par le LLM local, ou nouveaux commits",
 		usages: []string{
 			"aibox update [--dry-run] [--no-install] [--force] [--pkglist FICHIER]",
