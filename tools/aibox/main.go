@@ -85,7 +85,7 @@ var commandes = []commande{
 		usages: []string{"aibox resolution [1920x1080[@60]|client]"},
 	},
 	{
-		nom: "mem", exe: "aibox-mem", groupe: "Usage courant",
+		nom: "mem", fonction: cmdMem, groupe: "Usage courant",
 		resume: "État de la mémoire, du GPU, de l'image en RAM, de la clé et du zram",
 		usages: []string{"aibox mem"},
 	},

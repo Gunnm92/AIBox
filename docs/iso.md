@@ -151,7 +151,7 @@ Le redémarrage est la décision de l'utilisateur : demande-lui. Conseille-lui u
 cat /proc/cmdline | grep -o 'archisobasedir=[^ ]*'   # nouvelle version
 systemctl is-system-running; systemctl --failed --no-pager
 systemd-analyze                                      # environ 30 s normalement
-aibox-mem                                            # mémoire, disque, image
+aibox mem                                              # mémoire, disque, image
 ```
 
 Puis vérifie précisément ce qui a changé : le service, le fichier, le comportement.

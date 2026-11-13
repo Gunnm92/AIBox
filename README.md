@@ -96,7 +96,7 @@ archiso/                 profil archiso (écrit à partir de releng/baseline, ad
   ├─ pacman.conf         dépôts CachyOS + Arch
   ├─ grub/               menu de démarrage UEFI (et loopback.cfg pour Ventoy)
   └─ airootfs/           fichiers ajoutés à l'image : utilisateur, SSH, limites mémoire,
-                         services, aibox-mem
+                         services, aibox mem
 docs/                    documentation détaillée (commandes, architecture, image, exploitation, problèmes connus)
 AGENTS.md                consignes pour les agents (LLM local…)
 keys/                    clé SSH, mot de passe et certificat noVNC (non versionné)
@@ -168,7 +168,7 @@ Il faut `/dev/kvm` sur l'hôte Docker. La VM a un disque NVMe virtuel de 64 Go (
 ```sh
 ./build.sh --test-key
 ./test-vm.sh start          # démarre l'ISO depuis une clé USB virtuelle
-./test-vm.sh ssh aibox-mem  # état de la mémoire, de la clé et du disque
+./test-vm.sh ssh aibox mem  # état de la mémoire, de la clé et du disque
 ./test-vm.sh ssh 'echo /dev/nvme0n1 | sudo aibox-setup-disk /dev/nvme0n1'   # une fois
 ./test-vm.sh unplug         # retire la clé à chaud
 ./test-vm.sh reboot         # redémarre la VM
@@ -232,7 +232,7 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
 - **Clavier** (noVNC) : `aibox-keyboard mac` (Mac français, par défaut), `aibox-keyboard pc` (PC français), ou toute disposition xkb (`aibox-keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
 - **`aibox-diag`** : rapport de diagnostic, écrit aussi tout seul 2 minutes après le démarrage, dans `aibox-diag/` sur la clé Ventoy si elle est branchée, sinon sur la partition AIBOXBOOT.
-- **`aibox-mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
+- **`aibox mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
 
 ### Mises à jour
 
