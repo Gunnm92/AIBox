@@ -111,7 +111,7 @@ exec 9>"$state/verrou"
 flock -n 9 || { log "Déjà en cours."; exit 0; }
 
 # --- Garde-fous ---
-# Jeu Steam, ou jeu Windows hors Steam (aibox-run-exe, wsquashfs-launcher : umu
+# Jeu Steam, ou jeu Windows hors Steam (aibox run-exe, wsquashfs-launcher : umu
 # lance Proton avec « waitforexitandrun », comme Steam).
 if pgrep -f '[S]teamLaunch AppId=|[p]roton waitforexitandrun' >/dev/null; then
     log "Un jeu tourne : mise à jour reportée à la prochaine fois."

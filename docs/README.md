@@ -4,7 +4,7 @@
 |---|---|
 | [architecture.md](architecture.md) | Comment le système est construit : image en RAM, disque de données, services, sessions TV et d'administration |
 | [iso.md](iso.md) | **Modifier, construire, vérifier et installer l'image**, revenir en arrière. Procédure à suivre à la lettre |
-| [commandes.md](commandes.md) | **Index de toutes les commandes aibox** (`aibox-run-exe`, `aibox-auto-update`, `aibox-nas`…), des minuteurs, des services et des fichiers de réglages, avec un lien vers chaque usage détaillé |
+| [commandes.md](commandes.md) | **Index de toutes les commandes aibox** (`aibox run-exe`, `aibox-auto-update`, `aibox-nas`…), des minuteurs, des services et des fichiers de réglages, avec un lien vers chaque usage détaillé |
 | [exploitation.md](exploitation.md) | Usage courant et dépannage : session TV, son, manette, NAS, jeux Windows, conteneurs, LLM, diagnostic |
 | [problemes-connus.md](problemes-connus.md) | Pièges déjà rencontrés, leur cause et leur solution |
 | [audit-2026-10-10.md](audit-2026-10-10.md) | Audit d'un démarrage en mode éphémère (historique) |

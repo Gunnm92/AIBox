@@ -6,7 +6,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 
 | Commande | À quoi ça sert | Usage | Détails |
 |---|---|---|---|
-| `aibox-run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox-run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
+| `aibox run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
 | `wsquashfs-launcher` | Lancer un jeu Windows au format Batocera (`.wsquashfs`) | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
 | `aibox tv-mode` | Mode de la session TV : Hyprland avec le lanceur (par défaut), Steam sous gamescope, ou le bureau XFCE sous labwc | `aibox tv-mode [--once] [gamescope\|hyprland\|bureau]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
 | `aibox tv-run` | Lancer une commande sur l'écran de la TV (la session Hyprland doit tourner), depuis le bureau d'administration | `aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"` | [exploitation.md](exploitation.md#session-tv) |
@@ -82,7 +82,7 @@ Les réglages de l'image sont dans `/etc/aibox/`. Pour en changer un, copie le f
 |---|---|
 | `auto-update.conf` | `aibox-auto-update` : dossier et branche du build, modèle, destinataire. Journal : `~/.local/state/aibox/auto-update/journal.log` |
 | `llm.conf` | `llm-unload` : délai d'inactivité, déchargement à l'ouverture de la TV |
-| `~/.config/aibox/proton.conf` | `aibox-run-exe` : Proton imposé (`PROTON=…`) |
+| `~/.config/aibox/proton.conf` | `aibox run-exe` : Proton imposé (`PROTON=…`) |
 | `~/.config/aibox/tv-mode` | `aibox tv-mode` |
 | `~/.config/aibox/tv-apps.json` | Applis du lanceur de la session TV |
 | `~/.config/aibox/keyboard.env` | `aibox-keyboard` |
