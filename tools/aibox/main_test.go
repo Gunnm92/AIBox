@@ -39,6 +39,9 @@ func TestAideComplete(t *testing.T) {
 		if !strings.Contains(aide, "  "+c.nom+" ") {
 			t.Errorf("l'aide ne cite pas %s", c.nom)
 		}
+		if !strings.Contains(aide, "script : "+c.exe) {
+			t.Errorf("l'aide ne cite pas le script %s de %s", c.exe, c.nom)
+		}
 	}
 	for _, g := range groupes {
 		if !strings.Contains(aide, "\n"+g+"\n") {
