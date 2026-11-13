@@ -155,7 +155,13 @@ func chercher(exe string) (string, error) {
 // ecrireAide affiche l'aide, groupée par rubrique.
 func ecrireAide(w io.Writer) {
 	fmt.Fprintln(w, "aibox : commandes du système (détail : docs/commandes.md du dépôt).")
-	fmt.Fprintln(w, "Usage : aibox <commande> [arguments]   ·   aibox --help")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Usage : aibox <commande> [options]")
+	fmt.Fprintln(w, "  La commande s'écrit après « aibox » : « aibox update », « aibox mem »… ;")
+	fmt.Fprintln(w, "  les options (--dry-run, --podman…) et les valeurs (FICHIER, BRANCHE…) viennent après.")
+	fmt.Fprintln(w, "  Aide : aibox --help")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Commandes, par rubrique (la première colonne est le nom à taper) :")
 	for _, g := range groupes {
 		fmt.Fprintf(w, "\n%s\n", g)
 		for _, c := range commandes {
@@ -164,7 +170,7 @@ func ecrireAide(w io.Writer) {
 			}
 			fmt.Fprintf(w, "  %-12s %s\n", c.nom, c.resume)
 			for _, u := range c.usages {
-				fmt.Fprintf(w, "  %-12s   %s\n", "", u)
+				fmt.Fprintf(w, "  %-12s   exemple : %s\n", "", u)
 			}
 		}
 	}
