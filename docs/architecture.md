@@ -73,7 +73,7 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 
 « Passer au bureau » dans Steam appelle `steamos-session-select`, qui bascule en mode hyprland **pour cette session seulement**. Dans le lanceur, la tuile Steam (`command_hyprland`) ramène à Steam sous gamescope, de la même façon (`aibox tv-mode --once gamescope`). Au démarrage suivant, c'est le mode durable, hyprland par défaut. Avant le 17/10/2026, la bascule était durable : un appel de Steam suffisait à laisser la TV sur labwc, sans retour possible à la manette.
 
-Les applications au démarrage (`~/.config/autostart`, `/etc/xdg/autostart`) sont lancées par `aibox-admin-autostart.target`, démarrée par `~/.config/labwc/autostart` : `xdg-desktop-autostart.target` refuse un démarrage direct. Sont masquées : `nm-applet` et `xfsettingsd` (déjà des services `aibox-admin-*`), l'agent polkit (pas de session logind).
+Les applications au démarrage (`~/.config/autostart`, `/etc/xdg/autostart`) sont lancées par `aibox-admin-autostart.target` (tirée par `aibox-admin.target`, car `xdg-desktop-autostart.target` refuse un démarrage direct), après le panneau : celui-ci n'est prêt qu'une fois sa zone de notification présente (`admin-wait zone-notification`, 20 s au plus), et `app-.service.d/aibox-admin.conf` ordonne les unités `app-*.service` après lui. Sont masquées : `nm-applet` et `xfsettingsd` (déjà des services `aibox-admin-*`), l'agent polkit (pas de session logind).
 
 Les notifications de bureau (`notify-send`, icône de `wsquashfs-launcher --tray`…) passent par `xfce4-notifyd`, lancé à la demande par D-Bus : il s'affiche sur le bureau d'administration, comme tout ce que D-Bus active.
 

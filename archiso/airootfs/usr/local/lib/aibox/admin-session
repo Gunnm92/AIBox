@@ -65,11 +65,9 @@ ${labwc_theme}
 EOT
 
 # Résolution de la sortie virtuelle, appliquée au démarrage de labwc.
-# Puis les applications au démarrage (~/.config/autostart, réglables dans
-# Paramètres → Session et démarrage), une fois le compositeur prêt.
+# (Applications au démarrage : aibox-admin-autostart.target, après le panneau.)
 cat > "${HOME}/.config/labwc/autostart" <<EOT
 wlr-randr --output HEADLESS-1 --custom-mode 1920x1080 &
-systemctl --user start aibox-admin-autostart.target &
 EOT
 
 # Panneau XFCE (barre du haut et dock) : configuration par défaut d'aibox si

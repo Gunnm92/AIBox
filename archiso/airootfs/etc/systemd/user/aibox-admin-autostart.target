@@ -1,10 +1,12 @@
 # Applications au démarrage du bureau d'administration (~/.config/autostart et
 # /etc/xdg/autostart, réglables dans Paramètres → Session et démarrage).
 # xdg-desktop-autostart.target refuse un démarrage direct (RefuseManualStart) :
-# cette cible le tire comme dépendance. Démarrée par ~/.config/labwc/autostart
-# (écrit par admin-session), une fois le compositeur prêt.
+# cette cible le tire comme dépendance. Les unités générées pour chaque
+# application attendent le panneau (app-.service.d/aibox-admin.conf).
+# Pas de graphical-session.target : portails, gvfs et flatpak y sont rattachés,
+# et la session TV les partage.
 [Unit]
 Description=Bureau d'administration : applications au démarrage (XDG autostart)
+PartOf=aibox-admin.target
 Wants=xdg-desktop-autostart.target
-PartOf=aibox-admin-labwc.service
-After=aibox-admin-labwc.service
+After=aibox-admin-panel.service
