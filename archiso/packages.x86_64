@@ -53,6 +53,9 @@ xfce4-pulseaudio-plugin
 xfce4-docklike-plugin
 pavucontrol
 xfce4-settings
+# Notifications de bureau (org.freedesktop.Notifications, activé par D-Bus) :
+# sans lui, les messages de l'icône de wsquashfs-launcher, notify-send… sont perdus
+xfce4-notifyd
 # Seulement pour Paramètres → Session et démarrage (applications au démarrage) ;
 # la session XFCE elle-même n'est pas utilisée (labwc + services).
 xfce4-session
