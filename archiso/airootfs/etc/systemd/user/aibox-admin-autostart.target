@@ -1,0 +1,10 @@
+# Applications au démarrage du bureau d'administration (~/.config/autostart et
+# /etc/xdg/autostart, réglables dans Paramètres → Session et démarrage).
+# xdg-desktop-autostart.target refuse un démarrage direct (RefuseManualStart) :
+# cette cible le tire comme dépendance. Démarrée par ~/.config/labwc/autostart
+# (écrit par admin-session), une fois le compositeur prêt.
+[Unit]
+Description=Bureau d'administration : applications au démarrage (XDG autostart)
+Wants=xdg-desktop-autostart.target
+PartOf=aibox-admin-labwc.service
+After=aibox-admin-labwc.service
