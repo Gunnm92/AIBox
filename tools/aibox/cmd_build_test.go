@@ -14,11 +14,11 @@ import (
 // buildTest : système temporaire monté (disque de données), dépôt déjà cloné,
 // clés présentes ; git, build.sh et cp sont simulés.
 type buildTest struct {
-	e        env
-	base     string
+	e          env
+	base       string
 	appelsFlux []string
-	code     int
-	version  string
+	code       int
+	version    string
 }
 
 func nouveauBuild(t *testing.T) *buildTest {

@@ -39,14 +39,14 @@ type reglagesUpdate struct {
 
 // contexteUpdate : ce qu'il faut à une mise à jour pour parler au système et au journal.
 type contexteUpdate struct {
-	e        env
-	o        optionsUpdate
-	r        reglagesUpdate
-	etat     string
-	journal  string
-	sortie   io.Writer
-	erreurs  io.Writer
-	client   *http.Client
+	e          env
+	o          optionsUpdate
+	r          reglagesUpdate
+	etat       string
+	journal    string
+	sortie     io.Writer
+	erreurs    io.Writer
+	client     *http.Client
 	maintenant func() time.Time
 }
 
@@ -361,4 +361,3 @@ func trierCles(m map[string]string) []string {
 	sort.Strings(k)
 	return k
 }
-

@@ -22,8 +22,8 @@ sur GitHub est construit.`
 
 // optionsBuild : les options de aibox build.
 type optionsBuild struct {
-	ref       string
-	fetchOnly bool
+	ref         string
+	fetchOnly   bool
 	depotImport string
 }
 

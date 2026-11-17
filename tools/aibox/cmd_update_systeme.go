@@ -311,4 +311,3 @@ func lignesErreur(txt string, n int) string {
 	}
 	return strings.Join(res, "\n")
 }
-

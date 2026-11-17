@@ -51,10 +51,10 @@ func fauxSysteme(t *testing.T) env {
 			"MemAvailable:   12582912 kB\n" +
 			"Shmem:          8388608 kB\n" +
 			"Cached:         9437184 kB\n",
-		"sys/module/ttm/parameters/pages_limit":     "7340032\n",
-		"sys/module/ttm/parameters/page_pool_size":  "4194304\n",
-		"sys/class/drm/card0/device/mem_info_gtt_total": "68719476736\n",
-		"sys/class/drm/card0/device/mem_info_gtt_used":  "1073741824\n",
+		"sys/module/ttm/parameters/pages_limit":          "7340032\n",
+		"sys/module/ttm/parameters/page_pool_size":       "4194304\n",
+		"sys/class/drm/card0/device/mem_info_gtt_total":  "68719476736\n",
+		"sys/class/drm/card0/device/mem_info_gtt_used":   "1073741824\n",
 		"sys/class/drm/card0/device/mem_info_vram_total": "2147483648\n",
 		"run/archiso/copytoram/filesystem.squashfs":      strings.Repeat("x", 3*1024*1024),
 		"run/aibox/data-present":                         "",
@@ -128,7 +128,7 @@ func TestHumain(t *testing.T) {
 		1024:               "1,0K",
 		10 * 1024:          "10K",
 		1536 * 1024 * 1024: "1,5G",
-		uint64(2) << 40: "2,0T",
+		uint64(2) << 40:    "2,0T",
 	}
 	for n, attendu := range cas {
 		if got := humain(n); got != attendu {

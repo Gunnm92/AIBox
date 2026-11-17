@@ -16,28 +16,28 @@ import (
 )
 
 const (
-	versionImage = "2026.11.12.0405-2658eae" // même commit que le dépôt : pas de commits neufs
+	versionImage    = "2026.11.12.0405-2658eae" // même commit que le dépôt : pas de commits neufs
 	versionMajNeuve = "2026.11.13.2100-2658eae"
 )
 
 // banc : système factice pour aibox update (dépôt, ISO, ESP, faux outils).
 type banc struct {
-	t          *testing.T
-	racine     string
-	home       string
-	iso        string // ISO factice (aibox/version, pkglist)
-	racineISO  string // système de fichiers factice de l'ISO (/usr/local/bin/aibox)
-	esp        string
-	jeu        bool
-	gitSortie  string
-	llm        *httptest.Server
-	appelsLLM  int
-	appelsBuild []string
-	appelsBoot  []string
-	notifs     []string
+	t            *testing.T
+	racine       string
+	home         string
+	iso          string // ISO factice (aibox/version, pkglist)
+	racineISO    string // système de fichiers factice de l'ISO (/usr/local/bin/aibox)
+	esp          string
+	jeu          bool
+	gitSortie    string
+	llm          *httptest.Server
+	appelsLLM    int
+	appelsBuild  []string
+	appelsBoot   []string
+	notifs       []string
 	verifVersion string // version écrite dans l'ISO (pour simuler une image fausse)
-	llmReponse string
-	llmCode    int
+	llmReponse   string
+	llmCode      int
 }
 
 func nouveauBanc(t *testing.T) *banc {
