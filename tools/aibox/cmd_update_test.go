@@ -327,6 +327,16 @@ func TestUpdateLLMIndisponible(t *testing.T) {
 	}
 }
 
+func TestUpdateSansModele(t *testing.T) {
+	b := banqueAvec(t, versionImage)
+	conf := filepath.Join(b.racine, "etc", "aibox", "auto-update.conf")
+	os.WriteFile(conf, []byte("NOTIFY_TO=\"discord\"\nLLM_URL=\""+b.llm.URL+"/v1\"\n"), 0o644)
+	code, log := b.lancer("--dry-run")
+	if code != 1 || !strings.Contains(log, "pas de MODEL") || b.appelsLLM != 0 {
+		t.Errorf("code %d, LLM appelé %d fois, journal : %s", code, b.appelsLLM, log)
+	}
+}
+
 func TestUpdateRienDeNeuf(t *testing.T) {
 	b := banqueAvec(t, versionImage)
 	os.WriteFile(filepath.Join(b.esp, "aibox-"+versionImage, "pkglist.x86_64.txt"), []byte("mesa 26.1.0-1\n"), 0o644)

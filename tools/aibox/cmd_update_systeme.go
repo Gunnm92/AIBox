@@ -102,6 +102,9 @@ func (c *contexteUpdate) systeme() int {
 	case count == 0:
 		c.journaliser("Rien de nouveau dans les dépôts.")
 		return 0
+	case c.r.modele == "":
+		// Le modèle vient seulement d'auto-update.conf (/etc ou ~/.config), pas du code.
+		return c.echec("pas de MODEL dans auto-update.conf : pas de décision, pas de build.")
 	default:
 		prompt := promptMaj(versionImage, age, count, premieresLignes(texteMaj(maj), 300))
 		contenu, err := c.appelerLLM(prompt)

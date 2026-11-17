@@ -127,7 +127,7 @@ func miseAJour(c *contexteUpdate, args []string) int {
 
 // reglagesUpdate : auto-update.conf du système, puis de l'utilisateur (le second l'emporte).
 func (c *contexteUpdate) lireReglages() {
-	c.r = reglagesUpdate{buildDir: "/var/lib/aibox/state/build", buildRef: "main", modele: "auto", notifyTo: "discord"}
+	c.r = reglagesUpdate{buildDir: "/var/lib/aibox/state/build", buildRef: "main", notifyTo: "discord"}
 	valeurs := map[string]string{}
 	for _, f := range []string{c.e.chemin("etc/aibox/auto-update.conf"), filepath.Join(c.e.home, ".config", "aibox", "auto-update.conf")} {
 		for k, v := range lireEnv(f) {
