@@ -146,6 +146,20 @@ fuse-overlayfs
 squashfs-tools
 umu-launcher
 
+# Bibliothèques 32 bits de wine-tkg (jeux 32 bits, arcade Batocera) qui
+# manquaient à wsquashfs-launcher --setup ; sans elles, « no driver could be loaded »
+lib32-libxrender
+lib32-libxrandr
+lib32-libxi
+lib32-libxcursor
+lib32-libxcomposite
+lib32-libxkbcommon
+lib32-sdl2
+lib32-gst-plugins-base-libs
+# Presse-papiers de l'icône de wsquashfs-launcher --tray (code d'association)
+wl-clipboard
+xclip
+
 # LLM : Lemonade (serveur seulement, 14 Mo) ; backends et modèles téléchargés
 # par Lemonade dans /srv/models (disque de données)
 lemonade-server

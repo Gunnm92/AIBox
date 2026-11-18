@@ -128,7 +128,7 @@ Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtue
 
 Pas encore : assistant vocal.
 
-**Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak et son portail GTK, fuse2/fuse3, zram, cifs-utils, nss-mdns, labwc + XFCE (avec xfce4-notifyd pour les notifications), wayvnc, websocat, nginx, xrdp, podman, distrobox, git, lemonade-server, steam, wsquashfs-launcher.
+**Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak et son portail GTK, fuse2/fuse3, zram, cifs-utils, nss-mdns, labwc + XFCE (avec xfce4-notifyd pour les notifications), wayvnc, websocat, nginx, xrdp, podman, distrobox, git, lemonade-server, steam, bibliothèques 32 bits pour wine-tkg (jeux arcade), wl-clipboard et xclip (--tray), wsquashfs-launcher (hors image).
 
 **Mesures en VM** :
 
