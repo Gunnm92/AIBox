@@ -23,7 +23,7 @@ xsetting() {
 }
 gtk_theme="$(xsetting /Net/ThemeName WhiteSur-Dark)"
 cursor_theme="$(xsetting /Gtk/CursorThemeName WhiteSur-cursors)"
-cursor_size="$(xsetting /Gtk/CursorSize 24)"
+cursor_size="$(xsetting /Gtk/CursorThemeSize 24)"
 theme_dir=""
 for d in "${HOME}/.themes" "${HOME}/.local/share/themes" /usr/share/themes; do
     [[ -d "$d/$gtk_theme" ]] && { theme_dir="$d/$gtk_theme"; break; }

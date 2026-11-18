@@ -21,8 +21,15 @@ for _ in $(seq 1 20); do
 done
 
 # set_default <canal> <propriété> <type> <valeur> : n'écrit que si absente.
+# Une valeur vide compte comme absente : la propriété est supprimée puis
+# recréée avec son type (une /Gtk/CursorThemeSize vide devenait cursor-size=0
+# dans dconf, et une GTK3 embarquée plantait sous Wayland, 18/11/2026).
 set_default() {
-    xfconf-query -c "$1" -p "$2" >/dev/null 2>&1 && return 0
+    local v
+    if v="$(xfconf-query -c "$1" -p "$2" 2>/dev/null)"; then
+        [[ -n "$v" ]] && return 0
+        xfconf-query -c "$1" -p "$2" -r 2>/dev/null || true
+    fi
     xfconf-query -c "$1" -p "$2" -n -t "$3" -s "$4" 2>/dev/null || true
 }
 
@@ -30,7 +37,8 @@ set_default() {
 set_default xsettings /Net/ThemeName string "WhiteSur-Dark"
 set_default xsettings /Net/IconThemeName string "WhiteSur-dark"
 set_default xsettings /Gtk/CursorThemeName string "WhiteSur-cursors"
-set_default xsettings /Gtk/CursorSize int 24
+# CursorThemeSize : la clé que lit xfsettingsd (CursorSize n'est lue par personne).
+set_default xsettings /Gtk/CursorThemeSize int 24
 set_default xsettings /Gtk/FontName string "DejaVu Sans 10"
 set_default xsettings /Gtk/MonospaceFontName string "DejaVu Sans Mono 10"
 
