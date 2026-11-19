@@ -154,8 +154,6 @@ lib32-libxi
 lib32-libxcursor
 lib32-libxcomposite
 lib32-libxkbcommon
-lib32-sdl2
-lib32-gst-plugins-base-libs
 # Presse-papiers de l'icône de wsquashfs-launcher --tray (code d'association)
 wl-clipboard
 xclip
