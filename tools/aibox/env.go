@@ -6,7 +6,6 @@ import (
 	"math"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -29,19 +28,6 @@ type env struct {
 	flux func(vars []string, sortie io.Writer, nom string, args ...string) int
 }
 
-// dossierPersonnel : le dossier de l'utilisateur qui a lancé la commande. Sous
-// sudo, $HOME vaut /root, alors que la configuration (~/.config/aibox, dont
-// auto-update.conf avec la clé LiteLLM) est dans le home de l'utilisateur :
-// on prend celui de SUDO_USER quand la commande tourne en root.
-func dossierPersonnel(home, sudoUser string, uid int) string {
-	if uid == 0 && sudoUser != "" && sudoUser != "root" {
-		if u, err := user.Lookup(sudoUser); err == nil && u.HomeDir != "" {
-			return u.HomeDir
-		}
-	}
-	return home
-}
-
 // envReel : le vrai système.
 func envReel() env {
 	runtime := os.Getenv("XDG_RUNTIME_DIR")
@@ -51,7 +37,7 @@ func envReel() env {
 	return env{
 		racine:  "/",
 		runtime: runtime,
-		home:    dossierPersonnel(os.Getenv("HOME"), os.Getenv("SUDO_USER"), os.Geteuid()),
+		home:    os.Getenv("HOME"),
 		lancer: func(vars []string, nom string, args ...string) (string, error) {
 			cmd := exec.Command(nom, args...)
 			cmd.Env = append(os.Environ(), vars...)
