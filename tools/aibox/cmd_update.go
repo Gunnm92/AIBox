@@ -182,13 +182,34 @@ func (c *contexteUpdate) journaliser(msg string) {
 // notifier envoie un message sur le canal habituel (hermes send), s'il est installé.
 func (c *contexteUpdate) notifier(msg string) {
 	c.journaliser("Notification : " + msg)
-	if _, err := exec.LookPath("hermes"); err != nil {
+	nom, prefixe, ok := commandeHermes(c.e.home, os.Getenv("SUDO_USER"), os.Geteuid())
+	if !ok {
 		c.journaliser("hermes absent : pas de notification.")
 		return
 	}
-	if _, err := c.e.lancer(nil, "hermes", "send", "-q", "--to", c.r.notifyTo, "--subject", "aibox — mise à jour", msg); err != nil {
+	args := append(prefixe, "send", "-q", "--to", c.r.notifyTo, "--subject", "aibox — mise à jour", msg)
+	if _, err := c.e.lancer(nil, nom, args...); err != nil {
 		c.journaliser("Notification impossible (hermes send).")
 	}
+}
+
+// commandeHermes : la commande qui lance hermes. Sous sudo, aibox tourne en
+// root : le PATH de root ne contient pas ~/.local/bin, et la configuration de
+// hermes est dans le home de l'utilisateur d'origine. On le trouve donc dans
+// ce home et on le lance en tant que lui (runuser). Hors sudo, hermes est
+// cherché dans le PATH.
+func commandeHermes(home, sudoUser string, uid int) (string, []string, bool) {
+	if uid == 0 && sudoUser != "" && sudoUser != "root" {
+		chemin := filepath.Join(home, ".local", "bin", "hermes")
+		if info, err := os.Stat(chemin); err == nil && !info.IsDir() {
+			return "runuser", []string{"-u", sudoUser, "--", chemin}, true
+		}
+		return "", nil, false
+	}
+	if _, err := exec.LookPath("hermes"); err == nil {
+		return "hermes", nil, true
+	}
+	return "", nil, false
 }
 
 // echec prévient et s'arrête.
