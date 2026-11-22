@@ -24,7 +24,7 @@ ExecCondition=/bin/sh -c 'for d in /sys/bus/usb/devices/*; do case "$$(cat $$d/i
 # 1-2 du dongle, il est incompatible avec les haptiques natives de ds5-usbip.
 # Actif seulement si « aibox ds5-mode son » a écrit « son » dans
 # ~/.config/aibox/ds5-mode ; sinon l'unité est sautée (exit 1 sans erreur).
-ExecCondition=/bin/sh -c 'grep -qx son %h/.config/aibox/ds5-mode'
+ExecCondition=/bin/sh -c 'grep -sqx son %h/.config/aibox/ds5-mode'
 # Safety guard + boot/plug race handling: wait (up to ~15s) for the dongle sink
 # (ds5_dongle_sink, renamed by 51-ds5dongle.conf) to actually appear before
 # launching the loopback. At boot or plug-in, udev may start us before
