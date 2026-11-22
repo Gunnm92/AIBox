@@ -60,6 +60,11 @@ var commandes = []commande{
 		usages: []string{"aibox tv-mode [--once] [gamescope|hyprland|bureau]"},
 	},
 	{
+		nom: "ds5-mode", fonction: cmdDs5Mode, groupe: "Usage courant",
+		resume: "Manette DualSense : haptiques natives (natif, par défaut) ou vibration tirée du son (son)",
+		usages: []string{"aibox ds5-mode [natif|son]"},
+	},
+	{
 		nom: "nas", fonction: cmdNas, groupe: "Usage courant",
 		resume: "Partages réseau (SMB) montés à la demande",
 		usages: []string{"aibox nas list", "sudo aibox nas add //hôte/partage /mnt/X", "sudo aibox nas remove /mnt/X"},

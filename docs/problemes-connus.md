@@ -56,7 +56,24 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Cause** : Thunar tourne en démon et ne recharge pas le thème à chaud. Au démarrage du bureau, il était réveillé avant que `xfsettingsd` ait publié le thème (11/10/2026).
 - **Solution** : `aibox-admin-xfsettingsd.service` en `Type=dbus` (`BusName=org.gtk.Settings`), et `thunar.service.d/aibox.conf` le fait démarrer après. Après un changement de thème : `systemctl --user restart thunar`.
 
+### L'icône de `wsquashfs-launcher --tray` disparaît à la fin de la session TV (22/11/2026)
+- **Cause** : l'unité générée `app-wsquashfs\x2dlauncher\x2dtray@autostart.service` a `PartOf=graphical-session.target` (systemd-xdg-autostart-generator). La session TV (`start-hyprland`) tire `hyprland-session.target`, qui `BindsTo=` et `PropagatesStopTo=` `graphical-session.target` : à l'arrêt de la session TV, l'arrêt se propage à l'icône, et rien ne la relance. Effet secondaire, non traité ici : au démarrage, la session TV pousse `WAYLAND_DISPLAY=wayland-1` dans l'environnement du gestionnaire, et une appli lancée au démarrage peut s'ouvrir sur la TV.
+- **Solution** : `aibox-tv.service` lance `/usr/local/lib/aibox/admin-autostart` en `ExecStopPost=-`, après la remise de l'environnement sur l'administration (l'ordre compte). Il démarre chaque unité `app-…@autostart.service` chargée et inactive. Démarrer `aibox-admin-autostart.target` ne suffit pas : déjà active, la cible ne relance pas ses dépendances arrêtées. Et un démarrage groupé échoue en entier à cause d'une unité masquée (essais du 22/11/2026). Vérification, après une extinction de la manette et l'arrêt de la session TV : `systemctl --user is-active 'app-wsquashfs\x2dlauncher\x2dtray@autostart.service'` doit répondre `active`.
+
 ## Son et manette
+
+### Le récepteur ds5-usbip ne joue que du silence (22/11/2026)
+- **Cause** : le tampon visé (`sess.latency.msec`) doit dépasser le délai de la sortie du dongle (USB puis Bluetooth). À 10 ms, `module-rtp-source` le ramène à zéro (« Delay to device is higher than the target buffer size ») et ne joue que du silence.
+- **Solution** : `sess.latency.msec = 40` (valeur validée le 22/11). Ne pas descendre en dessous sans mesurer.
+
+### Haptiques 24 dB plus faibles : la sortie du dongle s'ouvre à 40 % (22/11/2026)
+- **Cause** : WirePlumber ouvre une nouvelle sortie à 40 % de volume, et les haptiques perdent alors 24 dB.
+- **Solution** : règle `device.routes.default-sink-volume = 1.0` sur la carte du dongle, dans `51-ds5dongle.conf`. Elle ne joue qu'à la première apparition de la carte : ensuite, WirePlumber restaure le volume mémorisé dans `~/.local/state/wireplumber/default-routes`, sur le disque de données (pas à chaque démarrage, contrairement à ce que dit le doc de ds5-usbip).
+
+### Le son de la manette joué sur la TV sans le dongle (22/11/2026)
+- **Cause** : sans verrou, le flux `ds5_usbip_haptics` peut se rabattre sur la sortie par défaut (TV) si le dongle est absent : haut-parleur et haptiques deviennent des grésillements audibles.
+- **Écarté** : `node.dont-fallback` + `target.object`. Le flux se relie bien si le dongle est déjà là, mais il disparaît quand la sortie arrive après lui (démarrage de PipeWire) et n'est jamais relié (essais du 22/11/2026).
+- **Solution** : le récepteur est en `node.autoconnect = false`, WirePlumber ne le relie jamais. Le script `/usr/local/lib/aibox/ds5-usbip-link` (ExecStartPost de `ds5-usbip.service`) relie ses 4 ports à `ds5_dongle_sink` par `pw-link`. Sans dongle, aucune liaison.
 
 ### Son du PC dans le haut-parleur de la manette
 - **Cause** : c'est voulu. La boucle `ds5-haptics-loopback` envoie le son aux canaux 0/1 du dongle, que le firmware utilise pour les auto-haptiques et le haut-parleur.
@@ -64,7 +81,7 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 
 ### Pas de haptiques natives dans Ride 6 (et sans doute d'autres jeux récents)
 - **Cause** : le jeu envoie ses haptiques comme un **son 4 canaux** sur la carte son USB de la manette, en n'envoyant que des rapports `0x31` avec les moteurs à 0 (diagnostic SteamBox du 30/09/2026). Sous Windows, il retrouve cette carte son grâce au ContainerId qu'elle partage avec la manette. Wine ne fait pas ce lien.
-- **Pistes** : les auto-haptiques du dongle (mode Replace), qui donnent une approximation tirée de la bande-son ; ou faire présenter `ds5_dongle_sink` par Wine comme la carte son de la manette (chantier ouvert).
+- **Pistes** : d'abord ds5-usbip (22/11/2026) : SteamBox envoie le son de la manette émulée en RTP, 4 canaux, haptiques en 3-4 ; AIBox le reçoit et le joue sur le dongle en mode « Off » (`aibox ds5-mode natif`). Le son arrive, mais il reste à vérifier que Ride 6 produit des haptiques sur ce chemin. Autres pistes : les auto-haptiques du dongle (mode Replace, `aibox ds5-mode son`), qui donnent une approximation tirée de la bande-son ; ou faire présenter `ds5_dongle_sink` par Wine comme la carte son de la manette (chantier ouvert).
 - **Attention** : si le dongle est réénuméré pendant le jeu (manette rallumée), un jeu en `HIDRAW=1` perd la manette. Allume la manette **avant** de lancer le jeu.
 
 ### Pas de son 5.1 sur la TV

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# ds5-usbip-link : relie le récepteur RTP de ds5-usbip (ds5_usbip_haptics,
+# chargé par ds5-usbip.service, arguments dans /etc/aibox/ds5-usbip-rtp.conf)
+# aux 4 canaux du dongle DualSense (ds5_dongle_sink), et à rien d'autre. Le
+# récepteur est en node.autoconnect = false : WirePlumber ne le relie jamais,
+# donc jamais à la TV. Attend les deux nœuds 15 s au plus (au démarrage, la
+# sortie du dongle arrive après). ExecStartPost de ds5-usbip.service.
+for _ in $(seq 1 30); do
+    if pw-link -o | grep -q '^ds5_usbip_haptics:' && pw-link -i | grep -q '^ds5_dongle_sink:'; then
+        for c in FL FR RL RR; do
+            # Déjà reliés : pw-link échoue, sans conséquence.
+            pw-link "ds5_usbip_haptics:receive_$c" "ds5_dongle_sink:playback_$c" 2>/dev/null
+        done
+        n=$(pw-link -l | grep -A1 '^ds5_usbip_haptics:' | grep -c 'ds5_dongle_sink:')
+        echo "ds5_usbip_haptics : $n liaisons vers ds5_dongle_sink"
+        [[ "$n" -eq 4 ]] && exit 0
+        exit 1
+    fi
+    sleep 0.5
+done
+echo "ds5_usbip_haptics ou ds5_dongle_sink absent après 15 s" >&2
+exit 1

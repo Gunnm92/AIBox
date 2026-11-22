@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # admin-wait : attend le socket du compositeur d'administration (wayland-0),
 # 30 s au plus.
+# Relance : à l'arrêt de la session TV, aibox-tv.service relance les
+# applications au démarrage (admin-autostart, 22/11/2026). Le panneau tourne
+# déjà : elles s'y accrochent comme au démarrage.
 # admin-wait zone-notification : attend la zone de notification du panneau XFCE
 # (org.kde.StatusNotifierWatcher), 20 s au plus, et réussit toujours. En
 # ExecStartPost du panneau : il n'est « prêt » pour systemd qu'une fois elle

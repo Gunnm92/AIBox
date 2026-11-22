@@ -9,6 +9,7 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 | `aibox run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
 | `wsquashfs-launcher` (hors image) | Lancer un jeu Windows au format Batocera (`.wsquashfs`) ; binaire installé à part, dans `~/.local/bin` | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
 | `aibox tv-mode` | Mode de la session TV : Hyprland avec le lanceur (par défaut), Steam sous gamescope, ou le bureau XFCE sous labwc | `aibox tv-mode [--once] [gamescope\|hyprland\|bureau]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
+| `aibox ds5-mode` | Manette DualSense : haptiques natives (`natif`, par défaut) ou vibration tirée du son du PC (`son`, lance le loopback). Régler le dongle en conséquence : « Off » ou « Replace » | `aibox ds5-mode [natif\|son]` | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
 | `aibox tv-run` | Lancer une commande sur l'écran de la TV (la session Hyprland doit tourner), depuis le bureau d'administration | `aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"` | [exploitation.md](exploitation.md#session-tv) |
 | `aibox` | Point d'entrée unique : aide (`--help`), et aiguillage vers les `aibox-*` (`aibox update --podman` lance `aibox update --podman`). Binaire Go, compilé par `tools/aibox/build.sh` | `aibox --help`, `aibox <commande> [arguments]` | [commandes.md](commandes.md) |
 | `aibox update` | Mise à jour du système : image décidée par le LLM local, ou nouveaux commits poussés (lancée chaque nuit) | `--dry-run`, `--no-install`, `--force`, `--pkglist` | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
@@ -58,7 +59,8 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 | `aibox build` | `aibox update`, ou à la main (`systemctl start`) | Build de l'ISO (`aibox build`) | [iso.md](iso.md#5-construire) |
 | `aibox-tv-watch` | Manette allumée ou éteinte (scrute le dongle toutes les 2 s) | Démarre la session TV, ou programme son arrêt | [architecture.md](architecture.md) |
 | `aibox-tv` | `aibox-tv-watch`, `aibox tv-mode` | Session TV sur l'écran réel (`tv-session`). À son démarrage : `llm-unload --tv` | [exploitation.md](exploitation.md#session-tv) |
-| `ds5-haptics-loopback` (utilisateur) | Branchement du dongle (udev) | Envoie le son du PC au dongle pour les auto-haptiques | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
+| `ds5-haptics-loopback` (utilisateur) | Branchement du dongle (udev), seulement en mode `son` (`aibox ds5-mode son`) : désactivé par défaut | Envoie le son du PC au dongle pour les auto-haptiques | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
+| `ds5-usbip` (utilisateur) | `aibox-tv-watch` : manette allumée (arrêté à son extinction) ; relancé avec PipeWire et WirePlumber | Reçoit le son de la DualSense envoyé par SteamBox (ds5-usbip, RTP 46100, réglages `/etc/aibox/ds5-usbip-rtp.conf`) et le relie au dongle, et à rien d'autre | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
 | `steamos-session-select` | « Passer au bureau » dans Steam | Bascule la session TV sur Hyprland et son lanceur, pour cette session seulement | [architecture.md](architecture.md) |
 
 ### Services de démarrage
@@ -84,5 +86,6 @@ Les réglages de l'image sont dans `/etc/aibox/`. Pour en changer un, copie le f
 | `llm.conf` | `llm-unload` : délai d'inactivité, déchargement à l'ouverture de la TV |
 | `~/.config/aibox/proton.conf` | `aibox run-exe` : Proton imposé (`PROTON=…`) |
 | `~/.config/aibox/tv-mode` | `aibox tv-mode` |
+| `~/.config/aibox/ds5-mode` | `aibox ds5-mode` (`natif` par défaut) |
 | `~/.config/aibox/tv-apps.json` | Applis du lanceur de la session TV |
 | `~/.config/aibox/keyboard.env` | `aibox keyboard` |

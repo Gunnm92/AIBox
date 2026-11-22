@@ -36,6 +36,14 @@ ExecStart=/usr/local/lib/aibox/tv-session
 # Le compositeur de la TV pousse son affichage dans l'environnement d'activation :
 # à l'arrêt, on le remet sur l'administration.
 ExecStopPost=/usr/local/lib/aibox/activation-env-admin
+# aibox : la session TV tire hyprland-session.target, qui BindsTo et
+# PropagatesStopTo graphical-session.target. À l'arrêt de la session TV, cet
+# arrêt tue les applications au démarrage rattachées à graphical-session.target
+# (wsquashfs-launcher --tray, 22/11/2026) et rien ne les relance. admin-autostart
+# les relance, après la remise de l'environnement ci-dessus (l'ordre compte :
+# elles doivent s'ouvrir sur wayland-0, pas sur l'écran de la TV). « - » : un
+# échec ne compte pas comme un échec de la session.
+ExecStopPost=-/usr/local/lib/aibox/admin-autostart
 ExecStopPost=+/bin/sh -c 'echo 4 > /sys/class/graphics/fb0/blank || true'
 Restart=always
 # 75 : Steam fermé par l'utilisateur, ou déjà ouvert ailleurs (tv-session) :

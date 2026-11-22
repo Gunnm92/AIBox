@@ -5,6 +5,9 @@
 #     (aussi au démarrage de la machine, manette déjà allumée) ;
 #   manette allumée → éteinte : arrêt de la session dans 2 minutes
 #     (aibox-tv-idle.timer).
+# Avec elle, le récepteur du son de la manette envoyé par SteamBox
+# (ds5-usbip.service, utilisateur) : démarré à l'allumage, arrêté tout de suite
+# à l'extinction (port 46100 fermé).
 # Ni la présence du dongle ni ses événements udev ne suffisent : il s'annonce
 # aussi manette éteinte (à la mise sous tension du PC) et ne se reconnecte pas
 # toujours à l'allumage de la manette (vu le 11/10/2026). Une manette connectée
@@ -43,9 +46,13 @@ while true; do
         echo "Manette allumée : session TV."
         systemctl --no-block stop aibox-tv-idle.timer
         systemctl --no-block start aibox-tv.service
+        # Son de la manette reçu de SteamBox (ds5-usbip) : récepteur relié au dongle.
+        systemctl --user -M default@ --no-block start ds5-usbip.service
     elif (( !now && was )); then
         echo "Manette éteinte : arrêt de la session TV dans 2 minutes."
         systemctl --no-block start aibox-tv-idle.timer
+        # Récepteur déchargé, port 46100 fermé, tout de suite.
+        systemctl --user -M default@ --no-block stop ds5-usbip.service
     fi
     was=$now
     sleep 2

@@ -49,7 +49,8 @@ Sans disque `AIBOXDATA`, le système démarre en **mode éphémère** : `/home` 
 | `aibox-code-server.service` (utilisateur) | VS Code dans le navigateur |
 | `lemond.service` (utilisateur, `llm.slice`) | Lemonade, serveur de LLM sur le port 13305 |
 | `aibox-nas.service` | partages SMB du NAS, montés à la demande |
-| `ds5-haptics-loopback.service` (utilisateur) | envoie le son du PC au dongle DualSense |
+| `ds5-usbip.service` (utilisateur) | manette allumée seulement (`tv-watch`) : récepteur `ds5_usbip_haptics` du son de la DualSense émulée dans SteamBox (RTP, port 46100), relié au dongle et à lui seul |
+| `ds5-haptics-loopback.service` (utilisateur, mode son seulement) | envoie le son du PC au dongle DualSense |
 | `aibox-diag.timer` | rapport de diagnostic 2 minutes après le démarrage |
 
 L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas de mot de passe Unix. Ses services utilisateur démarrent sans connexion (« linger »).
@@ -82,7 +83,7 @@ Le bureau d'administration doit avoir pris `wayland-0` et `:0` avant la session 
 ## Son
 
 - **TV** : carte HDMI `alsa_card.pci-0000_c4_00.1`, sur la sortie HDMI 2. La règle `/etc/wireplumber/wireplumber.conf.d/52-hdmi-surround.conf` désactive UCM pour cette carte, ce qui donne accès au profil 5.1 (`output:hdmi-surround-extra1`). La TV n'accepte que 6 canaux en PCM.
-- **Dongle DualSense** (DS5Dongle-Studio) : sortie `ds5_dongle_sink`, en 4 canaux. Les canaux 0/1 vont au haut-parleur de la manette et servent aux auto-haptiques du firmware. Les canaux 2/3 vont aux actionneurs haptiques.
+- **Dongle DualSense** (DS5Dongle-Studio) : sortie `ds5_dongle_sink`, en 4 canaux. Flux RTP entrant (ds5-usbip) : SteamBox envoie en L16 48 kHz, 4 canaux, sur le port 46100 d'AIBox ; le récepteur `ds5_usbip_haptics` (`ds5-usbip.service`, chargé par `pw-cli` à l'allumage de la manette, déchargé à son extinction ; jamais relié par WirePlumber) est relié par `ds5-usbip-link` à FL, FR, RL, RR de `ds5_dongle_sink`. Manette éteinte, le port 46100 est fermé. Canaux 1-2 : haut-parleur de la manette ; canaux 3-4 : haptiques (actionneurs). Pour les haptiques natives, le dongle est en mode « Off » (en « Replace », il ignore les canaux 3-4). Le loopback du son du PC (canaux 1-2) n'existe qu'en mode son (`aibox ds5-mode son`, dongle en « Replace ») : il ne peut pas tourner avec les haptiques natives.
 
 ## Construction
 

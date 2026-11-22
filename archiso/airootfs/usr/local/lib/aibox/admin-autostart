@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# admin-autostart : relance les applications au démarrage du bureau
+# d'administration (unités app-…@autostart.service générées depuis
+# ~/.config/autostart) qui ne tournent plus. ExecStopPost de aibox-tv.service.
+# La session TV tire hyprland-session.target, qui BindsTo et PropagatesStopTo
+# graphical-session.target ; or le générateur XDG met PartOf=graphical-session.target
+# dans chaque unité : à l'arrêt de la session TV, elles sont arrêtées aussi
+# (wsquashfs-launcher --tray, 22/11/2026).
+# Démarrer aibox-admin-autostart.target ne suffit pas : déjà active, la cible ne
+# relance pas ses dépendances arrêtées (essai du 22/11/2026). On démarre donc
+# chaque unité chargée et inactive ; les masquées sont sautées (une seule fait
+# échouer un démarrage groupé), celles à ExecCondition le sont comme au boot.
+# Lancé après activation-env-admin : les applications s'ouvrent sur wayland-0.
+systemctl --user list-units --all --plain --no-legend 'app-*@autostart.service' |
+    awk '$2 == "loaded" && $3 == "inactive" { print $1 }' |
+    while read -r u; do
+        systemctl --user start --no-block "$u"
+    done

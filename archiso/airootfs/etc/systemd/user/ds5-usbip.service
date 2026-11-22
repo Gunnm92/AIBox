@@ -1,0 +1,27 @@
+# aibox : son de la DualSense reçu de SteamBox (ds5-usbip, RTP sur le port
+# 46100), joué sur le dongle DS5Dongle, tant que la manette est allumée.
+# tv-watch (service système) démarre ce service à l'allumage de la manette et
+# l'arrête à son extinction. Manette éteinte : pas de récepteur, port fermé.
+# Le récepteur (module-rtp-source, arguments dans /etc/aibox/ds5-usbip-rtp.conf)
+# vit tant que pw-cli tourne : PipeWire n'ouvre le port qu'une fois le flux
+# relié, mais ne le referme qu'au déchargement du module (une simple déliaison
+# le laisse ouvert, essai du 22/11/2026). ds5-usbip-link relie ensuite le flux
+# aux 4 canaux du dongle, et à rien d'autre.
+# PartOf : un redémarrage de PipeWire ou de WirePlumber relance ce service s'il
+# était actif.
+[Unit]
+Description=ds5-usbip : son de la DualSense (SteamBox) joué sur le dongle DS5Dongle
+After=pipewire.service wireplumber.service
+PartOf=pipewire.service wireplumber.service
+
+[Service]
+Type=simple
+# Dongle absent (054c:0ce6 ou 054c:0df2) : unité sautée, sans erreur.
+ExecCondition=/bin/sh -c 'for d in /sys/bus/usb/devices/*; do case "$$(cat $$d/idVendor):$$(cat $$d/idProduct)" in 054c:0ce6|054c:0df2) exit 0;; esac; done 2>/dev/null; exit 1'
+# pw-cli -m reste connecté (et le module chargé) jusqu'à l'arrêt du service ;
+# ses messages de surveillance ne vont pas au journal.
+ExecStart=/bin/sh -c 'exec pw-cli -m load-module libpipewire-module-rtp-source "$$(grep -v "^[[:space:]]*#" /etc/aibox/ds5-usbip-rtp.conf)"'
+StandardOutput=null
+ExecStartPost=/usr/local/lib/aibox/ds5-usbip-link
+Restart=on-failure
+RestartSec=5
