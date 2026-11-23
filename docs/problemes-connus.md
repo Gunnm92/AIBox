@@ -64,7 +64,7 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 
 ### Le récepteur ds5-usbip ne joue que du silence (22/11/2026)
 - **Cause** : le tampon visé (`sess.latency.msec`) doit dépasser le délai de la sortie du dongle (USB puis Bluetooth). À 10 ms, `module-rtp-source` le ramène à zéro (« Delay to device is higher than the target buffer size ») et ne joue que du silence.
-- **Solution** : `sess.latency.msec = 40` (valeur validée le 22/11). Ne pas descendre en dessous sans mesurer.
+- **Solution** : `sess.latency.msec = 40` (valeur validée le 22/11), puis 20 ms depuis le 23/11 : la règle WirePlumber `52-ds5dongle-latency.conf` raccourcit le délai de la sortie du dongle (périodes ALSA de 128 trames, `api.alsa.headroom = 0`). Ne pas descendre en dessous sans mesurer, ni retirer la règle sans remonter le tampon à 40 ms.
 
 ### Haptiques 24 dB plus faibles : la sortie du dongle s'ouvre à 40 % (22/11/2026)
 - **Cause** : WirePlumber ouvre une nouvelle sortie à 40 % de volume, et les haptiques perdent alors 24 dB.
