@@ -214,3 +214,20 @@ func ecrireLigne(w io.Writer, libelle string, valeur string) {
 func parseEntier(s string) (int64, error) {
 	return strconv.ParseInt(s, 10, 64)
 }
+
+// lireEnv : affectations KEY=VALUE d'un fichier (guillemets retirés).
+func lireEnv(chemin string) map[string]string {
+	res := map[string]string{}
+	b, err := os.ReadFile(chemin)
+	if err != nil {
+		return res
+	}
+	for _, l := range strings.Split(string(b), "\n") {
+		k, v, ok := strings.Cut(strings.TrimSpace(l), "=")
+		if !ok || strings.HasPrefix(k, "#") {
+			continue
+		}
+		res[k] = strings.Trim(v, `"'`)
+	}
+	return res
+}

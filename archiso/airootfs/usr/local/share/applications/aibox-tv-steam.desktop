@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Steam (TV)
+Comment=Steam en mode console sur la TV (gamescope : HDR, FSR, VRR)
+# Relance la session TV sous gamescope ; « Passer au bureau » dans Steam
+# ramène à Plasma Bigscreen (steamos-session-select).
+Exec=aibox tv-mode --once gamescope
+Icon=steam
+Categories=Game;

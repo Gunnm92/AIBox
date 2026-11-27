@@ -26,7 +26,7 @@ cat /proc/cmdline | grep -o 'archisobasedir=[^ ]*'                # version qui 
 ```
 
 - **Sans le disque de données** (mode éphémère), on ne peut pas construire : arrête-toi.
-- **Si `keys/` est vide ou incomplet**, le build en génère de nouveaux secrets : nouveau mot de passe noVNC, nouvelle CA HTTPS à réapprouver sur les postes. Les partages NAS par défaut disparaissent, et l'accès SSH aussi si `authorized_keys` manque. **Demande à l'utilisateur avant de construire.** `keys/README.md` décrit chaque fichier.
+- **Si `keys/` est vide ou incomplet**, le build en génère de nouveaux secrets : nouveau mot de passe du bureau web, nouvelle CA HTTPS à réapprouver sur les postes. Les partages NAS par défaut disparaissent, et l'accès SSH aussi si `authorized_keys` manque. **Demande à l'utilisateur avant de construire.** `keys/README.md` décrit chaque fichier.
 
 ## 2. Où faire la modification
 
@@ -73,7 +73,7 @@ Cas particuliers :
   ```
   `Global focus window: none` veut dire que l'écran est noir.
 - **Son (WirePlumber)** : `systemctl --user restart wireplumber`, puis `pactl list short sinks`. Ça coupe le son un instant : vérifie avant qu'aucun jeu ne tourne (`pgrep -af Win64`).
-- **Bureau d'administration** : `systemctl --user restart aibox-admin-panel` (panneau) ou `thunar`.
+- **Bureau d'administration** : `systemctl --user restart aibox-admin-plasma` (ferme les fenêtres du bureau), ou `plasmashell --replace` dans le bureau pour ne relancer que le shell.
 - **Script Python** : vérifie la syntaxe avec `python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" fichier`. N'utilise pas `py_compile` : il laisse un dossier `__pycache__` dans le dépôt.
 - **Attention à `pgrep -f` et `pkill -f`** : le motif se retrouve dans ta propre ligne de commande, et tu risques de tuer ton shell ou de faire une boucle infinie. Préfère `pgrep -x nom`, ou mets le motif entre crochets : `pgrep -f "[g]amescope"`.
 
@@ -103,7 +103,7 @@ cat /var/lib/aibox/state/build/dernier-build.json                 # statut, vers
 ```
 
 - `aibox build` remet sa propre copie du dépôt (`/var/lib/aibox/state/build/src`) à `origin/main`, puis lance `build.sh` avec les secrets de `/var/lib/aibox/state/build/keys` et les caches de `/var/lib/aibox/state/build/work`. Le dossier de travail `~/Workspace/AIBox` n'intervient pas : il peut avoir des changements en cours.
-- La durée est d'environ 1 à 2 minutes avec les caches (paquets, xrdp, noVNC, WhiteSur), et de 3 à 6 minutes sans. xrdp (AUR) est recompilé quand l'AUR publie une autre version, et au moins tous les 30 jours. Lance-le en arrière-plan si ton outil le permet.
+- La durée est d'environ 1 à 2 minutes avec les caches (paquets, pip pour Selkies, WhiteSur), et de 3 à 6 minutes sans. Lance-le en arrière-plan si ton outil le permet.
 - Il faut au moins 12 Go libres sur le disque de données. `aibox build` refuse de construire sinon, et aussi en mode éphémère.
 - Un échec affiche son erreur à la fin de `/var/lib/aibox/state/build/build.log`. Cherche la première ligne `error` ou `cannot`.
 - **Version** : `AAAA.MM.JJ.HHMM-<commit>`, par exemple `2026.10.10.2145-cf122c2`, avec la date et l'heure du build et le commit construit. Une image d'`aibox build` n'est jamais `-dirty`. `--ref <branche ou commit>` construit autre chose que `main`.
@@ -166,7 +166,7 @@ Puis vérifie précisément ce qui a changé : le service, le fichier, le compor
    L'ISO porte la date du jour et le commit choisi.
 3. **Clé Ventoy** : démarre dessus (menu du BIOS), sur une ISO aibox qu'elle contient, puis réinstalle depuis là : `sudo aibox boot` sans `--iso`.
 
-Pour un problème limité à la session TV, il y a plus simple : `aibox tv-mode gamescope` ou `aibox tv-mode hyprland` change de mode sans changer d'image, et ce choix tient aux redémarrages.
+Pour un problème limité à la session TV, il y a plus simple : `aibox tv-mode gamescope` ou `aibox tv-mode bigscreen` change de mode sans changer d'image, et ce choix tient aux redémarrages.
 
 ## Aide-mémoire
 

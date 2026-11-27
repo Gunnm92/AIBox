@@ -16,8 +16,8 @@ user_dir() {
 if [[ -e /run/aibox/data-present ]]; then
     install -d -m 0700 -o default -g default /home/default
     install -d -o default -g default /home/default/Applications
-    # Dossiers des raccourcis d'applis (Flatpak, AppImage) créés d'avance : le menu
-    # XFCE ne surveille que les dossiers qui existent à son démarrage.
+    # Dossiers des raccourcis d'applis (Flatpak, AppImage) créés d'avance : un menu
+    # ne surveille souvent que les dossiers qui existent à son démarrage.
     install -d /var/lib/flatpak/exports/share/applications
     for d in .local/share/applications .local/share/flatpak/exports/share/applications; do
         user_dir "$d"

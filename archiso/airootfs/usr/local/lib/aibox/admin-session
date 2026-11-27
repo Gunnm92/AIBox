@@ -1,117 +1,75 @@
 #!/usr/bin/env bash
-# Session labwc du bureau d'administration (repris de labwc-session.sh de
-# SteamBox) : écrit la configuration de labwc et les réglages par défaut,
-# puis se remplace par labwc. Les composants du bureau sont des services à part.
+# Session Plasma du bureau d'administration (27/11/2026, reprise de
+# plasma-session.sh de SteamBox), lancée par aibox-admin-plasma.service :
+# prépare la configuration, puis se remplace par startplasma-wayland, imbriqué
+# dans le compositeur de Selkies (aibox-admin-selkies). Son KWin prend le
+# premier socket wayland-N libre (à partir de 1, jamais le même) ; l'autostart
+# session-env le publie sous le nom wayland-admin, que Selkies vise
+# (SELKIES_APP_WAYLAND_DISPLAY).
+# Bus de session principal (celui de systemd) : startplasma y pousse son
+# affichage pour tout ce que D-Bus et systemd lancent. Sans les unités
+# plasma-*.service (/etc/xdg/startkderc) : la session TV a aussi son Plasma.
+# Remplace labwc headless et les services XFCE (retirés le 27/11/2026).
 set -euo pipefail
 cd "${HOME}"
 
-# Thème choisi dans XFCE (xfconf, Paramètres → Apparence), WhiteSur par défaut
-# (xfce-defaults, après ce script au premier démarrage). Lu à chaque démarrage
-# du bureau : un changement de thème vaut pour les bordures et libadwaita au
-# démarrage suivant.
-# xfconfd (activé par D-Bus) peut ne pas répondre tout de suite au démarrage :
-# on l'attend, et une valeur vide compte comme absente (sinon le « thème » vide
-# trouvait le dossier ~/.themes lui-même, sans bordures labwc, 11/10/2026).
-for _ in $(seq 1 20); do
-    xfconf-query -c xsettings -l >/dev/null 2>&1 && break
-    sleep 0.5
-done
-xsetting() {
-    local v
-    v="$(xfconf-query -c xsettings -p "$1" 2>/dev/null || true)"
-    echo "${v:-$2}"
-}
-gtk_theme="$(xsetting /Net/ThemeName WhiteSur-Dark)"
-cursor_theme="$(xsetting /Gtk/CursorThemeName WhiteSur-cursors)"
-cursor_size="$(xsetting /Gtk/CursorThemeSize 24)"
-theme_dir=""
-for d in "${HOME}/.themes" "${HOME}/.local/share/themes" /usr/share/themes; do
-    [[ -d "$d/$gtk_theme" ]] && { theme_dir="$d/$gtk_theme"; break; }
-done
-
-# Clavier : labwc lit XKB_* dans ~/.config/labwc/environment, pas dans son environnement.
-mkdir -p "${HOME}/.config/labwc"
-# Même disposition que wayvnc (aibox keyboard).
-set -a
-. /etc/aibox/keyboard.env
-[[ -r "${HOME}/.config/aibox/keyboard.env" ]] && . "${HOME}/.config/aibox/keyboard.env"
-set +a
-cat > "${HOME}/.config/labwc/environment" <<EOT
-XKB_DEFAULT_LAYOUT=${KEYBOARD_LAYOUT}
-XKB_DEFAULT_VARIANT=${KEYBOARD_VARIANT}
-XCURSOR_THEME=${cursor_theme}
-XCURSOR_SIZE=${cursor_size}
-EOT
-
-# Bordures de fenêtres : thème labwc du thème GTK choisi s'il en fournit un
-# (WhiteSur), sinon celui de labwc par défaut (Orchis, Mc-OS… n'en ont pas).
-labwc_theme=""
-[[ -n "$theme_dir" && -d "$theme_dir/labwc" ]] && labwc_theme="  <theme><name>${gtk_theme}</name></theme>"
-
-# xwaylandPersistence (cf. SteamBox) : sinon Xwayland s'arrête après le dernier
-# client X11, et les applis X11 lancées ensuite échouent (DISPLAY=:0 fixe).
-cat > "${HOME}/.config/labwc/rc.xml" <<EOT
-<?xml version="1.0"?>
-<labwc_config>
-${labwc_theme}
-  <core>
-    <xwaylandPersistence>yes</xwaylandPersistence>
-  </core>
-  <focus>
-    <followMouse>yes</followMouse>
-    <followMouseRequiresMovement>no</followMouseRequiresMovement>
-  </focus>
-</labwc_config>
-EOT
-
-# Résolution de la sortie virtuelle, appliquée au démarrage de labwc.
-# (Applications au démarrage : aibox-admin-autostart.target, après le panneau.)
-cat > "${HOME}/.config/labwc/autostart" <<EOT
-wlr-randr --output HEADLESS-1 --custom-mode 1920x1080 &
-EOT
-
-# Panneau XFCE (barre du haut et dock) : configuration par défaut d'aibox si
-# l'utilisateur n'en a pas
-# (évite la question « configuration par défaut ou panneau vide ? »).
-panel="${HOME}/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
-if [[ ! -e "$panel" ]]; then
-    mkdir -p "${panel%/*}"
-    cp /etc/aibox/xfce4-panel.xml "$panel"
-    # Applis épinglées du dock (greffon docklike, plugin-20 de ce panneau)
-    mkdir -p "${HOME}/.config/xfce4/panel"
-    cp /etc/aibox/docklike-20.rc "${HOME}/.config/xfce4/panel/docklike-20.rc"
-fi
-
-# libadwaita (applis GNOME récentes, Bazaar, Gear Lever…) ignore le thème GTK
-# et ne lit que ~/.config/gtk-4.0/gtk.css : on y copie celui du thème choisi
-# (WhiteSur : libadwaita/gtk-Dark.css ; autre thème : son gtk-4.0/gtk.css), avec
-# ses images. Copie et non lien : les applis Flatpak ne voient pas
-# /usr/share/themes. Seulement si ce dossier est vide ou déjà géré ici
-# (.aibox-theme) : un CSS personnel n'est jamais remplacé.
-gtk4="${HOME}/.config/gtk-4.0"
-adw_src=""
-if [[ -n "$theme_dir" ]]; then
-    if [[ -f "$theme_dir/libadwaita/gtk-Dark.css" ]]; then
-        adw_src="$theme_dir/libadwaita" adw_css=gtk-Dark.css
-    elif [[ -f "$theme_dir/gtk-4.0/gtk.css" ]]; then
-        adw_src="$theme_dir/gtk-4.0" adw_css=gtk.css
+# Socket du compositeur de Selkies : il choisit lui-même le premier wayland-N
+# libre à partir de 1 ; on le retrouve parmi les sockets en écoute de son
+# processus. 30 s au plus, sinon échec et relance par systemd.
+selkies="$(systemctl --user show -P MainPID aibox-admin-selkies.service)"
+hote=""
+for _ in $(seq 1 60); do
+    if [[ -n "$selkies" && "$selkies" != 0 ]]; then
+        hote="$(ss -xlpn 2>/dev/null | grep -F "pid=${selkies}," \
+            | grep -oE "${XDG_RUNTIME_DIR}/wayland-[0-9]+ " | head -n 1 | xargs -r basename || true)"
+        [[ -n "$hote" ]] && break
     fi
+    sleep 0.5
+    selkies="$(systemctl --user show -P MainPID aibox-admin-selkies.service)"
+done
+[[ -n "$hote" ]] || { echo "compositeur de Selkies introuvable après 30 s" >&2; exit 1; }
+# Lien de la session précédente retiré : son socket peut être repris entre-temps
+# par la TV, et Selkies y enverrait le clavier et la souris. session-env le
+# refait pour cette session.
+rm -f "${XDG_RUNTIME_DIR}/wayland-admin"
+
+# Verrouillage d'écran coupé : default n'a pas de mot de passe Unix, un bureau
+# verrouillé le resterait. L'accès est protégé par le mot de passe de nginx.
+# (~/.config est partagé avec la session TV : pas de verrouillage non plus.)
+kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false
+kwriteconfig6 --file kscreenlockerrc --group Daemon --key LockOnResume false
+
+# Applis GTK : thème, icônes et curseur WhiteSur, écrits SEULEMENT s'ils
+# manquent. Plasma les réécrit (Paramètres → Apparence → Style des
+# applications) : un choix de l'utilisateur n'est jamais écrasé.
+mkdir -p "${HOME}/.config/gtk-3.0" "${HOME}/.config/gtk-4.0"
+if [[ ! -e "${HOME}/.config/gtk-3.0/settings.ini" ]]; then
+    cat > "${HOME}/.config/gtk-3.0/settings.ini" <<EOT
+[Settings]
+gtk-theme-name=WhiteSur-Dark
+gtk-application-prefer-dark-theme=1
+gtk-icon-theme-name=WhiteSur-dark
+gtk-cursor-theme-name=WhiteSur-cursors
+gtk-cursor-theme-size=24
+EOT
 fi
-if [[ -n "$adw_src" ]] && { [[ -f "$gtk4/.aibox-theme" ]] || [[ ! -e "$gtk4/gtk.css" ]]; } \
-   && [[ "$(cat "$gtk4/.aibox-theme" 2>/dev/null)" != "$gtk_theme" ]]; then
-    rm -rf "$gtk4/gtk.css" "$gtk4/gtk-dark.css" "$gtk4/assets" "$gtk4/windows-assets"
-    mkdir -p "$gtk4"
-    cp "$adw_src/$adw_css" "$gtk4/gtk.css"
-    cp "$adw_src/$adw_css" "$gtk4/gtk-dark.css"
-    for a in assets windows-assets; do
-        [[ -d "$adw_src/$a" ]] && cp -a "$adw_src/$a" "$gtk4/$a"
-    done
-    echo "$gtk_theme" > "$gtk4/.aibox-theme"
-fi
+[[ -e "${HOME}/.config/gtk-4.0/settings.ini" ]] \
+    || cp "${HOME}/.config/gtk-3.0/settings.ini" "${HOME}/.config/gtk-4.0/settings.ini"
 
 # Cache de polices à jour avant tout composant graphique (cf. SteamBox : glycin
 # tué par seccomp si le cache est incomplet).
 fc-cache 2>/dev/null || true
 
-unset WAYLAND_DISPLAY DISPLAY
-exec labwc
+# KWin imbriqué : WAYLAND_DISPLAY désigne son hôte (Selkies) ; DISPLAY est
+# celui que KWin créera pour son Xwayland, jamais un hérité.
+# PULSE_SINK : le son des applis du bureau sort dans le navigateur (puits
+# « selkies »), pas sur la TV (essai du 27/11/2026).
+# QT_QPA_PLATFORM : repli X11 pour les applis Qt sans greffon Wayland (AppImage).
+# XDG_DATA_DIRS : applis Flatpak (système et utilisateur) dans le menu.
+unset DISPLAY
+export WAYLAND_DISPLAY="$hote" XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE \
+    XDG_SESSION_DESKTOP=plasma DESKTOP_SESSION=plasma \
+    KWIN_WAYLAND_NO_PERMISSION_CHECKS=1 PULSE_SINK=selkies \
+    "QT_QPA_PLATFORM=wayland;xcb" \
+    XDG_DATA_DIRS="${HOME}/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+exec startplasma-wayland

@@ -88,13 +88,14 @@ func ecrireRapport(e env, w io.Writer, maintenant time.Time) {
 	fmt.Fprint(w, premieresLignes(cmd("loginctl", "show-seat", "seat0"), 10))
 
 	section(w, "Processus graphiques")
-	mode := "hyprland"
+	mode := "bigscreen"
 	if txt, ok := e.lire("home/default/.config/aibox/tv-mode"); ok && txt != "" {
-		mode = txt
+		mode = modeTv(txt)
 	}
 	fmt.Fprintf(w, "mode TV : %s\n", mode)
-	// aibox-tv-launcher dépasse 15 caractères : pgrep -f cherche sur la ligne de commande.
-	for _, recherche := range [][]string{{"-a", "gamescope"}, {"-a", "Hyprland"}, {"-a", "labwc"}, {"-af", "aibox-tv-launcher"}, {"-a", "Xwayland"}} {
+	// Noms de plus de 15 caractères (selkies, en Python) : pgrep -f cherche
+	// sur la ligne de commande.
+	for _, recherche := range [][]string{{"-a", "gamescope"}, {"-a", "kwin_wayland"}, {"-a", "plasmashell"}, {"-af", "/opt/selkies/bin/selkies"}, {"-a", "Xwayland"}} {
 		fmt.Fprint(w, cmd("pgrep", recherche...))
 	}
 

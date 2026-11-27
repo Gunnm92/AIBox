@@ -1,5 +1,5 @@
 [Unit]
-Description=Bureau d'administration (noVNC)
+Description=Bureau d'administration (Selkies, Plasma)
 
 [Slice]
 MemoryMax=4G

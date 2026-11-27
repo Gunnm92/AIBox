@@ -1,0 +1,13 @@
+[Unit]
+Description=Bureau d'administration : Plasma, imbriqué dans Selkies
+PartOf=aibox-admin.target
+# Sans le compositeur de Selkies, KWin perd son hôte et la session s'arrête :
+# elle repart avec lui.
+BindsTo=aibox-admin-selkies.service
+After=aibox-admin-selkies.service
+
+[Service]
+Slice=admin.slice
+ExecStart=/usr/local/lib/aibox/admin-session
+Restart=always
+RestartSec=2

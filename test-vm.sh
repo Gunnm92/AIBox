@@ -5,14 +5,15 @@
 #
 #   ./test-vm.sh start        démarre la VM en arrière-plan (RAM=8G par défaut)
 #                             GPU=1 : GPU de l'hôte partagé (virtio-gpu, Venus/virgl),
-#                             écran de la VM en VNC sur le port 5902 (mot de passe noVNC)
+#                             écran de la VM en VNC sur le port 5902 (mot de passe du bureau web)
 #   ./test-vm.sh ssh [cmd]    SSH vers default (ISO construite avec --test-key)
 #   ./test-vm.sh unplug       retire la clé USB virtuelle
 #   ./test-vm.sh reboot       redémarre la VM (attend le retour de SSH)
 #   ./test-vm.sh wipe-disk    supprime le disque NVMe virtuel (VM arrêtée)
-#   ./test-vm.sh novnc        capture d'écran de noVNC (Chromium sans écran) → work/vm/novnc.png
+#   ./test-vm.sh web          capture d'écran du bureau Selkies (Chromium sans écran) → work/vm/web.png
 #   ./test-vm.sh log          console série
-#   ./test-vm.sh screen       capture de l'écran de la VM (session TV) → work/vm/screen.png
+#   ./test-vm.sh screen       capture de l'écran de la VM (session TV, grim : compositeurs
+#                             wlroots seulement, plus sous Plasma Bigscreen) → work/vm/screen.png
 #   ./test-vm.sh stop         arrête la VM
 set -euo pipefail
 
@@ -92,13 +93,13 @@ screen)
             WAYLAND_DISPLAY=wayland-1 grim -' > "$vm/screen.png"
     ls -l "$vm/screen.png"
     ;;
-novnc)
+web)
     # Chromium dans le même espace réseau que la VM, piloté par son protocole de
-    # débogage : ouvre noVNC avec le mot de passe de test, attend la connexion,
-    # affiche l'état de noVNC et capture la page.
+    # débogage : ouvre le bureau Selkies avec le mot de passe de test, attend,
+    # affiche le titre de la page et capture la page.
     pass="$(head -n 1 "$root/keys/vnc-password")"
-    url="${URL:-https://default:${pass}@127.0.0.1:6080/vnc.html?autoconnect=true&resize=${RESIZE:-remote}}"
-    rm -f "$vm/novnc.png"
+    url="${URL:-https://default:${pass}@127.0.0.1:6080/}"
+    rm -f "$vm/web.png"
     engine run --rm --network "container:$name" -v "$root:$root" -v "$root/work/pkgcache:/var/cache/pacman/pkg" \
         "$image" bash -c "
             pacman -Sy --noconfirm --needed chromium ttf-dejavu python-websocket-client nss >/dev/null 2>&1
@@ -107,8 +108,8 @@ novnc)
             certutil -A -d sql:\$HOME/.pki/nssdb -n aibox-ca -t C,, -i '$root/keys/aibox-ca.crt'
             chromium --headless --no-sandbox --disable-gpu --hide-scrollbars \
                 --window-size=1600,900 --remote-debugging-port=9222 '$url' >/dev/null 2>&1 &
-            python3 '$root/tools/cdp-shot.py' '$vm/novnc.png' \${WAIT:-20} '${JS_FILE:-}'
-            chown $(id -u):$(id -g) '$vm/novnc.png'
+            python3 '$root/tools/cdp-shot.py' '$vm/web.png' \${WAIT:-20} '${JS_FILE:-}'
+            chown $(id -u):$(id -g) '$vm/web.png'
         "
     ;;
 stop)   engine rm -f "$name" >/dev/null && echo "VM arrêtée." ;;

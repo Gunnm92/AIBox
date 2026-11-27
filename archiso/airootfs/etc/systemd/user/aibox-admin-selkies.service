@@ -1,0 +1,36 @@
+[Unit]
+Description=Bureau d'administration : Selkies (bureau dans le navigateur, son compositeur Wayland)
+PartOf=aibox-admin.target
+
+[Service]
+Slice=admin.slice
+# Selkies (27/11/2026, repris de SteamBox) fait tourner son propre compositeur
+# Wayland (pixelflux), dans lequel le KWin du bureau s'imbrique
+# (aibox-admin-plasma). Il remplace labwc headless, wayvnc et noVNC : KWin lui
+# donne la forme du pointeur, que le navigateur affiche (un seul pointeur), et
+# le bureau prend la taille de la fenêtre du navigateur.
+# Son socket : le premier wayland-N libre à partir de 1 ; admin-session le
+# retrouve. Il ne doit pas se prendre pour un client d'un autre compositeur :
+# pas de WAYLAND_DISPLAY ni de DISPLAY hérités.
+UnsetEnvironment=WAYLAND_DISPLAY DISPLAY
+# Écoute locale en HTTP : nginx (aibox-admin-web) fait le HTTPS et le mot de passe.
+Environment=SELKIES_WAYLAND=true SELKIES_ADDR=127.0.0.1 SELKIES_PORT=8082
+Environment=SELKIES_ENABLE_HTTPS=false SELKIES_ENABLE_BASIC_AUTH=false
+# Entrées et presse-papiers vers le KWin du bureau : lien wayland-admin, publié
+# par l'autostart session-env (le socket de KWin change à chaque démarrage).
+# Selkies le recherche toutes les 2 s. Sans ce réglage, il voit aussi le socket
+# de la TV et injecte alors dans son propre compositeur (essai du 27/11/2026).
+Environment=SELKIES_APP_WAYLAND_DISPLAY=wayland-admin
+Environment=SELKIES_ENABLE_CURSORS=true SELKIES_USE_BROWSER_CURSORS=true
+# Encodage et rendu sur le GPU (VA-API : H.264, H.265, AV1).
+Environment=SELKIES_ENCODE_DRI=/dev/dri/renderD128 SELKIES_RENDER_DRI=/dev/dri/renderD128
+# Son : moniteur du puits « selkies » (pipewire-pulse.conf.d/50-aibox-selkies.conf),
+# où sortent les applis du bureau (PULSE_SINK, admin-session). Micro coupé : il
+# changerait la sortie par défaut de tout PipeWire, la TV comprise.
+Environment=SELKIES_AUDIO_ENABLED=true SELKIES_AUDIO_DEVICE_NAME=selkies.monitor SELKIES_MICROPHONE_ENABLED=false
+# Pas de manettes : Selkies les créerait en périphériques du noyau (uinput),
+# que Steam verrait aussi sur la TV.
+Environment=SELKIES_GAMEPAD_ENABLED=false
+ExecStart=/opt/selkies/bin/selkies
+Restart=always
+RestartSec=2

@@ -42,12 +42,12 @@ func TestTvModeGarde(t *testing.T) {
 func TestTvModeUnePourSession(t *testing.T) {
 	e, _ := e0(t)
 	var sortie, erreurs bytes.Buffer
-	tvMode(e, []string{"--once", "bureau"}, &sortie, &erreurs)
+	tvMode(e, []string{"--once", "bigscreen"}, &sortie, &erreurs)
 	if _, err := os.Stat(filepath.Join(e.home, ".config", "aibox", "tv-mode")); err == nil {
 		t.Error("--once ne doit pas toucher au mode gardé")
 	}
 	b, _ := os.ReadFile(filepath.Join(e.runtime, "aibox-tv-mode-once"))
-	if strings.TrimSpace(string(b)) != "bureau" {
+	if strings.TrimSpace(string(b)) != "bigscreen" {
 		t.Errorf("mode pour une session = %q", b)
 	}
 	if !strings.Contains(sortie.String(), "pour cette session") {
@@ -59,8 +59,8 @@ func TestTvModeAffichageDuMode(t *testing.T) {
 	e, _ := e0(t)
 	var sortie, erreurs bytes.Buffer
 	tvMode(e, nil, &sortie, &erreurs)
-	if strings.TrimSpace(sortie.String()) != "hyprland" {
-		t.Errorf("sans fichier, attendu hyprland, obtenu %q", sortie.String())
+	if strings.TrimSpace(sortie.String()) != "bigscreen" {
+		t.Errorf("sans fichier, attendu bigscreen, obtenu %q", sortie.String())
 	}
 	// Le mode pour une session prime sur le mode gardé.
 	os.MkdirAll(filepath.Join(e.home, ".config", "aibox"), 0o755)
@@ -70,10 +70,10 @@ func TestTvModeAffichageDuMode(t *testing.T) {
 	if strings.TrimSpace(sortie.String()) != "gamescope" {
 		t.Errorf("mode gardé attendu, obtenu %q", sortie.String())
 	}
-	os.WriteFile(filepath.Join(e.runtime, "aibox-tv-mode-once"), []byte("bureau\n"), 0o644)
+	os.WriteFile(filepath.Join(e.runtime, "aibox-tv-mode-once"), []byte("bigscreen\n"), 0o644)
 	sortie.Reset()
 	tvMode(e, nil, &sortie, &erreurs)
-	if strings.TrimSpace(sortie.String()) != "bureau" {
+	if strings.TrimSpace(sortie.String()) != "bigscreen" {
 		t.Errorf("mode d'une session attendu, obtenu %q", sortie.String())
 	}
 }
@@ -91,5 +91,26 @@ func TestTvModeInvalide(t *testing.T) {
 		if !strings.Contains(erreurs.String(), "Usage : aibox tv-mode") {
 			t.Errorf("%v : usage absent", mauvais)
 		}
+	}
+}
+
+// Anciens modes (Hyprland, labwc) : gardés dans un ancien fichier ou donnés à
+// la commande, ils valent bigscreen.
+func TestTvModeAnciensModes(t *testing.T) {
+	e, _ := e0(t)
+	var sortie, erreurs bytes.Buffer
+	os.MkdirAll(filepath.Join(e.home, ".config", "aibox"), 0o755)
+	os.WriteFile(filepath.Join(e.home, ".config", "aibox", "tv-mode"), []byte("hyprland\n"), 0o644)
+	tvMode(e, nil, &sortie, &erreurs)
+	if strings.TrimSpace(sortie.String()) != "bigscreen" {
+		t.Errorf("hyprland gardé : attendu bigscreen, obtenu %q", sortie.String())
+	}
+	sortie.Reset()
+	if code := tvMode(e, []string{"bureau"}, &sortie, &erreurs); code != 0 {
+		t.Fatalf("code = %d : %s", code, erreurs.String())
+	}
+	b, _ := os.ReadFile(filepath.Join(e.home, ".config", "aibox", "tv-mode"))
+	if strings.TrimSpace(string(b)) != "bigscreen" {
+		t.Errorf("bureau écrit %q, attendu bigscreen", b)
 	}
 }

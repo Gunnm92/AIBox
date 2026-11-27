@@ -29,18 +29,27 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Solution** : `install -D` dans `build.sh` (corrigé).
 
 ### Les secrets de `keys/` sont absents
-- **Conséquence** : le build génère une nouvelle CA HTTPS, à réapprouver sur les postes, et un nouveau mot de passe noVNC. Les partages NAS par défaut disparaissent, et l'accès SSH aussi si `authorized_keys` manque.
+- **Conséquence** : le build génère une nouvelle CA HTTPS, à réapprouver sur les postes, et un nouveau mot de passe du bureau web. Les partages NAS par défaut disparaissent, et l'accès SSH aussi si `authorized_keys` manque.
 - **Solution** : récupérer `keys/` depuis le NAS (`/mnt/Workspace/AIBox/keys/`) avant de construire, et y recopier `keys/` après un changement.
 
 ## Session TV
 
 ### Écran noir avec gamescope (10/10/2026)
 - **Cause** : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam (« SteamControlled »). Un autre programme lancé seul, comme le lanceur à tuiles, reste invisible.
-- **Solution** : gamescope lance Steam directement, et le lanceur ne tourne qu'en mode labwc. Pour diagnostiquer : `gamescopectl focus_info`.
+- **Solution** : gamescope lance Steam directement ; le lanceur de l'époque (retiré le 27/11/2026) ne tournait que hors de gamescope. Pour diagnostiquer : `gamescopectl focus_info`.
 
 ### gamescope imbriqué dans labwc : pas d'image, pas de HDR (10/10/2026)
 - **Cause** : avec le rendu Vulkan, nécessaire au HDR, labwc refuse les images 4K (« DMA-BUF is too large to import (3840x2160 > 2560x2560) »). Et il ne propose pas le HDR à gamescope (`bExposeHDRSupport: false`).
 - **Solution** : abandonné. gamescope pilote directement la TV.
+
+### Plasma survit à l'arrêt de la session TV (27/11/2026)
+- **Symptôme** : après l'extinction de la manette, `kwin_wayland` et `ksmserver` tournent encore, une génération de plus à chaque bascule (Bigscreen → gamescope → Bigscreen), et `loginctl list-sessions` garde des sessions sur `tty1`, avec plusieurs Go de mémoire.
+- **Cause** : avec `PAMName=login`, les processus de la session vont dans le scope logind (`session-N.scope`), pas dans le cgroup du service. Seul `dbus-run-session` reçoit l'arrêt ; Plasma ne s'arrête pas avec lui. `loginctl terminate-session` ne suffit pas non plus (scope « abandoned »).
+- **Solution** : `tv-session` note `XDG_SESSION_ID` dans `$XDG_RUNTIME_DIR/aibox-tv-session-id`, et `aibox-tv.service` arrête `session-N.scope` en `ExecStopPost`. À la main : `sudo systemctl stop session-<N>.scope`.
+
+### Pas de HDMI-CEC (27/11/2026)
+- **Cause** : `amdgpu` ne pilote pas la ligne CEC de la sortie HDMI : pas de `/dev/cec*`, `cec-client -l` ne trouve rien. Le CEC par DisplayPort (`drm_dp_cec`) ne vaut que pour les ports DP.
+- **Solution** : un adaptateur USB-CEC (Pulse-Eight), que libcec, et donc Bigscreen, reconnaît. Pas fait.
 
 ### Pas de 4K à 120 Hz
 - **Cause** : le pilote amdgpu n'a pas le FRL du HDMI 2.1, refusé par le HDMI Forum aux pilotes libres. La 4K à 120 Hz ne passe qu'en 4:2:0 8 bits.
@@ -48,17 +57,22 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 
 ## Bureau d'administration
 
-### Une appli Qt ou Flatpak lancée depuis Thunar plante (« could not connect to display ») (10/10/2026)
-- **Cause** : Thunar et les portails, réveillés par D-Bus avant que labwc ait publié son affichage, démarraient sans `WAYLAND_DISPLAY` ni `DISPLAY`.
-- **Solution** : affichage par défaut dans `/etc/systemd/user.conf.d/10-aibox-admin-display.conf` (corrigé).
+### Le KWin du bureau ne prend pas le socket attendu (27/11/2026)
+- **Symptôme** : clavier et souris sans effet dans Selkies ; le journal d'`aibox-admin-selkies` répète « no longer answers ». Ou la session TV refusait de démarrer en attendant `wayland-0`.
+- **Cause** : `kwin_wayland_wrapper`, lancé par `startplasma-wayland`, prend le premier `wayland-N` libre **à partir de 1**, jamais `wayland-0`, et ignore `--socket`. Selkies fait de même. Les noms dépendent donc de l'ordre de démarrage.
+- **Solution** : rien n'est écrit en dur. L'autostart `aibox-session-env` relie `wayland-admin` au socket du KWin du bureau, et Selkies vise ce nom (`SELKIES_APP_WAYLAND_DISPLAY`). `admin-session` efface le lien au démarrage. La TV publie le sien dans `aibox-tv.env`.
 
-### Thunar ne prend pas le thème
-- **Cause** : Thunar tourne en démon et ne recharge pas le thème à chaud. Au démarrage du bureau, il était réveillé avant que `xfsettingsd` ait publié le thème (11/10/2026).
-- **Solution** : `aibox-admin-xfsettingsd.service` en `Type=dbus` (`BusName=org.gtk.Settings`), et `thunar.service.d/aibox.conf` le fait démarrer après. Après un changement de thème : `systemctl --user restart thunar`.
+### Selkies injecte le clavier dans son propre compositeur (27/11/2026)
+- **Cause** : sans `SELKIES_APP_WAYLAND_DISPLAY`, Selkies cherche « le » compositeur imbriqué parmi les sockets `wayland-<chiffres>`. Avec la TV en plus, il en voit plusieurs et se rabat sur le sien (« Multiple candidate app-compositor sockets »). Les touches non ASCII se perdent alors (constaté sur SteamBox).
+- **Solution** : `SELKIES_APP_WAYLAND_DISPLAY=wayland-admin` (voir plus haut).
 
-### L'icône de `wsquashfs-launcher --tray` disparaît à la fin de la session TV (22/11/2026)
-- **Cause** : l'unité générée `app-wsquashfs\x2dlauncher\x2dtray@autostart.service` a `PartOf=graphical-session.target` (systemd-xdg-autostart-generator). La session TV (`start-hyprland`) tire `hyprland-session.target`, qui `BindsTo=` et `PropagatesStopTo=` `graphical-session.target` : à l'arrêt de la session TV, l'arrêt se propage à l'icône, et rien ne la relance. Effet secondaire, non traité ici : au démarrage, la session TV pousse `WAYLAND_DISPLAY=wayland-1` dans l'environnement du gestionnaire, et une appli lancée au démarrage peut s'ouvrir sur la TV.
-- **Solution** : `aibox-tv.service` lance `/usr/local/lib/aibox/admin-autostart` en `ExecStopPost=-`, après la remise de l'environnement sur l'administration (l'ordre compte). Il démarre chaque unité `app-…@autostart.service` chargée et inactive. Démarrer `aibox-admin-autostart.target` ne suffit pas : déjà active, la cible ne relance pas ses dépendances arrêtées. Et un démarrage groupé échoue en entier à cause d'une unité masquée (essais du 22/11/2026). Vérification, après une extinction de la manette et l'arrêt de la session TV : `systemctl --user is-active 'app-wsquashfs\x2dlauncher\x2dtray@autostart.service'` doit répondre `active`.
+### Le son de la TV part dans le navigateur (27/11/2026)
+- **Cause** : la sortie par défaut choisie à la main (`default.configured.audio.sink=selkies`, dans `~/.local/state/wireplumber/default-nodes`, sur le disque) vaut pour tout PipeWire, la TV comprise.
+- **Solution** : ne pas choisir « Navigateur-Selkies » comme sortie par défaut. Les applis du bureau y sortent d'elles-mêmes (`PULSE_SINK=selkies`). Pour revenir : `pactl set-default-sink alsa_output.pci-0000_c4_00.1.hdmi-surround-extra1`.
+
+### Chrome s'ouvre sur l'autre bureau (27/11/2026)
+- **Cause** : Chrome n'a qu'une instance : lancé une seconde fois, il ouvre sa fenêtre là où tourne la première (« Ouverture dans une session de navigateur existante »).
+- **Solution** : fermer Chrome sur l'autre bureau (TV ou administration) avant de le lancer.
 
 ## Son et manette
 
@@ -88,6 +102,12 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Cause** : le profil UCM « HiFi » de la carte HDMI d'AMD ne propose que la stéréo.
 - **Solution** : `52-hdmi-surround.conf` désactive UCM pour cette carte (corrigé), puis on choisit `output:hdmi-surround-extra1`.
 
+## Mise à jour automatique
+
+### `aibox update` : « le LLM ne répond pas » (27/11/2026)
+- **Cause** : LiteLLM ne démarrait plus (`PermissionError: [Errno 13] Permission denied: '/app/config.yaml'`, relance en boucle). Son Quadlet (`~/.config/containers/systemd/litellm.container`, dans le home) avait `User=1000` et `config.yaml` est en 0600. Avec Podman sans root, l'uid 1000 du conteneur est 100999 sur l'hôte : seul l'uid 0 du conteneur est `default`. Le conteneur lancé avant ce changement tournait encore ; la panne n'est apparue qu'au redémarrage suivant.
+- **Solution** : `User=0` dans le Quadlet (root du conteneur = `default`, sans privilège), clés gardées en 0600. Lancer aussi `aibox update` sans sudo : sous sudo, il ne trouve pas la clé (il le refuse désormais).
+
 ## Réseau
 
 ### Dongle Ethernet AX88179B : `ax88179_178a` sans lien (29/10/2026)
@@ -111,7 +131,7 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 ## Session TV (suite)
 
 ### La session TV se relance en boucle, gamescope plante (11/10/2026)
-- **Cause** : Steam était déjà ouvert sur le bureau d'administration, depuis noVNC. Le Steam de la TV lui passe la main et s'arrête, gamescope tombe avec lui, puis `Restart=always` relance le tout. Le journal montre « Primary child shut down! ».
+- **Cause** : Steam était déjà ouvert sur le bureau d'administration, à distance. Le Steam de la TV lui passe la main et s'arrête, gamescope tombe avec lui, puis `Restart=always` relance le tout. Le journal montre « Primary child shut down! ».
 - **Solution** : `tv-session` ne démarre pas si Steam est déjà ouvert (code 75, sans relance).
 
 ### Steam fermé, il revient aussitôt (11/10/2026)
@@ -119,11 +139,6 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Solution** : Steam note sa propre sortie, et `tv-session` termine alors la session (code 75). Rallumer la manette la relance.
 
 ## Applis Flatpak
-
-### L'écran clignote quand une appli est lancée depuis le lanceur Hyprland (11/11/2026)
-- **Symptôme** : Moonlight (ou Steam lancé directement) s'ouvre, mais l'écran alterne entre l'appli et le lanceur.
-- **Cause** : la fenêtre plein écran du lanceur restait ouverte et reprenait le focus à l'appli, ouverte sur la moitié de l'écran. `hyprctl activewindow`, relevé plusieurs fois, alterne entre les deux.
-- **Solution** : le lanceur ferme sa fenêtre pendant que l'appli tourne, et la rouvre quand elle se termine. Les cartes de widgets (couche « top ») ne s'affichent qu'avec la fenêtre du lanceur, sinon elles restent par-dessus l'appli. Pour Steam, vérifie aussi qu'un `~/.config/aibox/tv-apps.json` ancien ne porte pas `command_labwc` au lieu de `command_hyprland` : la tuile lancerait Steam sous Hyprland, sans gamescope.
 
 ### Un chemin en `/run/user/1000/doc/…` au lieu du vrai fichier (11/10/2026)
 - **Exemple** : Steam ROM Manager (Flatpak), exécutable `~/.local/bin/wsquashfs-launcher` choisi par la fenêtre de sélection (l'ancien chemin `/usr/local/bin/…` n'existe plus depuis que l'image ne le fournit plus).

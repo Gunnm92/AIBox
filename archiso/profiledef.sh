@@ -28,17 +28,16 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/sudoers.d"]="0:0:750"
   ["/etc/sudoers.d/10-wheel"]="0:0:440"
-  ["/usr/local/bin/xfdesktop-settings"]="0:0:755"
-  ["/usr/local/bin/aibox-tv-launcher"]="0:0:755"
-  ["/usr/local/lib/aibox/tv-widgets-data"]="0:0:755"
   ["/usr/local/bin/evdev-bridge-native"]="0:0:755"
   ["/usr/local/bin/steamos-session-select"]="0:0:755"
   ["/usr/local/bin/aibox"]="0:0:755"
   ["/usr/lib/ds5dongle/ds5dongle-loopback-stop"]="0:0:755"
   ["/usr/local/sbin/aibox-setup-disk"]="0:0:755"
   ["/usr/local/lib/aibox/"]="0:0:755"
-  ["/etc/aibox/novnc.htpasswd"]="1000:1000:600"
-  ["/etc/aibox/wayvnc-rdp.conf"]="1000:1000:600"
-  ["/etc/aibox/novnc-tls.key"]="1000:1000:600"
+  # Venv de Selkies (build.sh) : mkarchiso ne garde pas les droits des fichiers
+  # copiés, ses scripts seraient en 644 (build d'essai du 27/11/2026).
+  ["/opt/selkies/bin/"]="0:0:755"
+  ["/etc/aibox/web.htpasswd"]="1000:1000:600"
+  ["/etc/aibox/web-tls.key"]="1000:1000:600"
   ["/etc/aibox/nas.cred"]="0:0:600"
 )

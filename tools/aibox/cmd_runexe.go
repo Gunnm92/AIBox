@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const usageRunExe = `Usage : aibox run-exe PROGRAMME.exe [arguments…]   (ou double-clic dans Thunar)
+const usageRunExe = `Usage : aibox run-exe PROGRAMME.exe [arguments…]   (ou double-clic dans Dolphin)
   Proton : PROTON dans ~/.config/aibox/proton.conf (nom d'un dossier de
   ~/.local/share/Steam/compatibilitytools.d, ou chemin complet) ; sinon le
   proton-cachyos le plus récent ; sinon UMU-Proton, téléchargé une fois par umu.

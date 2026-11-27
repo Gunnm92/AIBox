@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Bureau
+Comment=Passe de Plasma Bigscreen au bureau Plasma sur la TV, et retour
+Exec=/usr/local/lib/aibox/tv-bureau
+Icon=user-desktop
+Categories=System;

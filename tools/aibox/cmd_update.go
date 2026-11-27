@@ -79,6 +79,14 @@ func cmdUpdate(args []string, sortie, erreurs io.Writer) int {
 		fmt.Fprintln(erreurs, "--podman ne se combine qu'avec --dry-run.")
 		return 2
 	}
+	// En utilisateur seulement : la clé du LLM (~/.config/aibox/auto-update.conf,
+	// 0600), le journal et Podman sont ceux de default ; les étapes root passent
+	// par sudo d'elles-mêmes. Lancé par sudo, HOME=/root : pas de clé, et le LLM
+	// refusait la décision sans que la cause se voie.
+	if os.Geteuid() == 0 {
+		fmt.Fprintln(erreurs, "aibox update se lance en utilisateur, sans sudo (la clé du LLM est dans ~/.config/aibox/auto-update.conf de default).")
+		return 1
+	}
 	e := envReel()
 	ctx := &contexteUpdate{
 		e: e, o: o, sortie: sortie, erreurs: erreurs,

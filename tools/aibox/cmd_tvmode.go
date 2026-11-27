@@ -9,14 +9,27 @@ import (
 )
 
 // modesTv : les modes de la session TV.
-var modesTv = []string{"gamescope", "hyprland", "bureau"}
+var modesTv = []string{"gamescope", "bigscreen"}
 
-const usageTvMode = `Usage : aibox tv-mode [--once] [gamescope|hyprland|bureau]
+// anciensModesTv : modes retirés le 27/11/2026 (Hyprland et son lanceur, labwc
+// et XFCE), lus dans un ancien ~/.config/aibox/tv-mode ou donnés à la commande :
+// ils valent bigscreen (tv-session fait de même).
+var anciensModesTv = map[string]string{"hyprland": "bigscreen", "bureau": "bigscreen"}
+
+const usageTvMode = `Usage : aibox tv-mode [--once] [gamescope|bigscreen]
+  bigscreen : Plasma Bigscreen, accueil à la manette (par défaut) ; la tuile
+              « Bureau » y passe au bureau Plasma et en revient
   gamescope : Steam Big Picture sous gamescope (HDR, FSR)
-  hyprland  : Hyprland, cartes de widgets et lanceur à tuiles (par défaut)
-  bureau    : labwc et le bureau XFCE, sans le lanceur ; Super+L revient au lanceur
   --once    : pour la prochaine session seulement (en RAM, oublié ensuite)
   aibox tv-mode                             mode actuel`
+
+// modeTv : le mode, avec les anciens noms ramenés à bigscreen.
+func modeTv(mode string) string {
+	if nouveau, ok := anciensModesTv[mode]; ok {
+		return nouveau
+	}
+	return mode
+}
 
 // cmdTvMode : « aibox tv-mode », mode de la session TV, relance la session.
 func cmdTvMode(args []string, sortie, erreurs io.Writer) int {
@@ -35,18 +48,18 @@ func tvMode(e env, args []string, sortie, erreurs io.Writer) int {
 	}
 
 	if len(args) == 0 {
-		// Mode actuel : celui de cette session, sinon le gardé, sinon hyprland.
+		// Mode actuel : celui de cette session, sinon le gardé, sinon bigscreen.
 		for _, f := range []string{pourUneSession, gardé} {
 			if b, err := os.ReadFile(f); err == nil {
-				fmt.Fprintln(sortie, strings.TrimSpace(string(b)))
+				fmt.Fprintln(sortie, modeTv(strings.TrimSpace(string(b))))
 				return 0
 			}
 		}
-		fmt.Fprintln(sortie, "hyprland")
+		fmt.Fprintln(sortie, "bigscreen")
 		return 0
 	}
 
-	mode := args[0]
+	mode := modeTv(args[0])
 	if len(args) > 1 || !contient(modesTv, mode) {
 		fmt.Fprintln(erreurs, usageTvMode)
 		return 1

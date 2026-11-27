@@ -39,37 +39,27 @@ bluez-utils
 fish
 fastfetch
 
-# Bureau d'administration (noVNC) : labwc headless + panneau XFCE, wayvnc,
-# websocat (pont WebSocket, websockify n'a pas de paquet), nginx (noVNC en HTTPS)
-labwc
-wlr-randr
-wayvnc
-websocat
-nginx
-xfce4-panel
-# Volume : icône du panneau et mixeur (son de la manette, sorties HDMI…)
-xfce4-pulseaudio-plugin
-# Dock en bas du bureau (applis épinglées et fenêtres ouvertes), compatible Wayland
-xfce4-docklike-plugin
+# Bureaux KDE (27/11/2026) : KWin et Plasma pour le bureau d'administration
+# (imbriqué dans Selkies, lui-même dans /opt/selkies, installé par build.sh) et
+# pour la TV (Plasma Bigscreen). nginx : accès web en HTTPS (Selkies, code-server).
+# python : celui du venv de Selkies.
+kwin
+plasma-desktop
+plasma-bigscreen
+plasma-nano
+plasma-pa
+plasma-nm
+kscreen
+xdg-desktop-portal-kde
+konsole
+dolphin
+kate
+# Volume par sortie et par canal (son de la manette, sorties HDMI…)
 pavucontrol
-xfce4-settings
-# Notifications de bureau (org.freedesktop.Notifications, activé par D-Bus) :
-# sans lui, les messages de l'icône de wsquashfs-launcher, notify-send… sont perdus
-xfce4-notifyd
-# Seulement pour Paramètres → Session et démarrage (applications au démarrage) ;
-# la session XFCE elle-même n'est pas utilisée (labwc + services).
-xfce4-session
-xfdesktop
-xfce4-appfinder
-xfce4-terminal
-xfce4-taskmanager
-thunar
-thunar-volman
-mousepad
-network-manager-applet
+nginx
+python
 xorg-xwayland
-xdg-desktop-portal-gtk
-# Réseau dans Thunar (smb://), corbeille, clés USB ; partages SMB en ligne de commande
+# Réseau (smb://), corbeille, clés USB pour les applis GTK ; partages SMB en ligne de commande
 gvfs
 gvfs-smb
 cifs-utils
@@ -106,8 +96,8 @@ wget
 # (identify, magick), dans le pipeline LinkedIn
 imagemagick
 
-# Session TV : Steam natif (bibliothèques 32 bits), son (PipeWire), lanceur
-# (pygame). vulkan-virtio : GPU partagé dans une VM (Venus), pour les tests.
+# Session TV : Steam natif (bibliothèques 32 bits), son (PipeWire).
+# vulkan-virtio : GPU partagé dans une VM (Venus), pour les tests.
 # gamescope : Steam en mode SteamOS sur la TV (HDR, FSR, VRR), mode gamescope de la session TV.
 steam
 gamescope
@@ -120,22 +110,14 @@ pipewire-pulse
 pipewire-alsa
 wireplumber
 rtkit
-python-pygame
-# Bandeau de widgets de la TV (heure, météo, titres, état d'aibox), voir quickshell-tv
-quickshell
-# Session TV et bureau d'administration sous Hyprland
-hyprland
-qt6-multimedia
 # Jeux : gamemode (gamemoderun %command% dans Steam), son des jeux 32 bits
 gamemode
 lib32-gamemode
 lib32-libpulse
 
-# RDP (compilé depuis l'AUR au build) : passerelle vers le bureau d'administration
-xrdp
-
 # Sunshine (dépôts CachyOS) : diffusion du bureau d'administration vers
-# Moonlight (VAAPI) ; lancé à la main, pas au démarrage
+# Moonlight (VAAPI) ; lancé à la main, pas au démarrage. Sous KWin, sans clavier
+# ni souris (evdev-bridge ne parle qu'aux compositeurs wlroots).
 sunshine
 
 # Jeux Windows au format Batocera (.wsquashfs) : wsquashfs-launcher n'est plus

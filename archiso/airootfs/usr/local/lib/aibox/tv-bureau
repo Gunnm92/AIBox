@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# tv-bureau : tuile « Bureau » de la TV. Passe de l'accueil Plasma Bigscreen au
+# bureau Plasma, ou en revient (plasma-bigscreen-swap-session remplace
+# plasmashell, sans relancer la session). Ne vaut que sur la TV (AIBOX_TV_MODE,
+# posé par tv-session) : sur le bureau d'administration, la même tuile y
+# remplacerait le bureau par l'accueil Bigscreen.
+if [[ -z "${AIBOX_TV_MODE:-}" ]]; then
+    notify-send "Bureau" "Cette tuile ne sert que sur la TV." 2>/dev/null || true
+    exit 1
+fi
+exec plasma-bigscreen-swap-session

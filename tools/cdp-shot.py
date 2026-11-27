@@ -1,7 +1,7 @@
-# Pilote Chromium par son protocole de débogage (utilisé par ./test-vm.sh novnc) :
+# Pilote Chromium par son protocole de débogage (utilisé par ./test-vm.sh web) :
 # ouvre une page, attend, évalue un script facultatif, puis capture l écran.
-# Ouvre noVNC dans Chromium (déjà lancé avec --remote-debugging-port=9222),
-# attend la connexion, lit l'état affiché par noVNC et capture l'écran.
+# Ouvre le bureau Selkies dans Chromium (déjà lancé avec
+# --remote-debugging-port=9222), attend, lit le titre de la page et capture l'écran.
 import base64, json, sys, time, urllib.request
 import websocket  # python-websocket-client
 out, wait = sys.argv[1], int(sys.argv[2])
@@ -23,6 +23,6 @@ time.sleep(wait)
 if len(sys.argv) > 3 and sys.argv[3]:
     expr = open(sys.argv[3]).read()
     print(call("Runtime.evaluate", expression=expr, awaitPromise=True).get("result", {}).get("value"))
-js = "JSON.stringify({status: (document.getElementById('noVNC_status')||{}).textContent, connected: document.documentElement.classList.contains('noVNC_connected'), dialogs: [...document.querySelectorAll('.noVNC_open')].map(e => e.id)})"
+js = "JSON.stringify({title: document.title, url: location.href})"
 print(call("Runtime.evaluate", expression=js)["result"]["value"])
 open(out, "wb").write(base64.b64decode(call("Page.captureScreenshot")["data"]))

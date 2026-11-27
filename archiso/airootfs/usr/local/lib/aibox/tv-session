@@ -1,25 +1,24 @@
 #!/usr/bin/env bash
 # Session TV sur l'écran réel (GPU), selon ~/.config/aibox/tv-mode (aibox tv-mode) :
-#   hyprland (défaut)  : Hyprland, configuration /etc/aibox/hypr-tv, les cartes de widgets
-#                        (quickshell-tv) et le lanceur (applis de tv-apps.json) ; Steam y
-#                        est une tuile, et « Passer au bureau » dans Steam y mène ;
+#   bigscreen (défaut) : Plasma Bigscreen (KWin sur la TV, accueil à la manette) ; Steam
+#                        (gamescope) y est une tuile, et « Passer au bureau » dans Steam y
+#                        mène. La tuile « Bureau » passe au bureau Plasma et en revient
+#                        (plasma-bigscreen-swap-session), sans relancer la session ;
 #   gamescope          : gamescope pilote la TV (HDR, FSR, VRR) avec Steam en mode
-#                        SteamOS, comme gamescope-session ;
-#   bureau             : labwc, configuration /etc/aibox/labwc-bureau, avec le bureau XFCE
-#                        (fond et panneau), sans le lanceur ; tuile « Bureau » du lanceur,
-#                        Super+L revient au lanceur.
-# Le bureau d'administration (labwc headless, noVNC) doit déjà avoir pris wayland-0 et
-# :0 : sinon ce compositeur les lui volerait (cf. SteamBox).
+#                        SteamOS, comme gamescope-session.
+# hyprland et bureau (modes retirés le 27/11/2026) valent bigscreen.
+# Plus d'ordre imposé avec le bureau d'administration : chaque KWin prend le
+# premier socket wayland-N libre, et chaque session publie le sien (session-env).
 set -euo pipefail
-for _ in $(seq 1 60); do
-    [[ -S "${XDG_RUNTIME_DIR}/wayland-0" ]] && break
-    sleep 0.5
-done
-[[ -S "${XDG_RUNTIME_DIR}/wayland-0" ]] || { echo "wayland-0 (administration) absent : refus de démarrer" >&2; exit 1; }
 cd "${HOME}"
 unset WAYLAND_DISPLAY DISPLAY
+# Numéro de la session logind de la TV : à l'arrêt du service, son scope est
+# arrêté (aibox-tv.service, ExecStopPost). Plasma (KWin, ksmserver…) ne
+# s'arrête pas avec dbus-run-session et survivait à la session, une génération
+# de plus à chaque bascule (essai du 27/11/2026).
+echo "${XDG_SESSION_ID:-}" > "${XDG_RUNTIME_DIR}/aibox-tv-session-id"
 # Mode pour cette session seulement (aibox tv-mode --once : « Passer au bureau »,
-# tuile Steam du lanceur), utilisé une fois ; sinon le mode gardé sur le disque.
+# tuile Steam), utilisé une fois ; sinon le mode gardé sur le disque.
 once="${XDG_RUNTIME_DIR}/aibox-tv-mode-once"
 if [[ -s "$once" ]]; then
     mode="$(cat "$once")"
@@ -27,26 +26,23 @@ if [[ -s "$once" ]]; then
 else
     mode="$(cat "${HOME}/.config/aibox/tv-mode" 2>/dev/null || true)"
 fi
-# Sans choix enregistré, la session démarre sur le lanceur (Hyprland).
-mode="${mode:-hyprland}"
+# Sans choix enregistré, la session démarre sur Bigscreen.
+mode="${mode:-bigscreen}"
 # La session (PAM/systemd) arrive avec CAP_WAKE_ALARM en capacité ambiante,
 # héritée par toutes les applis : le bac à sable de Steam (bwrap) refuse alors
 # de démarrer (« Unexpected capabilities but not setuid »), et Steam conclut à
 # tort que les espaces de noms utilisateur sont désactivés. On les retire.
 nocaps=(setpriv --inh-caps=-all --ambient-caps=-all)
 
-if [[ "$mode" == hyprland ]]; then
-    export AIBOX_TV_MODE=hyprland
-    # Seat du système (logind), pas le backend « noop » hérité de l'administration.
+if [[ "$mode" != gamescope ]]; then
+    export AIBOX_TV_MODE=bigscreen XDG_CURRENT_DESKTOP=KDE
+    # Seat du système (logind), pas le backend « noop » des services utilisateur.
     export LIBSEAT_BACKEND=logind
-    # Par start-hyprland (surveillance, mode sans échec après un plantage) :
-    # Hyprland lancé seul l'affiche en avertissement à l'écran (0.53 et suivantes).
-    exec "${nocaps[@]}" start-hyprland -- -c /etc/aibox/hypr-tv/hyprland.lua
-fi
-if [[ "$mode" == bureau ]]; then
-    export AIBOX_TV_MODE=bureau
-    export LIBSEAT_BACKEND=logind
-    exec "${nocaps[@]}" labwc -C /etc/aibox/labwc-bureau
+    # Bus de session propre : le Plasma du bureau d'administration tient le bus
+    # principal (kded6, ksmserver, kglobalaccel). Sans systemd (/etc/xdg/startkderc) :
+    # les unités plasma-*.service de systemd n'existent qu'une fois par utilisateur.
+    unset DBUS_SESSION_BUS_ADDRESS
+    exec "${nocaps[@]}" dbus-run-session plasma-bigscreen-wayland
 fi
 
 # Réglages de gamescope-session (Steam en mode SteamOS) : menu rapide avec
@@ -56,7 +52,7 @@ export STEAM_GAMESCOPE_HDR_SUPPORTED=1 STEAM_GAMESCOPE_VRR_SUPPORTED=1 \
     STEAM_GAMESCOPE_FANCY_SCALING_SUPPORT=1 STEAM_MULTIPLE_XWAYLANDS=1 \
     SRT_URLOPEN_PREFER_STEAM=1 QT_IM_MODULE=steam GTK_IM_MODULE=Steam
 export AIBOX_TV_MODE=gamescope
-# Steam déjà ouvert ailleurs (bureau d'administration, noVNC) : un seul Steam à
+# Steam déjà ouvert ailleurs (bureau d'administration, Selkies) : un seul Steam à
 # la fois, celui de la TV lui passerait la main et s'arrêterait aussitôt, et
 # gamescope avec lui, en boucle (10/10/2026). La session TV laisse la place :
 # code 75, que aibox-tv.service ne relance pas (RestartPreventExitStatus).

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # build.sh : construit l'ISO aibox dans un conteneur CachyOS (Docker).
 #
-#   ./build.sh               ISO avec keys/authorized_keys, keys/vnc-password et,
+#   ./build.sh               ISO avec keys/authorized_keys, keys/vnc-password (mot de
+#                            passe du bureau web, nom historique) et,
 #                            s'ils existent, keys/nas-mounts + keys/nas.cred (partages NAS)
 #   ./build.sh --test-key    ajoute la clé SSH de test de la VM (work/vm/id_test)
 #
@@ -21,12 +22,13 @@ keys_dir="${AIBOX_KEYS:-$root/keys}"
 work_dir="${AIBOX_WORK:-$root/work}"
 out_dir="${AIBOX_OUT:-$root/out}"
 export AIBOX_WORK="$work_dir"   # pour tools/whitesur.sh
-novnc_version="1.7.0"
-novnc_sha256="b1003a11b6e6e8d8f7f5e5586daae7f8ca651d8aee0aa155ff9ac841c48f52c6"
+# Selkies (bureau d'administration dans le navigateur), installé par pip dans
+# /opt/selkies : version épinglée, comme SteamBox.
+selkies_version="2.2.1"
 test_key=0
 [[ "${1:-}" == "--test-key" ]] && test_key=1
 
-mkdir -p "$out_dir" "$work_dir/pkgcache" "$work_dir/vm" "$work_dir/dl"
+mkdir -p "$out_dir" "$work_dir/pkgcache" "$work_dir/vm" "$work_dir/dl" "$work_dir/pip"
 
 # --- Version de l'image ---
 if [[ -z "${AIBOX_VERSION:-}" ]]; then
@@ -55,22 +57,21 @@ if (( test_key )); then
     echo "Clé de test ajoutée : ne pas utiliser cette ISO sur la vraie machine." >&2
 fi
 
-# --- Mot de passe noVNC ---
-# Le bureau d'administration a un sudo sans mot de passe : l'accès noVNC est
-# toujours protégé. Sans keys/vnc-password, un mot de passe est généré.
+# --- Mot de passe du bureau web (Selkies, code-server) ---
+# Le bureau d'administration a un sudo sans mot de passe : l'accès web est
+# toujours protégé. Sans keys/vnc-password (nom du temps de noVNC, gardé), un
+# mot de passe est généré.
 if [[ ! -s "$keys_dir/vnc-password" ]]; then
     head -c 15 /dev/urandom | base64 | tr -d '/+=' > "$keys_dir/vnc-password"
     chmod 600 "$keys_dir/vnc-password"
-    echo "Mot de passe noVNC généré dans keys/vnc-password : $(cat "$keys_dir/vnc-password")" >&2
+    echo "Mot de passe du bureau web généré dans keys/vnc-password : $(cat "$keys_dir/vnc-password")" >&2
 fi
-# Fichiers dérivés du mot de passe : lisibles par leur propriétaire seulement.
-( umask 077; : > "$work_dir/novnc.htpasswd"; : > "$work_dir/wayvnc-rdp.conf" )
-chmod 600 "$work_dir/novnc.htpasswd" "$work_dir/wayvnc-rdp.conf"
-printf 'default:%s\n' "$(openssl passwd -6 -stdin < <(head -n 1 "$keys_dir/vnc-password"))" > "$work_dir/novnc.htpasswd"
-# wayvnc local pour xrdp : authentification VNC classique (8 caractères max).
-printf 'enable_auth=true\nallow_broken_crypto=true\nrelax_encryption=true\npassword=%s\n' "$(head -n 1 "$keys_dir/vnc-password" | cut -c1-8)" > "$work_dir/wayvnc-rdp.conf"
+# Fichier dérivé du mot de passe : lisible par son propriétaire seulement.
+( umask 077; : > "$work_dir/web.htpasswd" )
+chmod 600 "$work_dir/web.htpasswd"
+printf 'default:%s\n' "$(openssl passwd -6 -stdin < <(head -n 1 "$keys_dir/vnc-password"))" > "$work_dir/web.htpasswd"
 
-# --- HTTPS (noVNC, code-server) : autorité de certification locale ---
+# --- HTTPS (Selkies, code-server) : autorité de certification locale ---
 # Une CA aibox, créée une fois et gardée dans keys/ : à ajouter une fois au
 # trousseau du poste (« Toujours approuver »). Un certificat auto-signé accepté
 # d'un clic ne suffit pas : le navigateur refuse alors les service workers,
@@ -94,60 +95,15 @@ if [[ -s "$keys_dir/tls-ips" ]]; then
     while read -r ip; do [[ -n "$ip" && "$ip" != \#* ]] && san+=",IP:$ip"; done < "$keys_dir/tls-ips"
 fi
 openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -subj "/CN=aibox" \
-    -keyout "$work_dir/novnc-tls.key" -out "$work_dir/novnc-tls.csr" 2>/dev/null
-openssl x509 -req -in "$work_dir/novnc-tls.csr" -CA "$ca_crt" -CAkey "$ca_key" -CAcreateserial \
+    -keyout "$work_dir/web-tls.key" -out "$work_dir/web-tls.csr" 2>/dev/null
+openssl x509 -req -in "$work_dir/web-tls.csr" -CA "$ca_crt" -CAkey "$ca_key" -CAcreateserial \
     -days 397 -extfile <(printf 'subjectAltName=%s\nbasicConstraints=CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=serverAuth\n' "$san") \
-    -out "$work_dir/novnc-tls.crt" 2>/dev/null
-cat "$ca_crt" >> "$work_dir/novnc-tls.crt"
+    -out "$work_dir/web-tls.crt" 2>/dev/null
+cat "$ca_crt" >> "$work_dir/web-tls.crt"
 echo "Certificat HTTPS : $san" >&2
-
-# --- noVNC (pas de paquet Arch/CachyOS) ---
-novnc_tar="$work_dir/dl/noVNC-$novnc_version.tar.gz"
-[[ -f "$novnc_tar" ]] || curl -fsSL -o "$novnc_tar" "https://github.com/novnc/noVNC/archive/refs/tags/v$novnc_version.tar.gz"
-echo "$novnc_sha256  $novnc_tar" | sha256sum -c --quiet
 
 # --- Thème WhiteSur (thème GTK, icônes, curseurs), compilé une fois puis en cache ---
 ws_tar="$("$root/tools/whitesur.sh")"
-
-# --- Paquets AUR (xrdp), compilés une fois, servis à mkarchiso par un dépôt local ---
-# --nocheck : 4 tests de la suite de xrdp (configuration du codec graphique)
-# échouent dans le conteneur de build.
-# Le paquet en cache est recompilé quand l'AUR publie une autre version
-# (correctifs de sécurité : xrdp écoute sur le réseau), et au bout de 30 jours
-# (bibliothèques de l'image mises à jour entre-temps : un paquet compilé contre
-# les anciennes peut ne plus démarrer). AUR injoignable : le cache est gardé.
-aur_pkgs=(xrdp)
-mkdir -p "$work_dir/aur/repo"
-for pkg in "${aur_pkgs[@]}"; do
-    cached="$(find "$work_dir/aur/repo" -maxdepth 1 -name "$pkg-[0-9]*.pkg.tar.zst" -print -quit)"
-    if [[ -n "$cached" ]]; then
-        aur_ver="$(curl -fsS -m 20 "https://aur.archlinux.org/rpc/v5/info?arg[]=$pkg" 2>/dev/null \
-            | grep -oP '"Version":"\K[^"]+' | head -n 1 || true)"
-        if [[ -z "$aur_ver" ]]; then
-            echo "AUR injoignable : $pkg gardé tel quel (${cached##*/})." >&2
-            continue
-        elif [[ "${cached##*/}" == "$pkg-$aur_ver-"* && -z "$(find "$cached" -mtime +30)" ]]; then
-            continue
-        fi
-        echo "AUR : $pkg à refaire (${cached##*/} en cache, version $aur_ver dans l'AUR)." >&2
-        rm -f "$work_dir/aur/repo/$pkg"-[0-9]*.pkg.tar.zst
-    fi
-    echo "Compilation AUR : $pkg" >&2
-    engine run --rm -v "$root:$root" -v "$work_dir/pkgcache:/var/cache/pacman/pkg" \
-        -v "$work_dir:$work_dir" -e WORK="$work_dir" \
-        -e ROOT="$root" -e PKG="$pkg" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
-        "$image" bash -euo pipefail -c '
-            pacman -Syu --noconfirm --needed base-devel git >/dev/null
-            useradd -m builder
-            echo "builder ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/builder
-            su builder -c "git clone -q https://aur.archlinux.org/$PKG.git /home/builder/$PKG \
-                && cd /home/builder/$PKG && makepkg -s --noconfirm --needed --nocheck >/dev/null"
-            install -m 0644 /home/builder/$PKG/$PKG-[0-9]*.pkg.tar.zst "$WORK/aur/repo/"
-            chown -R "$HOST_UID:$HOST_GID" "$WORK/aur"
-        '
-done
-engine run --rm -v "$work_dir:$work_dir" "$image" sh -c \
-    "cd '$work_dir/aur/repo' && rm -f aibox-aur.db* aibox-aur.files* && repo-add -q aibox-aur.db.tar.zst *.pkg.tar.zst && chown -R $(id -u):$(id -g) ."
 
 # Le dossier de travail de mkarchiso reste dans le conteneur (supprimé à la fin) ;
 # seuls le cache des paquets et l'ISO sont gardés sur le disque.
@@ -155,21 +111,18 @@ engine run --rm --privileged \
     -v "$root:$root" -v "$keys_dir:$keys_dir" -v "$work_dir:$work_dir" -v "$out_dir:$out_dir" \
     -v "$work_dir/pkgcache:/var/cache/pacman/pkg" \
     -e KEYS="$keys_dir" -e WORK="$work_dir" -e OUT="$out_dir" \
-    -e ROOT="$root" -e NOVNC_TAR="$novnc_tar" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
-    -e AIBOX_VERSION="$AIBOX_VERSION" -e WS_TAR="$ws_tar" \
+    -e ROOT="$root" -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+    -e AIBOX_VERSION="$AIBOX_VERSION" -e WS_TAR="$ws_tar" -e SELKIES_VERSION="$selkies_version" \
     "$image" bash -euo pipefail -c '
         pacman -Syu --noconfirm --needed archiso grub erofs-utils libisoburn mtools dosfstools \
-            gcc make wayland libxkbcommon >/dev/null
+            gcc make wayland libxkbcommon python >/dev/null
         cp -a "$ROOT/archiso" /tmp/profile
         # evdev-bridge (clavier et souris de Moonlight dans le bureau d administration)
         cp -a "$ROOT/evdev-bridge" /tmp/evdev-bridge
         make -s -C /tmp/evdev-bridge
-        # Dépôt local des paquets AUR, pour ce build seulement
-        printf "\n[aibox-aur]\nSigLevel = Optional TrustAll\nServer = file://%s/aur/repo\n" "$WORK" >> /tmp/profile/pacman.conf
         air=/tmp/profile/airootfs
         install -D -m 0644 "$WORK/authorized_keys" "$air/etc/ssh/authorized_keys/default"
-        install -m 0600 "$WORK/novnc.htpasswd" "$air/etc/aibox/novnc.htpasswd"
-        install -m 0600 "$WORK/wayvnc-rdp.conf" "$air/etc/aibox/wayvnc-rdp.conf"
+        install -m 0600 "$WORK/web.htpasswd" "$air/etc/aibox/web.htpasswd"
         install -D -m 0755 /tmp/evdev-bridge/evdev-bridge-native "$air/usr/local/bin/evdev-bridge-native"
         # WhiteSur : usr/share/themes et usr/share/icons (tools/whitesur.sh)
         tar --zstd -C "$air" -xf "$WS_TAR"
@@ -178,18 +131,21 @@ engine run --rm --privileged \
             install -m 0644 "$KEYS/nas-mounts" "$air/etc/aibox/nas-mounts"
             install -m 0600 "$KEYS/nas.cred" "$air/etc/aibox/nas.cred"
         fi
-        install -m 0644 "$WORK/novnc-tls.crt" "$air/etc/aibox/novnc-tls.crt"
-        install -m 0600 "$WORK/novnc-tls.key" "$air/etc/aibox/novnc-tls.key"
+        install -m 0644 "$WORK/web-tls.crt" "$air/etc/aibox/web-tls.crt"
+        install -m 0600 "$WORK/web-tls.key" "$air/etc/aibox/web-tls.key"
+        # Certificat de la CA, téléchargeable (https://aibox:6080/aibox-ca.crt)
+        # pour l approuver sur un poste.
+        install -m 0644 "$KEYS/aibox-ca.crt" "$air/etc/aibox/aibox-ca.crt"
 
-        # noVNC : seulement les fichiers servis au navigateur.
-        mkdir -p "$air/usr/share/novnc"
-        tar -xzf "$NOVNC_TAR" -C "$air/usr/share/novnc" --strip-components=1 --wildcards \
-            "*/app" "*/core" "*/vendor" "*/vnc.html" "*/package.json" "*/defaults.json" "*/mandatory.json" "*/LICENSE.txt"
-        # Page d accueil (reprise de SteamBox) : même hôte et port, WebSocket sur /websockify.
-        printf "%s\n" "<!doctype html><meta charset=utf-8><title>aibox</title><script>location.replace(\"vnc.html?autoconnect=true&resize=remote&reconnect=true\");</script>" \
-            > "$air/usr/share/novnc/index.html"
-        # Certificat de la CA, téléchargeable pour l approuver sur un poste.
-        install -m 0644 "$KEYS/aibox-ca.crt" "$air/usr/share/novnc/aibox-ca.crt"
+        # Selkies dans un venv à son chemin définitif (/opt/selkies : les scripts
+        # du venv y pointent), avec le Python de ce conteneur, le même que celui
+        # de l image (mêmes dépôts, même jour). Cache pip dans work/pip.
+        python -m venv /opt/selkies
+        /opt/selkies/bin/pip install -q --disable-pip-version-check \
+            --cache-dir "$WORK/pip" "selkies==$SELKIES_VERSION"
+        mkdir -p "$air/opt"
+        cp -a /opt/selkies "$air/opt/selkies"
+        chown -R "$HOST_UID:$HOST_GID" "$WORK/pip"
 
         mkarchiso -v -r -w /tmp/work -o "$OUT" /tmp/profile
         # L ISO contient des secrets (clé TLS, mot de passe haché, identifiants NAS).

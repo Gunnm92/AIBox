@@ -1,0 +1,13 @@
+[Unit]
+Description=Bureau d'administration : accès web en HTTPS (https://<ip>:6080, Selkies et code-server)
+PartOf=aibox-admin.target
+
+[Service]
+Slice=admin.slice
+# HTTPS : le navigateur n'autorise le décodage vidéo de Selkies (WebCodecs) et
+# le presse-papiers qu'en contexte sécurisé, et le mot de passe (authentification
+# HTTP de nginx) ne doit pas circuler en clair. nginx relaie / vers Selkies et
+# /code/ vers code-server, tous deux en écoute locale.
+ExecStart=/usr/bin/nginx -c /etc/aibox/nginx.conf -e stderr -g "daemon off;"
+Restart=always
+RestartSec=2

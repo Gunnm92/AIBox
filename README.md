@@ -9,7 +9,7 @@ Un home server branché à la TV, avec une **IA toujours disponible qui écoute 
 - **Sur la TV** : Steam Big Picture (jeux locaux) et Moonlight vers SteamBox.
 - **IA** : LLM locaux servis par Lemonade, en même temps que les jeux. L'assistant écoute, répond à la voix et pilote la maison (détails à définir).
 - **Démarrage de la session** : la DualSense s'allume, la session TV démarre. Elle s'éteint, la session s'arrête au bout de 2 minutes. Le PC reste allumé.
-- **Administration à distance** : bureau XFCE via noVNC (`https://<ip>:6080`, mot de passe) et SSH par clé.
+- **Administration à distance** : bureau Plasma dans le navigateur, par Selkies (`https://<ip>:6080`, mot de passe), et SSH par clé.
 - **Système jetable** : chaque redémarrage repart d'une image propre. Pour personnaliser, on reconstruit l'image, sans jamais toucher aux données.
 - **Image minimale** : l'image ne contient que ce qu'il faut pour démarrer, la session TV et l'administration. Les applis (Flatpak, AppImage), les modèles LLM et leur serveur tournent depuis le disque.
 
@@ -32,10 +32,10 @@ Disque (btrfs, étiquette AIBOXDATA) ──► /home (config, Steam, ~/Applicati
                                      /var/lib/flatpak, /srv/models (LLM), swap de secours,
                                      /var/tmp, cache pacman, journaux, coredumps,
                                      /var/lib/bluetooth, réseau, SSH, machine-id
-DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► gamescope (HDR, FSR) + Steam Big Picture (ou Hyprland + lanceur)
+DualSense allumée (BT) ─udev─► aibox-tv.service (tv.slice) ─► Plasma Bigscreen (KWin), ou gamescope (HDR, FSR) + Steam Big Picture
 DualSense éteinte > 2 min ─────────┘ session arrêtée, écran éteint, PC allumé
 LLM : llm.service (llm.slice) ─► serveur installé sur le disque, modèles dans /srv/models
-Admin : labwc headless + XFCE (admin.slice) ─► wayvnc (127.0.0.1:5900) ─► websocat (127.0.0.1:5901) ─► nginx HTTPS + mot de passe :6080 (noVNC)  + SSH
+Admin : Selkies (son compositeur) ⊃ KWin ⊃ Plasma (admin.slice) ─► Selkies (127.0.0.1:8082) ─► nginx HTTPS + mot de passe :6080  + SSH
 ```
 
 ### Ce qui vit où
@@ -99,36 +99,34 @@ archiso/                 profil archiso (écrit à partir de releng/baseline, ad
                          services, aibox mem
 docs/                    documentation détaillée (commandes, architecture, image, exploitation, problèmes connus)
 AGENTS.md                consignes pour les agents (LLM local…)
-keys/                    clé SSH, mot de passe et certificat noVNC (non versionné)
+keys/                    clé SSH, mot de passe et certificat du bureau web (non versionné)
 build.sh                 construit l'ISO dans un conteneur CachyOS → out/
 test-vm.sh               teste l'ISO dans QEMU (clé USB et disque NVMe virtuels, GPU partagé)
-tools/                   scripts d'aide aux tests (Chromium piloté, touches VNC)
+tools/                   scripts d'aide aux tests (Chromium piloté)
 ```
 
 Le code commun avec SteamBox est repris, pas réécrit (sous-module git figé sur un commit, ou fichiers vendorés s'ils divergent) :
 
-- `labwc-session.sh`, `xfce-defaults.sh` : bureau d'administration, clavier, thème labwc ;
-- la logique `desktop_exec` de `desktop-env.sh`, transposée en unités `systemd --user` au lieu de s6 ;
-- l'installation de WhiteSur (thème, icônes, curseur, libadwaita) : `tools/whitesur.sh`, mêmes commits que SteamBox ;
-- la vérification des icônes `.desktop` et le `fc-cache -s` final (sinon glycin est tué par seccomp) ;
-- les réglages wayvnc et noVNC (page d'accueil avec `resize=scale` et `reconnect`). websockify (pas de paquet, installé par pip) est remplacé par le paquet websocat.
+- `plasma-session.sh` et le service Selkies : bureau d'administration (Selkies → KWin → Plasma, depuis le 27/11/2026, à la place de labwc, XFCE, wayvnc et noVNC), transposés en unités `systemd --user` au lieu de s6 ;
+- l'installation de WhiteSur (thème, icônes, curseur, libadwaita) : `tools/whitesur.sh`, mêmes commits que SteamBox, pour les applis GTK ;
+- la vérification des icônes `.desktop` et le `fc-cache -s` final (sinon glycin est tué par seccomp).
 
 ## Prototype
 
 Construit et testé en VM (QEMU/KVM, 8 Go de RAM, clé USB et disque NVMe virtuels) :
 
 - **Système en RAM** : l'ISO démarre, copie le système en RAM, la clé peut être retirée.
-- **Bureau d'administration** XFCE complet en français (barre du haut, dock en bas façon macOS, bureau, paramètres, Thunar, réseau), par noVNC en HTTPS avec mot de passe ; l'écran s'adapte à la fenêtre du navigateur.
+- **Bureau d'administration** Plasma en français (Dolphin, Konsole, Kate, paramètres, réseau), dans le navigateur par Selkies en HTTPS avec mot de passe : un seul pointeur, le son dans le navigateur, et l'écran s'adapte à la fenêtre.
 - **Disque de données** `AIBOXDATA` : `/home`, Flatpak, réseau, Bluetooth, clés SSH, cache pacman, `/var/tmp`, swap et modèles persistent ; sans disque, mode éphémère.
-- **Applications** : magasin **Bazaar** (Flathub) et **Gear Lever** (AppImage), installés automatiquement sur le disque ; les applis s'ajoutent au menu XFCE.
+- **Applications** : magasin **Bazaar** (Flathub) et **Gear Lever** (AppImage), installés automatiquement sur le disque ; les applis s'ajoutent au menu de Plasma.
 
 - **Lemonade** : serveur LLM sur le port 13305, modèles et backends sur le disque.
 
-- **Session TV** : par défaut, Hyprland avec des cartes de widgets en verre dépoli (actualités avec photo, heure, météo, machine : Lemonade, RAM, GPU, services) et une barre d'icônes en bas (Steam, Moonlight, Bureau) à la manette ou au clavier, sur les images de Bing ; sa tuile Steam lance gamescope, qui pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS. « Passer au bureau » dans Steam mène, pour cette session, au lanceur. `aibox tv-mode gamescope` rend gamescope durable.
+- **Session TV** : par défaut, Plasma Bigscreen (accueil plein écran à la manette) ; sa tuile « Steam (TV) » lance gamescope, qui pilote la TV (HDR, FSR, VRR) avec Steam Big Picture en mode SteamOS, et sa tuile « Bureau » passe au bureau Plasma et en revient. « Passer au bureau » dans Steam ramène, pour cette session, à Bigscreen. `aibox tv-mode gamescope` rend gamescope durable.
 
 Pas encore : assistant vocal.
 
-**Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak et son portail GTK, fuse2/fuse3, zram, cifs-utils, nss-mdns, labwc + XFCE (avec xfce4-notifyd pour les notifications), wayvnc, websocat, nginx, xrdp, podman, distrobox, git, lemonade-server, steam, bibliothèques 32 bits pour wine-tkg (jeux arcade), wl-clipboard et xclip (--tray), wsquashfs-launcher (hors image).
+**Contenu de l'image** : noyau `linux-cachyos`, firmwares de cette machine seulement (amdgpu, amd pour le NPU, mediatek pour le Wi-Fi et le Bluetooth MT7925), mesa/vulkan, NetworkManager, SSH, Bluetooth, flatpak, fuse2/fuse3, zram, cifs-utils, nss-mdns, KWin, Plasma et Plasma Bigscreen (portail KDE), Selkies (venv Python dans `/opt/selkies`), nginx, podman, distrobox, git, lemonade-server, steam, bibliothèques 32 bits pour wine-tkg (jeux arcade), wl-clipboard et xclip (--tray), wsquashfs-launcher (hors image).
 
 **Mesures en VM** :
 
@@ -139,7 +137,7 @@ Pas encore : assistant vocal.
 | Mémoire bloquée par le système | 1,2 Go | ≤ 6 Go |
 | Démarrage (noyau + système) | ~14 s (~16 s sans disque) | |
 | Retrait de la clé à chaud | le système continue de fonctionner | |
-| Bureau d'administration | ~130 Mo en fonctionnement | `admin.slice` ≤ 4 Go |
+| Bureau d'administration | ~130 Mo en fonctionnement (labwc et XFCE, avant le passage à Plasma : à remesurer) | `admin.slice` ≤ 4 Go |
 | Bazaar + Gear Lever (Flatpak) | 3,8 Go sur le disque, **0 Mo de RAM bloquée en plus** | |
 | Paquet installé à la volée (`pacman -S`) | disparu au redémarrage | |
 
@@ -148,7 +146,7 @@ Pas encore : assistant vocal.
 Le build tourne dans un conteneur CachyOS privilégié : Docker s'il y en a un, sinon Podman en root (sur aibox lui-même, avec le disque de données : voir [Mises à jour](#mises-à-jour)). Dans `keys/` (non versionné) :
 
 - `authorized_keys` : ta clé SSH publique ;
-- `vnc-password` : mot de passe de noVNC (généré au premier build s'il manque) ;
+- `vnc-password` : mot de passe du bureau web, Selkies et code-server (généré au premier build s'il manque ; nom du temps de noVNC) ;
 - `aibox-ca.crt` / `.key` : autorité de certification locale (générée au premier build, puis réutilisée) ; `aibox-ca.crt` est à approuver une fois sur ton poste ;
 - `tls-ips` : adresses IP couvertes par le certificat HTTPS, en plus de `aibox` et `aibox.local` ;
 - `nas-mounts` et `nas.cred` (facultatifs) : partages du NAS montés par défaut et leurs identifiants (voir `aibox nas`).
@@ -173,16 +171,16 @@ Il faut `/dev/kvm` sur l'hôte Docker. La VM a un disque NVMe virtuel de 64 Go (
 ./test-vm.sh unplug         # retire la clé à chaud
 ./test-vm.sh reboot         # redémarre la VM
 ./test-vm.sh wipe-disk      # repart d'un disque NVMe virtuel vierge (VM arrêtée)
-./test-vm.sh novnc          # ouvre noVNC dans Chromium et capture l'écran
+./test-vm.sh web            # ouvre le bureau Selkies dans Chromium et capture l'écran
 GPU=1 ./test-vm.sh start    # VM avec le GPU de l'hôte partagé (Venus/virgl), écran en vnc://<ip>:5902
-./test-vm.sh screen         # capture de l'écran de la TV → work/vm/screen.png
+./test-vm.sh screen         # capture de l'écran de la TV (grim : plus sous Plasma Bigscreen)
 # depuis le réseau : https://<ip-de-l-hôte>:6080
 ./test-vm.sh stop
 ```
 
 ### Approuver la CA aibox sur ton poste (une fois)
 
-noVNC et code-server sont en HTTPS, avec un certificat signé par une CA locale (`keys/aibox-ca.crt`). Il faut l'approuver une fois : accepter l'avertissement d'un clic ne suffit pas, le navigateur refuse alors les service workers, et le panneau Claude Code de code-server ne s'ouvre pas.
+Le bureau Selkies et code-server sont en HTTPS, avec un certificat signé par une CA locale (`keys/aibox-ca.crt`). Il faut l'approuver une fois : accepter l'avertissement d'un clic ne suffit pas, le navigateur refuse alors les service workers, et le panneau Claude Code de code-server ne s'ouvre pas.
 
 Sur Mac : télécharger `https://<ip>:6080/aibox-ca.crt` (ou prendre `keys/aibox-ca.crt`), puis :
 
@@ -205,12 +203,12 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
 
 - **Installation sur le disque** (une fois) : démarrer sur la clé, puis `sudo aibox-setup-disk /dev/nvme0n1` (retaper le chemin pour confirmer). Il efface le disque et crée deux partitions : **AIBOXBOOT** (FAT32, 8 Go, de quoi garder deux versions : systemd-boot et l'image, pour démarrer sans la clé, en quelques secondes au lieu de ~2 minutes depuis une clé USB 2.0) et **AIBOXDATA** (btrfs : les données). Redémarrer sans la clé. Sans ce disque, le système démarre en mode éphémère et le signale (console, SSH, `aibox-mem`) : `/home` est alors en RAM (16 Go max), Steam et code-server y fonctionnent, tout est perdu au redémarrage.
 - **Mises à jour** : voir [Mises à jour](#mises-à-jour).
-- **Écran (TV)** : la session TV démarre quand la manette s'allume et s'arrête 2 minutes après son extinction ou quand on quitte Steam (voir [Session TV](#session-tv)) : le lanceur sous Hyprland (par défaut) ou Steam sous gamescope. Applis du lanceur : `~/.config/aibox/tv-apps.json` (modèle : `/etc/aibox/tv-apps.json`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
-- **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build, plus `~/.ssh/authorized_keys` sur le disque, lu sans reconstruire) ; actuellement les clés de code-server et du MacBook Air. Sinon : terminal du bureau noVNC, RDP ou code-server.
+- **Écran (TV)** : la session TV démarre quand la manette s'allume et s'arrête 2 minutes après son extinction ou quand on quitte Steam (voir [Session TV](#session-tv)) : Plasma Bigscreen (par défaut) ou Steam sous gamescope. Les applis de Bigscreen sont celles du menu (fichiers `.desktop`). Steam ne peut tourner qu'à un endroit à la fois (TV ou bureau d'administration).
+- **SSH** : clé uniquement (`keys/authorized_keys`, intégré au build, plus `~/.ssh/authorized_keys` sur le disque, lu sans reconstruire) ; actuellement les clés de code-server et du MacBook Air. Sinon : terminal du bureau web (Selkies) ou code-server.
 - **Shell** : fish pour `default` (SSH, terminaux du bureau et de code-server), avec le résumé de la machine (fastfetch) à l'ouverture. Réglages communs dans `/etc/fish/conf.d/aibox.fish` ; les siens dans `~/.config/fish/config.fish`. Les scripts d'aibox restent en bash.
-- **noVNC** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`.
+- **Bureau web (Selkies)** : `https://<ip>:6080`, utilisateur `default`, mot de passe de `keys/vnc-password`. Le son des applis du bureau sort dans le navigateur (puits `selkies`).
 - **Applications** : Bazaar pour Flathub (au premier lancement, il charge le catalogue pendant une à deux minutes), Gear Lever pour les AppImage. Steam est natif dans l'image : ne pas installer le Flatpak de Steam. Pas de mot de passe demandé (`default` est administrateur, comme pour `sudo`).
-- **Sunshine** (diffusion du bureau d'administration vers Moonlight, encodage GPU) : pas lancé au démarrage. Pour le démarrer : `systemctl --user start app-dev.lizardbyte.app.Sunshine`, ou « Sunshine » dans le menu. Interface sur `https://<ip>:47990`, qui demande de créer un identifiant au premier lancement. La configuration est dans `~/.config/sunshine`, sur le disque. Il filme le bureau d'administration, pas la TV. Paquet des dépôts CachyOS, avec `cap_sys_admin` posé à l'installation. Les manettes virtuelles marchent sans session devant l'écran (`99-aibox-sunshine.rules`), et le clavier et la souris passent par `aibox-evdev-bridge`, démarré avec Sunshine.
+- **Sunshine** (diffusion du bureau d'administration vers Moonlight, encodage GPU) : pas lancé au démarrage. Pour le démarrer : `systemctl --user start app-dev.lizardbyte.app.Sunshine`, ou « Sunshine » dans le menu. Interface sur `https://<ip>:47990`, qui demande de créer un identifiant au premier lancement. La configuration est dans `~/.config/sunshine`, sur le disque. Il filme le bureau d'administration, pas la TV. Paquet des dépôts CachyOS, avec `cap_sys_admin` posé à l'installation. Les manettes virtuelles marchent sans session devant l'écran (`99-aibox-sunshine.rules`). Sous le KWin du bureau (depuis le 27/11/2026), le clavier et la souris de Moonlight ne passent plus : `aibox-evdev-bridge` ne parle qu'aux compositeurs wlroots.
 - **Conteneurs** : `podman` (sans root ni démon ; la commande `docker` marche aussi), `podman-compose`. Conteneurs et images dans `~/.local/share/containers`, sur le disque.
 - **Lemonade** (LLM) : `http://<ip>:13305` (API compatible OpenAI et interface web), démarré automatiquement avec le disque. Modèles dans `/srv/models/huggingface`, backends dans `/srv/models/lemonade`. Commandes : `lemonade list`, `lemonade pull <modèle>`, `lemonade config set …`. Ouvert sur le réseau local sans clé, comme aujourd'hui ; une clé d'API est possible (`LEMONADE_API_KEY`).
 - **Développement** : `git`, `jq`, `rsync`, `tmux`, `zip`/`unzip`, `wget`, `imagemagick` (`identify`, `magick`, pour les images des agents d'Hermes) sont dans l'image. Pour le reste, un environnement Distrobox sur le disque :
@@ -218,19 +216,17 @@ Démarrage UEFI uniquement. Dans le BIOS : Secure Boot désactivé, et UMA (VRAM
   distrobox create --name dev --image docker.io/library/archlinux:latest
   distrobox enter dev     # puis : sudo pacman -S base-devel vim …
   ```
-  Il partage ton home et ton bureau ; `distrobox-export` ajoute une appli du conteneur au menu XFCE.
-- **Éditeur (code-server)** : `https://<ip>:6080/code/`, même mot de passe que noVNC. VS Code dans le navigateur, avec l'extension Claude Code ; installé dans le home au premier démarrage avec le disque. Mise à jour : `/usr/local/lib/aibox/code-server-install --update`, puis `systemctl --user restart aibox-code-server`. Interface en anglais (pas de pack de langue compatible sur Open VSX). Autre voie : VS Code Remote-SSH depuis ton poste (`ssh default@<ip>`).
+  Il partage ton home et ton bureau ; `distrobox-export` ajoute une appli du conteneur au menu de Plasma.
+- **Éditeur (code-server)** : `https://<ip>:6080/code/`, même mot de passe que le bureau web. VS Code dans le navigateur, avec l'extension Claude Code ; installé dans le home au premier démarrage avec le disque. Mise à jour : `/usr/local/lib/aibox/code-server-install --update`, puis `systemctl --user restart aibox-code-server`. Interface en anglais (pas de pack de langue compatible sur Open VSX). Autre voie : VS Code Remote-SSH depuis ton poste (`ssh default@<ip>`).
 - **Services au démarrage** (ex. Hermes) : unités dans `~/.config/systemd/user/`, puis `systemctl --user enable --now <service>`. Elles démarrent à chaque démarrage de la machine, sans connexion (sur le disque : pas en mode éphémère). Depuis la sauvegarde du NAS, adapter les chemins : `/home/jarvis` → `/home/default`, `/opt/Applications/…` → dans le home (`/opt` fait partie de l'image).
-- **Applis graphiques au démarrage** (bureau d'administration) : Paramètres → Session et démarrage → Démarrage automatique d'applications (`~/.config/autostart`), lancées par `aibox-admin-autostart.target` une fois le panneau et sa zone de notification prêts. Exemple : `wsquashfs-launcher --tray on`.
-- **Session TV** : une appli de `~/.config/aibox/tv-apps.json` peut porter `"autostart": true` pour se lancer à l'ouverture de la session (désactivé par défaut).
+- **Applis graphiques au démarrage** : Paramètres système → Démarrage automatique (`~/.config/autostart`), lancées par Plasma. `~/.config` est partagé : une appli s'y lance dans les deux sessions Plasma (bureau d'administration et TV) ; `OnlyShowIn`/`NotShowIn` ne les distinguent pas (toutes deux `KDE`). Exemple : `wsquashfs-launcher --tray on`.
 - **Jeux** : Steam natif et Proton ; `ntsync` est chargé au démarrage ; `gamemoderun %command%` dans les options de lancement d'un jeu active gamemode.
-- **Programmes Windows (.exe, .msi)** : double-clic dans Thunar (ou `aibox run-exe prog.exe`) : lancés avec un Proton déjà installé, partagé avec Steam et wsquashfs-launcher (`~/.local/share/Steam/compatibilitytools.d`), dans un préfixe Wine partagé (`~/.local/share/aibox/wine/default`) : rien n'est réinstallé d'un programme à l'autre. Proton : le `proton-cachyos` le plus récent s'il y en a un, sinon UMU-Proton (téléchargé une fois) ; pour en imposer un : `PROTON=GE-Proton10-…` dans `~/.config/aibox/proton.conf`. Journal : `~/.cache/aibox/run-exe/`.
-- **Partages du NAS** : montés automatiquement, à la demande (au premier accès), par `aibox nas` : `/mnt/Media`, `/mnt/Games`, `/mnt/Workspace` (`//nas.local/…`, définis au build par `keys/nas-mounts` et `keys/nas.cred` ; ils marchent dès le premier démarrage, même en mode éphémère). `aibox nas list` (état), `sudo aibox nas add //hôte/partage /mnt/X` (identifiants demandés une fois, gardés sur le disque), `sudo aibox nas remove /mnt/X`. Les noms `.local` sont résolus par mDNS (`nss-mdns`). Pour parcourir d'autres partages : Thunar, `smb://<nas>/<partage>` (gvfs-smb).
+- **Programmes Windows (.exe, .msi)** : double-clic dans Dolphin (ou `aibox run-exe prog.exe`) : lancés avec un Proton déjà installé, partagé avec Steam et wsquashfs-launcher (`~/.local/share/Steam/compatibilitytools.d`), dans un préfixe Wine partagé (`~/.local/share/aibox/wine/default`) : rien n'est réinstallé d'un programme à l'autre. Proton : le `proton-cachyos` le plus récent s'il y en a un, sinon UMU-Proton (téléchargé une fois) ; pour en imposer un : `PROTON=GE-Proton10-…` dans `~/.config/aibox/proton.conf`. Journal : `~/.cache/aibox/run-exe/`.
+- **Partages du NAS** : montés automatiquement, à la demande (au premier accès), par `aibox nas` : `/mnt/Media`, `/mnt/Games`, `/mnt/Workspace` (`//nas.local/…`, définis au build par `keys/nas-mounts` et `keys/nas.cred` ; ils marchent dès le premier démarrage, même en mode éphémère). `aibox nas list` (état), `sudo aibox nas add //hôte/partage /mnt/X` (identifiants demandés une fois, gardés sur le disque), `sudo aibox nas remove /mnt/X`. Les noms `.local` sont résolus par mDNS (`nss-mdns`). Pour parcourir d'autres partages : Dolphin, `smb://<nas>/<partage>`.
 - **Dongle DualSense (DS5Dongle)** : deux usages. Le son de la manette émulée dans SteamBox (ds5-usbip) arrive en RTP sur le port 46100 et joue sur la manette, par le dongle en mode « Off » (haut-parleur et haptiques natives ; récepteur `ds5-usbip.service`, actif seulement manette allumée). Ou la vibration tirée du son du PC, par le service utilisateur `ds5-haptics-loopback` (configuration de [DS5Dongle-Studio](https://github.com/artzox/DS5Dongle-Studio), licence MIT : règle udev, WirePlumber ; dongle en « Replace »). `aibox ds5-mode` affiche le mode ; `aibox ds5-mode son` active la vibration tirée du son, `aibox ds5-mode natif` (défaut) la coupe. Le volume du dongle est à 100 %. Le flux RTP n'est relié qu'au dongle : sans dongle, il ne joue nulle part ; manette éteinte, le port 46100 est fermé.
 - **Decky Loader** (plugins de Steam en mode Big Picture) : installeur officiel, une fois, depuis le bureau d'administration : `curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh`. Decky s'installe dans `~/homebrew` (sur le disque) ; le service `plugin_loader` est dans l'image (l'unité que l'installeur écrit dans `/etc` disparaît au redémarrage, celle de l'image prend le relais) et reste inerte tant que Decky n'est pas installé. Decky se met à jour lui-même.
 - **Jeux Windows (.wsquashfs)** : `wsquashfs-launcher` (binaire installé à part, hors de l'image, dans `~/.local/bin`) ; ses runners (proton-cachyos, UMU-Proton, GE-Proton) s'installent sur le disque, dans `~/.local/share/Steam/compatibilitytools.d`.
 - **Machines virtuelles** : GNOME Boxes ou virt-manager, à installer depuis Bazaar (Flatpak, avec leur propre QEMU).
-- **Clavier** (noVNC) : `aibox keyboard mac` (Mac français, par défaut), `aibox keyboard pc` (PC français), ou toute disposition xkb (`aibox keyboard us`). C'est wayvnc qui traduit les touches : `setxkbmap` ne sert à rien ici (il ne touche que Xwayland).
 - **`aibox diag`** : rapport de diagnostic, écrit aussi tout seul 2 minutes après le démarrage, dans `aibox-diag/` sur la clé Ventoy si elle est branchée, sinon sur la partition AIBOXBOOT.
 - **`aibox mem`** : mémoire bloquée, GPU, disque de données, image en RAM, état de la clé, tmpfs, zram.
 - **`aibox ds5-mode`** : mode de la manette DualSense, `natif` (haptiques natives de ds5-usbip, défaut) ou `son` (vibration tirée du son du PC, loopback actif). Régler le dongle en conséquence (« Off » ou « Replace », portail DS5Dongle-Studio).
@@ -241,7 +237,7 @@ L'image est figée : ce qui est dedans se met à jour en refaisant l'image ; tou
 
 | Quoi | Comment |
 |---|---|
-| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureau, xrdp, scripts aibox | commit poussé sur GitHub, nouvelle ISO (`sudo aibox build`), puis `sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
+| Système : noyau, pilotes, mesa, Steam (amorce), Lemonade, bureaux KDE, Selkies, scripts aibox | commit poussé sur GitHub, nouvelle ISO (`sudo aibox build`), puis `sudo aibox boot --iso /var/lib/aibox/state/build/out/aibox-latest.iso` et redémarrer. La version précédente reste dans le menu de démarrage pour revenir en arrière (chaque build a sa version : date, heure et commit) ; les données ne sont pas touchées. Procédure complète : [docs/iso.md](docs/iso.md) |
 | Applis Flatpak (Bazaar…) | Bazaar (onglet des mises à jour) ou `flatpak update` |
 | AppImage (Moonlight…) | Gear Lever, ou à la main (fichier remplacé dans `~/AppImages`) |
 | Steam, jeux, Proton | Steam se met à jour seul (dans le home) ; Proton par Steam, ProtonUp ou wsquashfs-launcher |
@@ -280,7 +276,7 @@ sudo aibox-setup-disk /dev/nvmeXnY
 ### 4. Configuration initiale (une seule fois)
 
 - **Appairer la DualSense** depuis le bureau d'administration ou avec `bluetoothctl`.
-- **Moonlight** : AppImage à `~/AppImages/moonlight.appimage`, sur le disque de données. Il apparaît dans le lanceur TV à côté de Steam (`/etc/aibox/tv-apps.json`, chemin de l'AppImage) ; sous gamescope, l'ajouter dans Steam comme appli non-Steam pointant vers le même fichier. SteamBox est découvert automatiquement sur le réseau local.
+- **Moonlight** : AppImage à `~/AppImages/moonlight.appimage`, sur le disque de données. Il apparaît dans Bigscreen par son fichier `.desktop` (`~/.local/share/applications/moonlight.desktop`) ; sous gamescope, l'ajouter dans Steam comme appli non-Steam pointant vers le même fichier. SteamBox est découvert automatiquement sur le réseau local.
 
 Ces réglages sont gardés sur le disque.
 
@@ -288,9 +284,8 @@ Ces réglages sont gardés sur le disque.
 
 | Service | Adresse | Notes |
 |---|---|---|
-| noVNC | `https://<ip>:6080` | Utilisateur `default`, mot de passe de `keys/vnc-password` ; certificat auto-signé à accepter une fois |
+| Bureau web (Selkies) | `https://<ip>:6080` | Utilisateur `default`, mot de passe de `keys/vnc-password` ; CA aibox à approuver une fois |
 | code-server | `https://<ip>:6080/code/` | Mêmes identifiants |
-| RDP (xrdp) | `<ip>:3389` (Microsoft Remote Desktop, FreeRDP…) | Même bureau que noVNC ; mot de passe noVNC (8 premiers caractères comptent) |
 | SSH | `ssh default@<ip>` | Clé uniquement, déposée au build |
 
 Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
@@ -299,17 +294,16 @@ Utilisateur : `default` (uid 1000), sudo, pas de mot de passe root.
 
 `aibox-tv.service` (service système, `User=default`, `PAMName=login`, `TTYPath=/dev/tty1`) ouvre une vraie session logind, puis `tv-session` lance le mode choisi par `aibox tv-mode` (gardé dans `~/.config/aibox/tv-mode`) :
 
-- **gamescope** : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » bascule en mode hyprland (`steamos-session-select`). Le lanceur n'est pas lancé sous gamescope : avec `--steam`, gamescope n'affiche que la fenêtre choisie par Steam.
-- **hyprland** (par défaut, sans choix enregistré) : Hyprland sur la TV (`/etc/aibox/hypr-tv/hyprland.lua`), avec les cartes de widgets quickshell (titre principal et liste des actualités, heure, météo, machine ; maquette « Direction 2 v3 » en 1920×1080 mise à l'échelle ; réglages dans `~/.config/aibox/tv-widgets.json`, modèle : `/etc/aibox/tv-widgets.json`) et le lanceur `aibox-tv-launcher` (Steam est une tuile qui lance gamescope ; autres applis dans `tv-apps.json`), sans HDR. Les logos des tuiles sont dans `/usr/local/share/aibox/tv-icons/`.
-- **bureau** : labwc sur la TV (`/etc/aibox/labwc-bureau`) avec le fond et le panneau XFCE, sans le lanceur ni HDR. La tuile « Bureau » du lanceur y mène pour cette session ; Super+L revient au lanceur.
+- **bigscreen** (par défaut, sans choix enregistré) : Plasma Bigscreen (`plasma-bigscreen-wayland`) sur la TV, sous KWin, sans HDR, sur un bus de session à lui et sans les unités systemd de Plasma (`/etc/xdg/startkderc`) : le bureau d'administration a aussi son Plasma. Accueil à la manette ; ses applis sont celles du menu. Tuiles d'aibox : « Steam (TV) » (`aibox tv-mode --once gamescope`) et « Bureau » (`tv-bureau` : bureau Plasma sur la TV et retour, par `plasma-bigscreen-swap-session`, sans relancer la session).
+- **gamescope** : gamescope pilote la TV (4K, HDR, VRR) et lance Steam en mode SteamOS (`-gamepadui -steamos3 -steampal -steamdeck`, réglages de gamescope-session). HDR, limite d'images et FSR se règlent dans Steam : Paramètres → Affichage (HDR), menu rapide « … » → Performances (filtre de mise à l'échelle FSR, avec une résolution de jeu plus basse). Moonlight (s'il est installé, voir plus haut) s'y ajoute comme jeu non-Steam. « Passer au bureau » ramène à Bigscreen (`steamos-session-select`).
 
-`aibox tv-mode gamescope`, `aibox tv-mode hyprland` ou `aibox tv-mode bureau` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement.
+`aibox tv-mode gamescope` ou `aibox tv-mode bigscreen` change de mode (gardé aux redémarrages) et relance la session TV ; avec `--once`, pour cette session seulement. Les anciens modes `hyprland` et `bureau` (retirés le 27/11/2026) valent `bigscreen`. Pas de HDMI-CEC : le GPU ne pilote pas la ligne CEC (voir plus bas).
 
 - **Jeux non-Steam** (`.wsquashfs`…) : pas de `gamescope` dans les options de lancement, la session est déjà dans gamescope ; si un jeu ne propose pas le HDR, `DXVK_HDR=1 %command% …`. Un chemin contenant des espaces se met entre guillemets.
 
-- **Démarrage** : quand la manette s'allume, y compris si elle l'est déjà au démarrage de la machine. Le service `aibox-tv-watch` surveille toutes les 2 secondes le flux de rapports du dongle DualSense (`054c:0ce6` ou `054c:0df2`). Ni la présence du dongle ni ses événements USB ne suffisent : il s'annonce aussi manette éteinte, et ne se reconnecte pas toujours quand on l'allume. Pas de session TV sinon : la machine reste un serveur, joignable par noVNC.
-- **Arrêt** : 2 minutes après l'extinction de la manette (`aibox-tv-idle.timer`, réglable avec `systemctl edit aibox-tv-idle.timer`), sauf si elle revient entre-temps. La session s'arrête aussi quand on quitte Steam (Quitter, Éteindre) : éteindre puis rallumer la manette la relance. « Passer au bureau » la relance en mode hyprland. Si gamescope ou Steam plante, elle est relancée.
-- **Steam déjà ouvert ailleurs** (bureau d'administration, noVNC) : la session TV ne démarre pas et lui laisse la place, puisqu'un seul Steam peut tourner à la fois.
+- **Démarrage** : quand la manette s'allume, y compris si elle l'est déjà au démarrage de la machine. Le service `aibox-tv-watch` surveille toutes les 2 secondes le flux de rapports du dongle DualSense (`054c:0ce6` ou `054c:0df2`). Ni la présence du dongle ni ses événements USB ne suffisent : il s'annonce aussi manette éteinte, et ne se reconnecte pas toujours quand on l'allume. Pas de session TV sinon : la machine reste un serveur, joignable par le bureau web.
+- **Arrêt** : 2 minutes après l'extinction de la manette (`aibox-tv-idle.timer`, réglable avec `systemctl edit aibox-tv-idle.timer`), sauf si elle revient entre-temps. La session s'arrête aussi quand on quitte Steam (Quitter, Éteindre) : éteindre puis rallumer la manette la relance. « Passer au bureau » la relance sous Bigscreen. Si gamescope ou Steam plante, elle est relancée. Le Plasma de la TV tourne dans le scope logind de la session : `aibox-tv.service` arrête ce scope à l'arrêt.
+- **Steam déjà ouvert ailleurs** (bureau d'administration) : la session TV ne démarre pas et lui laisse la place, puisqu'un seul Steam peut tourner à la fois.
 - **TV** : à l'arrêt de la session, l'écran est mis en veille (fbcon) : la TV perd le signal.
 
 ## Paquets principaux
@@ -322,13 +316,13 @@ Tous disponibles dans les dépôts CachyOS (vérifié le 26/09/2026) :
 - `networkmanager`, `bluez`, `openssh`, `flatpak`, `fuse2`, `fuse3`, `zram-generator`
 - `archiso` pour le build
 
-Écartés de l'image : `cachyos-handheld` (tire Plasma et le matériel du Steam Deck) et `moonlight-qt` (tire Qt6 ; remplacé par l'AppImage).
+Écartés de l'image : `cachyos-handheld` (tire le matériel du Steam Deck) et `moonlight-qt` (tire Qt6 ; remplacé par l'AppImage).
 
 ## Feuille de route
 
 1. **Système live minimal en RAM, avec persistance** : EROFS, copytoram, disque `AIBOXDATA`, mode éphémère.
 2. **Session TV déclenchée par la DualSense** : `aibox-tv.service`, règle udev, minuteur d'arrêt, Moonlight.
-3. **Administration à distance** : labwc headless, XFCE WhiteSur, wayvnc, noVNC, SSH.
+3. **Administration à distance** : Selkies, KWin et Plasma (avant le 27/11/2026 : labwc headless, XFCE, wayvnc, noVNC), SSH.
 4. **Applications et mises à jour** : Flatpak et AppImage depuis le disque, mise à jour par nouvelle ISO.
 5. **LLM locaux** : `@models`, serveur sur le disque, `llm.slice`.
 6. *(Optionnel)* **Bureau TV** accessible depuis Steam par « Passer au bureau ».
@@ -338,7 +332,7 @@ Tous disponibles dans les dépôts CachyOS (vérifié le 26/09/2026) :
 - **Budget mémoire** : les cibles ci-dessus sont à mesurer sur la machine.
 - **Cohabitation jeu/LLM** : décharger le modèle au démarrage de la session TV, ou non ? Taille maximale de modèle ?
 - **Réseau et Bluetooth** : Ethernet ou Wi-Fi, quel adaptateur, stabilité de la reconnexion de la DualSense.
-- **Allumage de la TV (HDMI-CEC)** : non pris en charge par les GPU AMD. Demanderait un adaptateur Pulse-Eight USB. Hors périmètre.
+- **Allumage de la TV (HDMI-CEC)** : `amdgpu` ne pilote pas la ligne CEC du HDMI (pas de `/dev/cec*`, vérifié le 27/11/2026). Plasma Bigscreen sait s'en servir (libcec) : il faudrait un adaptateur Pulse-Eight USB-CEC et une règle udev pour `/dev/ttyACM*`.
 
 ## Tests
 
@@ -351,7 +345,7 @@ Tous disponibles dans les dépôts CachyOS (vérifié le 26/09/2026) :
 - un paquet installé à la volée disparaît au redémarrage ;
 - avec 16 Go de RAM virtuelle : mémoire bloquée par le système ≤ 6 Go ; une appli Flatpak ou AppImage ne fait monter que le cache récupérable ; 5 Go écrits dans `/tmp` échouent proprement ; `flatpak install` ne fait pas grossir l'overlay ; un stress mémoire dans `llm.slice` ne touche pas la session TV ;
 - une DualSense simulée via uhid démarre la session ; la débrancher l'arrête après le délai, la rebrancher pendant le délai annule l'arrêt ;
-- noVNC demande le mot de passe puis affiche le bureau d'administration, SSH par clé fonctionne.
+- le bureau web demande le mot de passe puis affiche le bureau d'administration, SSH par clé fonctionne.
 
 **Sur la machine Strix Halo** :
 

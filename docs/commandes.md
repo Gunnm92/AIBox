@@ -6,17 +6,15 @@ Index de tout ce qu'aibox ajoute au système : les commandes à taper, et ce qui
 
 | Commande | À quoi ça sert | Usage | Détails |
 |---|---|---|---|
-| `aibox run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox run-exe prog.exe [args]`, ou double-clic dans Thunar | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
+| `aibox run-exe` | Lancer un programme Windows (.exe, .msi) avec un Proton déjà installé, dans un préfixe Wine partagé | `aibox run-exe prog.exe [args]`, ou double-clic dans Dolphin | [exploitation.md](exploitation.md#programmes-windows-exe-msi) |
 | `wsquashfs-launcher` (hors image) | Lancer un jeu Windows au format Batocera (`.wsquashfs`) ; binaire installé à part, dans `~/.local/bin` | `wsquashfs-launcher "Jeu.wsquashfs"`, `--info` | [exploitation.md](exploitation.md#jeux-windows-wsquashfs) |
-| `aibox tv-mode` | Mode de la session TV : Hyprland avec le lanceur (par défaut), Steam sous gamescope, ou le bureau XFCE sous labwc | `aibox tv-mode [--once] [gamescope\|hyprland\|bureau]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
+| `aibox tv-mode` | Mode de la session TV : Plasma Bigscreen (par défaut) ou Steam sous gamescope ; `hyprland` et `bureau`, anciens modes, valent `bigscreen` | `aibox tv-mode [--once] [gamescope\|bigscreen]` (`--once` : cette session seulement) | [exploitation.md](exploitation.md#session-tv) |
 | `aibox ds5-mode` | Manette DualSense : haptiques natives (`natif`, par défaut) ou vibration tirée du son du PC (`son`, lance le loopback). Régler le dongle en conséquence : « Off » ou « Replace » | `aibox ds5-mode [natif\|son]` | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
-| `aibox tv-run` | Lancer une commande sur l'écran de la TV (la session Hyprland doit tourner), depuis le bureau d'administration | `aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"` | [exploitation.md](exploitation.md#session-tv) |
+| `aibox tv-run` | Lancer une commande sur l'écran de la TV (la session Plasma Bigscreen doit tourner ; affichage lu dans `$XDG_RUNTIME_DIR/aibox-tv.env`), depuis le bureau d'administration | `aibox tv-run env WSQUASHFS_HIDRAW=1 wsquashfs-launcher "Jeu.wsquashfs"` | [exploitation.md](exploitation.md#session-tv) |
 | `aibox` | Point d'entrée unique : aide (`--help`), et aiguillage vers les `aibox-*` (`aibox update --podman` lance `aibox update --podman`). Binaire Go, compilé par `tools/aibox/build.sh` | `aibox --help`, `aibox <commande> [arguments]` | [commandes.md](commandes.md) |
 | `aibox update` | Mise à jour du système : image décidée par le LLM local, ou nouveaux commits poussés (lancée chaque nuit) | `--dry-run`, `--no-install`, `--force`, `--pkglist` | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox update --podman` | Mise à jour des conteneurs Podman seulement (`podman auto-update`, lancée chaque nuit avant le système) | `--podman`, avec `--dry-run` pour lister les mises à jour en attente | [exploitation.md](exploitation.md#mise-à-jour-automatique-de-limage) |
 | `aibox nas` | Partages réseau (SMB) montés à la demande | `aibox nas list`, `sudo aibox nas add //hôte/partage /mnt/X`, `sudo aibox nas remove /mnt/X` | [exploitation.md](exploitation.md#partages-du-nas) |
-| `aibox keyboard` | Disposition du clavier du bureau d'administration (noVNC) | `aibox keyboard [mac\|pc\|<xkb> [variante]]` | [exploitation.md](exploitation.md#bureau-dadministration) |
-| `aibox resolution` | Taille de l'écran virtuel du bureau d'administration | `aibox resolution [1920x1080[@60]\|client]` | [exploitation.md](exploitation.md#sunshine-diffusion-vers-moonlight) |
 | `aibox mem` | État de la mémoire : mémoire bloquée, GPU, image en RAM, clé, zram | `aibox mem` | [exploitation.md](exploitation.md#état-général) |
 | `aibox diag` | Rapport de diagnostic complet, enregistré sur la clé Ventoy ou sur AIBOXBOOT | `sudo aibox diag` | [exploitation.md](exploitation.md#état-général) |
 
@@ -61,7 +59,7 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 | `aibox-tv` | `aibox-tv-watch`, `aibox tv-mode` | Session TV sur l'écran réel (`tv-session`). À son démarrage : `llm-unload --tv` | [exploitation.md](exploitation.md#session-tv) |
 | `ds5-haptics-loopback` (utilisateur) | Branchement du dongle (udev), seulement en mode `son` (`aibox ds5-mode son`) : désactivé par défaut | Envoie le son du PC au dongle pour les auto-haptiques | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
 | `ds5-usbip` (utilisateur) | `aibox-tv-watch` : manette allumée (arrêté à son extinction) ; relancé avec PipeWire et WirePlumber | Reçoit le son de la DualSense envoyé par SteamBox (ds5-usbip, RTP 46100, réglages `/etc/aibox/ds5-usbip-rtp.conf`) et le relie au dongle, et à rien d'autre | [exploitation.md](exploitation.md#manette-dualsense-dongle-ds5dongle) |
-| `steamos-session-select` | « Passer au bureau » dans Steam | Bascule la session TV sur Hyprland et son lanceur, pour cette session seulement | [architecture.md](architecture.md) |
+| `steamos-session-select` | « Passer au bureau » dans Steam | Bascule la session TV sur Plasma Bigscreen, pour cette session seulement | [architecture.md](architecture.md) |
 
 ### Services de démarrage
 
@@ -73,8 +71,9 @@ Ils sont dans `/usr/local/lib/aibox/`, hors du `PATH`.
 | `aibox-flathub` | Flathub, Bazaar et Gear Lever, au premier démarrage avec le disque |
 | `aibox-lemonade-backends` (utilisateur) | `lemonade-backends-update` |
 | `aibox-code-server` (utilisateur) | code-server (VS Code dans le navigateur) |
-| `aibox-admin.target` (utilisateur) | Bureau d'administration : labwc headless, wayvnc, noVNC, panneau, XFCE (`admin-session`, `admin-wayvnc`, `xfce-defaults`) |
-| `aibox-evdev-bridge` (utilisateur) | Clavier et souris de Moonlight rejoués dans le bureau d'administration |
+| `aibox-admin.target` (utilisateur) | Bureau d'administration : Selkies (`aibox-admin-selkies`), KWin et Plasma imbriqués (`aibox-admin-plasma`, `admin-session`), nginx sur 6080 (`aibox-admin-web`) |
+| `aibox-session-env` (autostart de Plasma) | Publie l'affichage de chaque session Plasma : `aibox-tv.env` (TV, pour `aibox tv-run`), lien `wayland-admin` (bureau, pour Selkies) |
+| `aibox-evdev-bridge` (utilisateur) | Clavier et souris de Moonlight, démarré avec Sunshine ; écrit pour labwc, sans effet sous le KWin du bureau |
 
 ## Fichiers de réglages
 
@@ -87,5 +86,4 @@ Les réglages de l'image sont dans `/etc/aibox/`. Pour en changer un, copie le f
 | `~/.config/aibox/proton.conf` | `aibox run-exe` : Proton imposé (`PROTON=…`) |
 | `~/.config/aibox/tv-mode` | `aibox tv-mode` |
 | `~/.config/aibox/ds5-mode` | `aibox ds5-mode` (`natif` par défaut) |
-| `~/.config/aibox/tv-apps.json` | Applis du lanceur de la session TV |
-| `~/.config/aibox/keyboard.env` | `aibox keyboard` |
+| `~/.config/aibox/keyboard.env` | Disposition du clavier rejoué par evdev-bridge (Sunshine) |

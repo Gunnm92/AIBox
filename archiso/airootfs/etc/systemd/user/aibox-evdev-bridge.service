@@ -2,7 +2,7 @@
 Description=Clavier et souris de Moonlight dans le bureau d'administration (evdev-bridge)
 # Démarré et arrêté avec Sunshine (app-dev.lizardbyte.app.Sunshine.service.d).
 PartOf=app-dev.lizardbyte.app.Sunshine.service
-After=app-dev.lizardbyte.app.Sunshine.service aibox-admin-labwc.service
+After=app-dev.lizardbyte.app.Sunshine.service aibox-admin-plasma.service
 
 [Service]
 Slice=admin.slice

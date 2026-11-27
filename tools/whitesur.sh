@@ -4,7 +4,7 @@
 #   work/dl/whitesur-<commits>.tar.zst  (usr/share/themes, usr/share/icons)
 # Appelé par build.sh, qui l'extrait dans l'image ; affiche le chemin du cache.
 #   - WhiteSur-Dark : GTK 2/3/4, libadwaita (CSS dans WhiteSur-Dark/libadwaita,
-#     relié dans ~/.config/gtk-4.0 par admin-session), xfwm4 et labwc ;
+#     pour les applis GTK et libadwaita), xfwm4 et labwc ;
 #   - icônes WhiteSur, WhiteSur-dark et WhiteSur-light ; curseurs WhiteSur-cursors.
 # D'autres thèmes s'installent dans le home (~/.local/share/themes, sur le disque).
 # Repris de SteamBox (Dockerfile.cachyos, 26/09/2026), mêmes commits. Pièges de

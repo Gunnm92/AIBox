@@ -18,6 +18,29 @@ func remplacementFaux(appel *[]string, vars *[]string) func(string, []string, []
 	}
 }
 
+// ecrireTvEnv : l'affichage publié par session-env pour une session TV sur wayland-1.
+func ecrireTvEnv(t *testing.T, dir string) {
+	t.Helper()
+	contenu := "WAYLAND_DISPLAY=wayland-1\nDISPLAY=:1\nXAUTHORITY=/run/user/1000/xauth_test\n"
+	if err := os.WriteFile(filepath.Join(dir, "aibox-tv.env"), []byte(contenu), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Session TV arrêtée : aibox-tv.env publié, mais plus de socket.
+func TestTvRunSocketDisparu(t *testing.T) {
+	dir := t.TempDir()
+	ecrireTvEnv(t, dir)
+	var appel, vars []string
+	var erreurs bytes.Buffer
+	if code := tvRun(env{runtime: dir}, []string{"true"}, &erreurs, remplacementFaux(&appel, &vars)); code != 1 {
+		t.Errorf("code = %d, attendu 1", code)
+	}
+	if appel != nil {
+		t.Error("la commande ne doit pas être lancée sans la TV")
+	}
+}
+
 func TestTvRunSansSocket(t *testing.T) {
 	e := env{runtime: t.TempDir()}
 	var appel, vars []string
@@ -28,7 +51,7 @@ func TestTvRunSansSocket(t *testing.T) {
 	if appel != nil {
 		t.Error("la commande ne doit pas être lancée sans la TV")
 	}
-	if !strings.Contains(erreurs.String(), "aibox tv-mode --once hyprland") {
+	if !strings.Contains(erreurs.String(), "aibox tv-mode --once bigscreen") {
 		t.Errorf("message = %q", erreurs.String())
 	}
 }
@@ -44,6 +67,7 @@ func TestTvRunAvecSocket(t *testing.T) {
 		t.Skipf("socket Unix impossible ici : %v", err)
 	}
 	defer ecoute.Close()
+	ecrireTvEnv(t, dir)
 
 	e := env{runtime: dir}
 	var appel, vars []string
@@ -54,7 +78,7 @@ func TestTvRunAvecSocket(t *testing.T) {
 	if len(appel) < 2 || !strings.HasSuffix(appel[0], "/env") || appel[1] != "env" {
 		t.Errorf("appel = %v", appel)
 	}
-	if strings.Join(vars, " ") != "WAYLAND_DISPLAY=wayland-1 DISPLAY=:1" {
+	if strings.Join(vars, " ") != "WAYLAND_DISPLAY=wayland-1 DISPLAY=:1 XAUTHORITY=/run/user/1000/xauth_test" {
 		t.Errorf("variables = %v", vars)
 	}
 }
@@ -70,6 +94,7 @@ func TestTvRunSansArgument(t *testing.T) {
 		t.Skipf("socket Unix impossible ici : %v", err)
 	}
 	defer ecoute.Close()
+	ecrireTvEnv(t, dir)
 
 	e := env{runtime: dir}
 	var appel, vars []string

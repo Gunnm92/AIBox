@@ -43,9 +43,8 @@ Sans disque `AIBOXDATA`, le système démarre en **mode éphémère** : `/home` 
 |---|---|
 | `aibox-data-mount.service` | monte `AIBOXDATA` (ou passe en mode éphémère) |
 | `aibox-tv.service` (système, `tv.slice`) | session TV sur l'écran réel, `tty1` ; démarrée par la manette (`aibox-tv-watch`), arrêtée 2 min après son extinction (`aibox-tv-idle.timer`) ou quand on quitte Steam |
-| `aibox-admin.target` (utilisateur, `admin.slice`) | bureau d'administration : labwc headless (`wayland-0`, `:0`), XFCE, wayvnc, noVNC |
-| `xrdp.service` | RDP vers le même bureau d'administration |
-| `nginx` (`/etc/aibox/nginx.conf`) | HTTPS sur le port 6080 : noVNC et code-server (`/code/`), avec mot de passe |
+| `aibox-admin.target` (utilisateur, `admin.slice`) | bureau d'administration : Selkies (`aibox-admin-selkies`, son propre compositeur Wayland), KWin et Plasma imbriqués dedans (`aibox-admin-plasma`, `admin-session`), nginx (`aibox-admin-web`) |
+| `nginx` (`/etc/aibox/nginx.conf`) | HTTPS sur le port 6080 : Selkies (`/`, relayé vers `127.0.0.1:8082`) et code-server (`/code/`), avec mot de passe |
 | `aibox-code-server.service` (utilisateur) | VS Code dans le navigateur |
 | `lemond.service` (utilisateur, `llm.slice`) | Lemonade, serveur de LLM sur le port 13305 |
 | `aibox-nas.service` | partages SMB du NAS, montés à la demande |
@@ -57,7 +56,7 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
 
 ## Session TV
 
-`aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `$XDG_RUNTIME_DIR/aibox-tv-mode-once` s'il existe (mode pour cette session seulement, effacé aussitôt lu, perdu au redémarrage), sinon d'après `~/.config/aibox/tv-mode` (mode durable ; hyprland s'il n'existe pas). `aibox tv-mode` écrit le second, `aibox tv-mode --once` le premier.
+`aibox-tv.service` lance `/usr/local/lib/aibox/tv-session`, qui choisit le mode d'après `$XDG_RUNTIME_DIR/aibox-tv-mode-once` s'il existe (mode pour cette session seulement, effacé aussitôt lu, perdu au redémarrage), sinon d'après `~/.config/aibox/tv-mode` (mode durable ; bigscreen s'il n'existe pas). `aibox tv-mode` écrit le second, `aibox tv-mode --once` le premier. Les anciens modes `hyprland` et `bureau` (retirés le 27/11/2026) valent `bigscreen`.
 
 **Cycle de vie** :
 - **Démarrage et arrêt** : `aibox-tv-watch.service` (`/usr/local/lib/aibox/tv-watch`) mesure toutes les 2 secondes, sur une demi-seconde, les rapports envoyés par le dongle DualSense sur son hidraw. Au moins deux rapports différents signifient une manette connectée (compteur, gyroscope, environ 640 rapports par seconde). Le service réagit aux changements d'état : manette allumée, il démarre la session et annule l'arrêt programmé ; manette éteinte, il programme l'arrêt. La présence du dongle et ses événements udev ne suffisent pas : il s'annonce aussi manette éteinte, à la mise sous tension du PC, et ne se reconnecte pas toujours à l'allumage de la manette.
@@ -66,19 +65,26 @@ L'utilisateur est `default` (uid 1000). Il a `sudo` sans mot de passe et n'a pas
   - 75 : Steam a été fermé par l'utilisateur, ou Steam tourne déjà ailleurs. Fin de la session, sans relance (`RestartPreventExitStatus=75`) ;
   - 0 : « Passer au bureau », relance dans le nouveau mode ;
   - 1 : plantage, relance.
+- **Scope logind** : avec `PAMName=login`, les processus de la session vont dans un scope logind (`session-N.scope`), pas dans le cgroup du service, et Plasma ne s'arrête pas avec `dbus-run-session`. `tv-session` note le numéro de session (`$XDG_RUNTIME_DIR/aibox-tv-session-id`), et un `ExecStopPost` arrête ce scope.
 - **Veille** : à l'arrêt, `fb0` est mis en veille, pour que la TV perde le signal.
 
+Les modes :
+- **bigscreen** (par défaut) : `dbus-run-session plasma-bigscreen-wayland`. KWin pilote la TV (DRM, siège logind), sans HDR ; plasmashell avec le shell Bigscreen, navigation à la manette (SDL). Bus de session propre : le Plasma du bureau d'administration tient le bus principal. Sans les unités `plasma-*.service` de systemd (`/etc/xdg/startkderc`, `systemdBoot=false`), qui n'existent qu'une fois par utilisateur : `startplasma` lance ses composants lui-même (ksmserver). Tuiles d'aibox (`/usr/local/share/applications/`) : « Steam (TV) » (`aibox tv-mode --once gamescope`) et « Bureau » (`tv-bureau`, qui appelle `plasma-bigscreen-swap-session` : bureau Plasma sur la TV et retour, sans relancer la session ; sans effet hors de la TV). L'autostart `aibox-session-env` publie l'affichage de la session (`WAYLAND_DISPLAY`, `DISPLAY`, `XAUTHORITY`) dans `$XDG_RUNTIME_DIR/aibox-tv.env`, pour `aibox tv-run` ; il est retiré à l'arrêt.
 - **gamescope** : `gamescope --steam -e --hdr-enabled -- steam -gamepadui -steamos3 -steampal -steamdeck`. gamescope pilote directement la TV, en 4K à 60 Hz, avec HDR et VRR. Le HDR, le FSR et la limite d'images se règlent dans Steam.
-- **hyprland** (par défaut) : Hyprland, lancé par `start-hyprland`, avec la configuration `/etc/aibox/hypr-tv/hyprland.lua`, les cartes de widgets quickshell (`/etc/aibox/quickshell-tv/` : titre principal et liste des actualités à gauche, horloge, météo et machine à droite, aux cotes de la maquette « Direction 2 v3 » en 1920×1080 ; données de `/usr/local/lib/aibox/tv-widgets-data`, réglages dans `~/.config/aibox/tv-widgets.json`), et le lanceur `aibox-tv-launcher` (barre d'icônes en verre dépoli en bas, anneau de sélection, arc de lancement ; le lanceur n'initialise pas le son, dont la fermeture bloquait sur PipeWire), qui ferme sa fenêtre pendant que l'appli lancée tourne ; les cartes de widgets se masquent alors avec lui. Les logos des tuiles viennent de `/usr/local/share/aibox/tv-icons/`. Ses applis sont dans `/etc/aibox/tv-apps.json`, ou dans `~/.config/aibox/tv-apps.json` s'il existe. Le fond d'écran vient de Bing et change toutes les 30 minutes. Ce mode n'a pas de HDR.
-- **bureau** : labwc avec la configuration `/etc/aibox/labwc-bureau`, le fond et le panneau XFCE (sur un bus D-Bus à part, sinon ils s'ouvriraient sur le bureau d'administration), sans le lanceur. On y entre par la tuile « Bureau » du lanceur (`aibox tv-mode --once bureau`) ; Super+L revient au lanceur (`aibox tv-mode --once hyprland`).
 
-« Passer au bureau » dans Steam appelle `steamos-session-select`, qui bascule en mode hyprland **pour cette session seulement**. Dans le lanceur, la tuile Steam (`command_hyprland`) ramène à Steam sous gamescope, de la même façon (`aibox tv-mode --once gamescope`). Au démarrage suivant, c'est le mode durable, hyprland par défaut. Avant le 17/10/2026, la bascule était durable : un appel de Steam suffisait à laisser la TV sur labwc, sans retour possible à la manette.
+« Passer au bureau » dans Steam appelle `steamos-session-select`, qui bascule en mode bigscreen **pour cette session seulement**. Au démarrage suivant, c'est le mode durable, bigscreen par défaut. Avant le 17/10/2026, la bascule était durable.
 
-Les applications au démarrage (`~/.config/autostart`, `/etc/xdg/autostart`) sont lancées par `aibox-admin-autostart.target` (tirée par `aibox-admin.target`, car `xdg-desktop-autostart.target` refuse un démarrage direct), après le panneau : celui-ci n'est prêt qu'une fois sa zone de notification présente (`admin-wait zone-notification`, 20 s au plus), et `app-.service.d/aibox-admin.conf` ordonne les unités `app-*.service` après lui. Sont masquées : `nm-applet` et `xfsettingsd` (déjà des services `aibox-admin-*`), l'agent polkit (pas de session logind).
+Pas de HDMI-CEC : `amdgpu` ne pilote pas la ligne CEC de la sortie HDMI (pas de `/dev/cec*`, vérifié le 27/11/2026). Bigscreen s'en servirait (libcec) avec un adaptateur USB-CEC.
 
-Les notifications de bureau (`notify-send`, icône de `wsquashfs-launcher --tray`…) passent par `xfce4-notifyd`, lancé à la demande par D-Bus : il s'affiche sur le bureau d'administration, comme tout ce que D-Bus active.
+## Bureau d'administration
 
-Le bureau d'administration doit avoir pris `wayland-0` et `:0` avant la session TV. Les services utilisateur ont cet affichage par défaut (`/etc/systemd/user.conf.d/10-aibox-admin-display.conf`).
+Selkies (`/opt/selkies`, venv Python installé par `build.sh`, version épinglée) fait tourner son propre compositeur Wayland (pixelflux, rendu et encodage VA-API sur le GPU) et sert le bureau en local (`127.0.0.1:8082`) ; nginx le publie en HTTPS sur 6080, avec le mot de passe. Dans ce compositeur, `admin-session` lance `startplasma-wayland` : KWin s'y imbrique, avec Xwayland, et Plasma tourne sur le bus de session principal, sans les unités systemd de Plasma. KWin donne la forme du pointeur à Selkies, que le navigateur affiche (un seul pointeur), et le bureau prend la taille de la fenêtre du navigateur.
+
+**Sockets Wayland** : aucun n'est fixe. Selkies et le wrapper de KWin (`kwin_wayland_wrapper`) prennent chacun le premier `wayland-N` libre à partir de 1 (jamais 0), selon l'ordre de démarrage. `admin-session` retrouve celui de Selkies par ses sockets en écoute (`ss -xlp`). L'autostart `aibox-session-env` relie `$XDG_RUNTIME_DIR/wayland-admin` au socket du KWin du bureau : Selkies y envoie le clavier, la souris et le presse-papiers (`SELKIES_APP_WAYLAND_DISPLAY=wayland-admin`, recherché toutes les 2 s), et c'est l'affichage par défaut des services de l'utilisateur (`/etc/systemd/user.conf.d/10-aibox-admin-display.conf`), jusqu'à ce que `startplasma` pousse le sien. `admin-session` efface le lien au démarrage du bureau : sinon il pourrait viser un socket repris par la TV.
+
+**Son** : les applis du bureau sortent dans le puits `selkies` (`PULSE_SINK`, `pipewire-pulse.conf.d/50-aibox-selkies.conf`), dont Selkies capture le moniteur. Ce puits n'est jamais la sortie par défaut : la TV garde la sienne. Le micro et les manettes de Selkies sont coupés (les manettes seraient des périphériques du noyau, vus par Steam sur la TV).
+
+Les applications au démarrage (`~/.config/autostart`, `/etc/xdg/autostart`) sont lancées par Plasma, dans chacune des deux sessions (`~/.config` est partagé). Les notifications passent par le plasmashell du bureau, sur le bus principal.
 
 ## Son
 
@@ -94,6 +100,6 @@ Le bureau d'administration doit avoir pris `wayland-0` et `:0` avant la session 
 - `airootfs/` : les fichiers copiés dans l'image ;
 - `grub/` : le menu de l'ISO.
 
-Le build ajoute aussi noVNC, xrdp (compilé depuis l'AUR) et les secrets de `keys/`.
+Le build ajoute aussi Selkies (venv pip dans `/opt/selkies`, version épinglée dans `build.sh`), evdev-bridge (compilé) et les secrets de `keys/`.
 
 Détails pratiques : [iso.md](iso.md).

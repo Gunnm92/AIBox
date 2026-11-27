@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# session-env : autostart de Plasma (/etc/xdg/autostart/aibox-session-env.desktop),
+# dans les deux sessions Plasma. Leur KWin (kwin_wayland_wrapper) prend le
+# premier socket wayland-N libre à partir de 1, jamais le même d'un démarrage à
+# l'autre (essai du 27/11/2026) : on publie celui de la session.
+#   - session TV (AIBOX_TV_MODE, posé par tv-session) : WAYLAND_DISPLAY, DISPLAY
+#     et XAUTHORITY dans $XDG_RUNTIME_DIR/aibox-tv.env, pour aibox tv-run ; retiré
+#     à l'arrêt de la session (aibox-tv.service) ;
+#   - bureau d'administration : lien $XDG_RUNTIME_DIR/wayland-admin vers son
+#     socket, que Selkies vise pour le clavier, la souris et le presse-papiers
+#     (SELKIES_APP_WAYLAND_DISPLAY), et qui sert d'affichage par défaut aux
+#     services de l'utilisateur ; retiré au démarrage du bureau (admin-session).
+# Écrits à côté puis renommés : un lecteur ne voit jamais un fichier à moitié écrit.
+r="${XDG_RUNTIME_DIR:?}"
+[[ -n "${WAYLAND_DISPLAY:-}" && -S "$r/$WAYLAND_DISPLAY" ]] || exit 1
+if [[ -n "${AIBOX_TV_MODE:-}" ]]; then
+    {
+        for v in WAYLAND_DISPLAY DISPLAY XAUTHORITY; do
+            printf '%s=%s\n' "$v" "${!v:-}"
+        done
+    } > "$r/aibox-tv.env.tmp" && mv -f "$r/aibox-tv.env.tmp" "$r/aibox-tv.env"
+else
+    ln -sfn "$WAYLAND_DISPLAY" "$r/wayland-admin.tmp" && mv -fT "$r/wayland-admin.tmp" "$r/wayland-admin"
+fi

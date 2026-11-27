@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=aibox : affichage de la session
+Comment=Publie l'affichage de la session Plasma (TV : aibox tv-run ; administration : Selkies)
+Exec=/usr/local/lib/aibox/session-env
+NoDisplay=true
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=0

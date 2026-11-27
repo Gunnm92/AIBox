@@ -1,0 +1,6 @@
+# Plasma sans systemd (aibox, 27/11/2026) : deux sessions Plasma tournent pour
+# le même utilisateur (TV et bureau d'administration), et les unités
+# plasma-*.service de systemd n'existent qu'une fois par utilisateur. startplasma
+# lance alors ses composants lui-même (ksmserver).
+[General]
+systemdBoot=false
