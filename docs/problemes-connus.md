@@ -47,6 +47,11 @@ Chaque entrée donne le symptôme, la cause et ce qu'il faut faire. Ajoute une e
 - **Cause** : avec `PAMName=login`, les processus de la session vont dans le scope logind (`session-N.scope`), pas dans le cgroup du service. Seul `dbus-run-session` reçoit l'arrêt ; Plasma ne s'arrête pas avec lui. `loginctl terminate-session` ne suffit pas non plus (scope « abandoned »).
 - **Solution** : `tv-session` note `XDG_SESSION_ID` dans `$XDG_RUNTIME_DIR/aibox-tv-session-id`, et `aibox-tv.service` arrête `session-N.scope` en `ExecStopPost`. À la main : `sudo systemctl stop session-<N>.scope`.
 
+### Le jeu ne voit plus la manette après le bouton PS dans Moonlight (27/11/2026)
+- **Symptôme** : dans Moonlight, l'interface de Steam suit la manette ; après un appui sur PS (menu de Steam en jeu), le jeu ne la voit plus.
+- **Cause** : `plasma-bigscreen-inputhandler` lit lui aussi la DualSense (SDL3, hidraw). Il se met en retrait quand une appli a le focus, mais garde par défaut le bouton PS (`startButtonEnabledWhenSuppressed`) : il revient à l'accueil, Moonlight perd le focus et cesse d'envoyer la manette (`backgroundgamepad=false`). Maintenu, le bouton éteint en plus la manette.
+- **Solution** : bouton PS laissé aux applis, réglé par manette (numéro de série) dans `~/.config/plasma-bigscreen-inputhandlerrc`, sur le disque : `StartButtonDisabledWhenSuppressedControllers=serial:…`. Pour une autre manette, depuis la session TV : `busctl --user call org.kde.plasma.bigscreen.inputhandler /InputHandler org.kde.plasma.bigscreen.inputhandler setStartButtonEnabledWhenSuppressed sb "serial:<numéro>" false` (numéros : méthode `connectedControllers`). Pour quitter Moonlight : Select+Start+L1+R1.
+
 ### Pas de HDMI-CEC (27/11/2026)
 - **Cause** : `amdgpu` ne pilote pas la ligne CEC de la sortie HDMI : pas de `/dev/cec*`, `cec-client -l` ne trouve rien. Le CEC par DisplayPort (`drm_dp_cec`) ne vaut que pour les ports DP.
 - **Solution** : un adaptateur USB-CEC (Pulse-Eight), que libcec, et donc Bigscreen, reconnaît. Pas fait.
