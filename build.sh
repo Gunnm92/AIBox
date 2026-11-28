@@ -143,6 +143,21 @@ engine run --rm --privileged \
         python -m venv /opt/selkies
         /opt/selkies/bin/pip install -q --disable-pip-version-check \
             --cache-dir "$WORK/pip" "selkies==$SELKIES_VERSION"
+        # Nom et logo AIBox dans le bureau navigateur (28/11/2026, comme SteamBox
+        # 0c9c0c6) : titre de l en-tête et de l onglet par SELKIES_UI_TITLE
+        # (aibox-admin-selkies.service) ; ici, ce que Selkies ne règle pas : le
+        # titre de la page avant connexion, le nom de l appli installée
+        # (manifest) et les icônes (icons/aibox-icon-512.png, logo blanc sur
+        # fond sombre). Le logo de l en-tête est intégré au JavaScript : gardé.
+        # Échec = build en échec.
+        W="$(/opt/selkies/bin/python -c "import os,selkies;print(os.path.dirname(selkies.__file__)+\"/selkies_web\")")"
+        ICON="$ROOT/icons/aibox-icon-512.png"
+        cp "$ICON" "$W/icon-512.png"
+        /opt/selkies/bin/python -c "from PIL import Image;import sys;i=Image.open(sys.argv[1]).convert(\"RGBA\");i.resize((180,180),Image.LANCZOS).save(sys.argv[2]+\"/icon.png\");i.save(sys.argv[2]+\"/favicon.ico\",sizes=[(16,16),(32,32),(48,48),(64,64)])" "$ICON" "$W"
+        sed -i "s|<title>Selkies</title>|<title>AIBox</title>|" "$W/index.html"
+        /opt/selkies/bin/python -c "import json,sys;p=sys.argv[1];m=json.load(open(p));m[\"name\"]=m[\"short_name\"]=\"AIBox\";json.dump(m,open(p,\"w\"))" "$W/manifest.json"
+        { grep -q "<title>AIBox</title>" "$W/index.html" && grep -q "\"name\": \"AIBox\"" "$W/manifest.json"; } \
+            || { echo "Selkies : nom et logo AIBox non appliqués" >&2; exit 1; }
         mkdir -p "$air/opt"
         cp -a /opt/selkies "$air/opt/selkies"
         chown -R "$HOST_UID:$HOST_GID" "$WORK/pip"

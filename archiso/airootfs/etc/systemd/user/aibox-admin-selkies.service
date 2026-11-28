@@ -22,6 +22,8 @@ Environment=SELKIES_ENABLE_HTTPS=false SELKIES_ENABLE_BASIC_AUTH=false
 # de la TV et injecte alors dans son propre compositeur (essai du 27/11/2026).
 Environment=SELKIES_APP_WAYLAND_DISPLAY=wayland-admin
 Environment=SELKIES_ENABLE_CURSORS=true SELKIES_USE_BROWSER_CURSORS=true
+# Nom dans l'en-tête et l'onglet ; icônes et manifeste réécrits au build (build.sh).
+Environment=SELKIES_UI_TITLE=AIBox
 # Encodage et rendu sur le GPU (VA-API : H.264, H.265, AV1).
 Environment=SELKIES_ENCODE_DRI=/dev/dri/renderD128 SELKIES_RENDER_DRI=/dev/dri/renderD128
 # Son : moniteur du puits « selkies » (pipewire-pulse.conf.d/50-aibox-selkies.conf),
